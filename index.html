@@ -71,7 +71,12 @@
 }
 
 *{box-sizing:border-box;}
-html,body{height:100%;}
+/* min-height (no height fijo): así el body puede crecer más allá del alto
+   de ventana en pestañas largas (ej. "Cálculos"). Con height:100% fijo, el
+   contenedor de position:sticky (command-bar/tabs-bar, hijos directos de
+   body) quedaba limitado a la altura de la ventana — al pasar ese punto de
+   scroll, dejaban de "pegarse" y se iban con el resto del contenido. */
+html,body{min-height:100%;}
 /* Reserva siempre el espacio de la barra de scroll vertical, esté o no
    presente — sin esto, al cambiar de pestaña entre una con scroll y otra
    sin scroll, el ancho efectivo de la ventana (100vw) cambiaba y el
@@ -275,6 +280,22 @@ tbody tr:hover{background:var(--brand-tint);}
 #areaEfectivaLegend .item{display:flex; align-items:center; gap:5px;}
 #areaEfectivaLegend .swatch{width:11px; height:11px; border-radius:2px; display:inline-block;}
 
+/* ---------- Fórmula estilo LaTeX (sin librería externa: fracciones apiladas
+   a mano con flex, variables en itálica con una fuente tipo "math") ---------- */
+.formula-box{
+  display:flex; align-items:center; flex-wrap:wrap; gap:5px;
+  font-size:15px; font-family:'Cambria Math','STIX Two Math',Georgia,'Times New Roman',serif;
+  color:var(--text); padding:12px 16px; margin:2px 0 12px;
+  background:var(--canvas); border:1px solid var(--border); border-radius:var(--radius-md);
+}
+.formula-box .var{font-style:italic;}
+.formula-box .op{margin:0 3px;}
+.formula-box sub{font-size:0.7em;}
+.formula-box .pt-sub{font-size:0.55em;}
+.formula-box .frac{display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; margin:0 3px; line-height:1.25;}
+.formula-box .frac .num{padding:0 5px 2px; border-bottom:1.3px solid currentColor;}
+.formula-box .frac .den{padding:2px 5px 0;}
+
 /* ---------- Diagramas de esfuerzo (Ley de Navier, sección 4.3) ---------- */
 .navier-card{border:1px solid var(--border); border-radius:var(--radius-md); padding:4px; background:var(--canvas);}
 .navier-card .navier-title{text-align:center; font-weight:600; font-size:12.5px; color:var(--text); margin:2px 0 4px;}
@@ -287,12 +308,13 @@ tbody tr:hover{background:var(--brand-tint);}
    regionales, <input type="number"> espera "," como separador decimal y
    rechaza el "." al tipear. Con texto simple + parseDecimal() en JS,
    el usuario puede escribir "." o "," sin que el navegador lo bloquee. */
-input[type=text], select{
+input[type=text], input[type=number], select{
   width:100%; padding:4px 8px; border:1px solid var(--border-strong); border-radius:var(--radius-sm);
   background:var(--input-bg); color:var(--text); font-size:13px; text-align:left; font-family:var(--font);
 }
 input[inputmode="decimal"]{text-align:right;}
-input[type=text]:focus, select:focus{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent);}
+input[type=number]{text-align:right;}
+input[type=text]:focus, input[type=number]:focus, select:focus{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent);}
 input[aria-invalid="true"]{border-color:var(--warning-border); background:var(--warning-bg);}
 
 label.field{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:3px 0;}
@@ -368,8 +390,8 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
 /* ---------- Layout de la pestaña Cálculos: nav lateral + contenido ---------- */
 .calc-layout{display:flex; align-items:flex-start; gap:14px;}
 .calc-sidenav{
-  flex:0 0 168px; position:sticky; top:78px; align-self:flex-start;
-  display:flex; flex-direction:column; gap:1px; max-height:calc(100vh - 96px); overflow-y:auto;
+  flex:0 0 168px; position:sticky; top:calc(var(--stickytop-h, 106px) + 8px); align-self:flex-start;
+  display:flex; flex-direction:column; gap:1px; max-height:calc(100vh - var(--stickytop-h, 106px) - 26px); overflow-y:auto;
   background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:6px;
 }
 .calc-sidenav a{
@@ -583,7 +605,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           </div>
           <div class="tb-rev">
             <span class="tb-rev-label">Rev.:</span>
-            <span class="tb-rev-value">08 <span class="tb-rev-mark" aria-hidden="true"></span></span>
+            <span class="tb-rev-value">09 <span class="tb-rev-mark" aria-hidden="true"></span></span>
           </div>
         </div>
 
@@ -602,6 +624,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
             <tr><td>V2.0</td><td style="text-align:left">Desarrollo en aplicación WEB</td><td>Ing. Juan Espinosa</td><td>15/07/2026</td></tr>
           </tbody>
         </table>
+        <p class="small" style="margin-top:12px; color:var(--muted);">Si se requieren ajustes o revisión de cálculos contactar a los desarrolladores.</p>
       </div>
     </section>
     </div>
@@ -915,10 +938,12 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
             <div class="legend">
               <div class="item"><span class="swatch" style="background:#8a95a5"></span>Zapata y dados (concreto)</div>
               <div class="item"><span class="swatch" style="background:#7a6a55"></span>Relleno</div>
+              <div class="item"><span class="swatch" style="background:#7d8b8f"></span>Concreto Ciclópeo</div>
               <div class="item"><span class="swatch" style="background:#d9432e"></span>Fy (compresión)</div>
               <div class="item"><span class="swatch" style="background:#1e9e6b"></span>Fy (tensión/levantamiento)</div>
               <div class="item"><span class="swatch" style="background:#2f7dd1"></span>Fx</div>
               <div class="item"><span class="swatch" style="background:#c9822a"></span>Fz</div>
+              <div class="item"><span class="swatch" style="background:#9b59b6"></span>Peso adicional</div>
             </div>
             <p class="small" id="vista3dHint" style="margin-top:6px;">Arrastrar para rotar, rueda del mouse para acercar/alejar, clic derecho para desplazar.</p>
           </div>
@@ -995,7 +1020,16 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
         </div>
         <div class="geoContenido">
-          <p class="small" style="margin:0 0 10px; color:var(--muted);">Ley de Navier: τ = R<sub>FY</sub> Total/Área − M<sub>x</sub> Total·y/I<sub>x</sub> + M<sub>z</sub> Total·x/I<sub>y</sub>, evaluada en los vértices de la zapata y en cualquier punto al pasar el cursor sobre el diagrama. El color va de azul (menor esfuerzo) a rojo (mayor esfuerzo) de cada combinación.</p>
+          <p class="small" style="margin:0 0 6px; color:var(--muted);">Ley de Navier — evaluada en los vértices de la zapata y en cualquier punto al pasar el cursor sobre el diagrama. El color va de azul (menor esfuerzo) a rojo (mayor esfuerzo) de cada combinación.</p>
+          <div class="formula-box" role="img" aria-label="Tau evaluado en el punto xi, yi, igual a R sub FY Total sobre Área, más M sub x Total por y sobre I sub x, más M sub y Total por x sobre I sub y">
+            <span class="var">τ<sub class="pt-sub"><span class="var">x</span>ᵢ,<span class="var">y</span>ᵢ</sub></span>
+            <span class="op">=</span>
+            <span class="frac"><span class="num"><span class="var">R</span><sub>FY&nbsp;Total</sub></span><span class="den">Área</span></span>
+            <span class="op">+</span>
+            <span class="frac"><span class="num"><span class="var">M</span><sub>x&nbsp;Total</sub>·<span class="var">y</span></span><span class="den"><span class="var">I</span><sub>x</sub></span></span>
+            <span class="op">+</span>
+            <span class="frac"><span class="num"><span class="var">M</span><sub>y&nbsp;Total</sub>·<span class="var">x</span></span><span class="den"><span class="var">I</span><sub>y</sub></span></span>
+          </div>
           <div id="geoNavierDiagramas" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:14px;"></div>
 
           <p class="small" style="margin:14px 0 10px; color:var(--muted);">4.3.2.- Eficiencias</p>
@@ -1019,9 +1053,9 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
         </div>
         <div class="geoContenido">
-          <p class="small" style="margin:0 0 10px; color:var(--muted);">Previsualización de una malla uniforme de cuadriláteros sobre la zapata (elementos del mismo tamaño en toda la superficie). Es solo una previsualización visual — todavía no genera el archivo .STD para STAAD.</p>
-          <label class="field" style="max-width:220px; margin-bottom:12px;"><span class="lbl">Tamaño de elemento</span><input type="text" inputmode="decimal" step="any" id="g_mallaTamElem"><span class="unit">cm</span></label>
-          <div id="geoMallaDiagrama" class="navier-card" style="max-width:780px; margin:0 auto;"></div>
+          <p class="small" style="margin:0 0 10px; color:var(--muted);">Malla "Urdimbre": grilla regular sobre el interior + triangulación restringida en huecos/esquinas/dados, recombinada en cuadriláteros y reparada localmente (dados resaltados en naranja, con su propia malla perfecta). Es solo una previsualización visual — todavía no genera el archivo .STD para STAAD.</p>
+          <label class="field" style="max-width:360px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="120" id="g_mallaTamElem" style="max-width:150px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">20 cm</span></label>
+          <div id="geoMallaDiagrama" class="navier-card" style="max-width:1180px; margin:0 auto;"></div>
           <p class="small" style="margin:8px 0 0; color:var(--muted);" id="geoMallaConteo"></p>
         </div>
       </div>
@@ -3212,18 +3246,56 @@ function update3D(props, legs, dados, outerC, holeC){
     }
   }
 
-  // --- Relleno: bloque entre el tope de la zapata y el terreno natural.
-  // No se dibuja en Alzado: al ser opaco y cubrir todo el ancho, se leía
-  // como un efecto de sombra sobre el plano técnico. ---
-  if(Hr > 1e-6 && viewMode3d !== "alzado"){
-    const relGeo = new THREE.BoxGeometry(Math.max(b.xmax-b.xmin,0.1), Hr, Math.max(b.ymax-b.ymin,0.1));
-    const relMesh = new THREE.Mesh(relGeo, solidMat(0x7a6a55, flat ? {} : {transparent:true, opacity:0.35}));
-    relMesh.position.set((b.xmin+b.xmax)/2, -Hr/2, (b.ymin+b.ymax)/2);
-    mesh3dGroup.add(relMesh);
+  // --- Concreto Ciclópeo: mismo contorno (área) que la zapata, apoyado
+  // sobre su cara superior y creciendo hacia arriba el espesor definido por
+  // el usuario — confirmado con el usuario ("a partir de la parte superior
+  // de la zapata y que tenga la misma área"). Ocupa la parte inferior de la
+  // franja de relleno (justo encima de la zapata); el resto de esa franja
+  // (hasta el terreno natural) sigue siendo relleno normal. ---
+  const hayCiclopeo = state.materiales.existeCiclopeo === "Sí" && state.materiales.espesorCiclopeo > 1e-6;
+  const cicloH = hayCiclopeo ? Math.min(state.materiales.espesorCiclopeo, Hr) : 0;
+  const relH = Hr - cicloH;
+
+  // --- Relleno y Concreto Ciclópeo: se extruye el mismo polígono real de
+  // la zapata (con hueco si aplica) — antes era una caja con el bounding
+  // box del contorno, que no coincidía con la forma real de la zapata.
+  // No se dibujan en Planta: al ser opacos y cubrir todo el ancho, tapaban
+  // por completo la zapata al mirar desde arriba. SÍ se dibujan en Alzado
+  // (con transparencia, igual que en 3D libre) — es justo la vista donde
+  // interesa ver el perfil de capas (relleno/ciclópeo) con sus cotas. ---
+  if(viewMode3d !== "planta"){
+    if(relH > 1e-6){
+      const relGeo = new THREE.ExtrudeGeometry(shape, {depth:relH, bevelEnabled:false, curveSegments:24});
+      const relMesh = new THREE.Mesh(relGeo, solidMat(0x7a6a55, {transparent:true, opacity:0.35}));
+      relMesh.rotation.x = -Math.PI/2;
+      relMesh.position.y = -relH;
+      mesh3dGroup.add(relMesh);
+    }
+    if(cicloH > 1e-6){
+      const cicloGeo = new THREE.ExtrudeGeometry(shape, {depth:cicloH, bevelEnabled:false, curveSegments:24});
+      const cicloMesh = new THREE.Mesh(cicloGeo, concreteMat(0x7d8b8f, {transparent:true, opacity:0.55}));
+      cicloMesh.rotation.x = -Math.PI/2;
+      cicloMesh.position.y = -Hr;
+      mesh3dGroup.add(cicloMesh);
+    }
+  }
+
+  // --- Peso adicional: flecha hacia abajo a nivel de terreno (y=0),
+  // alineada al centroide (x=0,z=0 en este sistema de coordenadas ya
+  // centrado) — solo si el usuario definió un valor mayor a 0. Igual que
+  // las flechas de reacción, solo en modo 3D libre (no en Planta/Alzado). ---
+  if(!flat && state.materiales.pesoAdicional > 0){
+    const span = Math.max(b.xmax-b.xmin, b.ymax-b.ymin, 1);
+    const vLen = Math.max(span*0.10, 0.25);
+    const colorAdic = 0x9b59b6;
+    mesh3dGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), new THREE.Vector3(0, vLen, 0), vLen, colorAdic, vLen*0.25, vLen*0.15));
+    const labelAdic = makeForceLabelSprite3D(`Peso adicional ${n2(state.materiales.pesoAdicional)} kg`, Math.max(span*0.035, 0.15), colorAdic, 0.5, 0);
+    labelAdic.position.set(0, vLen+0.08, 0);
+    mesh3dGroup.add(labelAdic);
   }
 
 
-  last3dGeom = {b, Pd, PZ, HD, Hr};
+  last3dGeom = {b, Pd, PZ, HD, Hr, cicloH, relH, hayCiclopeo};
   applyViewMode3D(viewMode3d);
 }
 
@@ -3313,19 +3385,24 @@ function applyViewMode3D(mode){
     controlsOrtho3d.update();
     buildPlantaCotas(b);
   } else if(mode === "alzado"){
+    const {cicloH, relH, hayCiclopeo} = last3dGeom;
     const w = (b.xmax-b.xmin);
     const hTotal = Pd+HD;
-    const half = fitOrthoHalf(w, hTotal, aspect);
-    // La cota total "Pd+HD" se dibuja a la izquierda del contorno, más afuera
-    // que las cotas PZ/Hr/HD (ver buildAlzadoCotas, offX*1.35) — si el
-    // frustum queda centrado en el footprint puede quedar fuera de cuadro.
-    // Se corre el target hacia la izquierda (el contenido se ve desplazado
-    // hacia la derecha en pantalla) lo justo para que esa cota entre, con
-    // un pequeño margen extra.
+    // La cota total "Pd+HD" (izquierda) y las cotas de Relleno/Ciclópeo
+    // (derecha, ver buildAlzadoCotas) quedan más afuera que el propio
+    // contorno — en vez de solo correr la cámara hacia la izquierda (como
+    // antes, cuando no había nada del lado derecho), acá se calcula el
+    // encuadre necesario para que AMBOS lados entren, centrando la cámara
+    // entre los dos extremos. Esto además "hace menos zoom" de forma
+    // natural (el recuadro queda más grande) al incluir el margen derecho.
     const cotaOffX = (b.xmin - (Math.max(w,hTotal,1)*0.12+0.4)) * 1.35;
-    const leftBound = cx - half*aspect;
-    const neededLeftBound = cotaOffX - 0.5;
-    const camX = cx + Math.min(0, neededLeftBound - leftBound);
+    const offXRight = b.xmax + (Math.max(w,hTotal,1)*0.12 + 0.4);
+    const leftMost = cotaOffX - 0.5;
+    const rightMost = offXRight + 0.9; // margen para el ancho del texto de la etiqueta
+    const camX = (leftMost + rightMost) / 2;
+    const halfHNeed = (hTotal/2)*margin + 0.6;
+    const halfWNeed = (rightMost-leftMost)/2 + 0.3;
+    const half = Math.max(halfHNeed, halfWNeed/aspect);
     cameraOrtho3d.left = -half*aspect; cameraOrtho3d.right = half*aspect;
     cameraOrtho3d.top = half; cameraOrtho3d.bottom = -half;
     cameraOrtho3d.near = 0.05; cameraOrtho3d.far = 500;
@@ -3335,7 +3412,7 @@ function applyViewMode3D(mode){
     cameraOrtho3d.lookAt(controlsOrtho3d.target);
     cameraOrtho3d.updateProjectionMatrix();
     controlsOrtho3d.update();
-    buildAlzadoCotas(b, Pd, PZ, HD, Hr);
+    buildAlzadoCotas(b, Pd, PZ, HD, Hr, cicloH, relH, hayCiclopeo);
   }
 }
 
@@ -3439,11 +3516,13 @@ function buildPlantaCotas(b){
     fmtCota(d), wh);
 }
 
-// Cotas en Alzado: profundidad de desplante (Pd), peralte (PZ) y afloramiento del dado (HD).
-function buildAlzadoCotas(b, Pd, PZ, HD, Hr){
+// Cotas en Alzado: profundidad de desplante (Pd), peralte (PZ) y afloramiento del dado (HD)
+// del lado izquierdo; Relleno y Concreto Ciclópeo (si aplica) del lado derecho.
+function buildAlzadoCotas(b, Pd, PZ, HD, Hr, cicloH, relH, hayCiclopeo){
   const w = b.xmax-b.xmin;
   const wh = Math.max(w, Pd+HD, 1)*0.045;
   const offX = b.xmin - (Math.max(w,Pd+HD,1)*0.12 + 0.4);
+  const offXRight = b.xmax + (Math.max(w,Pd+HD,1)*0.12 + 0.4);
   const cz = (b.ymin+b.ymax)/2;
 
   // Tramos individuales (cada línea mide exactamente lo que dice su etiqueta):
@@ -3454,6 +3533,16 @@ function buildAlzadoCotas(b, Pd, PZ, HD, Hr){
   addCota3D(cotasGroup, {x:offX, y:0, z:cz}, {x:offX, y:HD, z:cz}, "HD " + fmtCota(HD), wh);
   // Cota total de referencia, más alejada de la figura.
   addCota3D(cotasGroup, {x:offX*1.35, y:-Pd, z:cz}, {x:offX*1.35, y:HD, z:cz}, "Pd+HD " + fmtCota(Pd+HD), wh);
+
+  // Lado derecho: desglose de la franja de relleno en Concreto Ciclópeo
+  // (si el usuario lo activó) y Relleno propiamente dicho, cada uno con su
+  // propio tramo — igual que el corte de referencia del Excel.
+  if(hayCiclopeo && cicloH > 1e-6){
+    addCota3D(cotasGroup, {x:offXRight, y:-Hr, z:cz}, {x:offXRight, y:-Hr+cicloH, z:cz}, "Ciclópeo " + fmtCota(cicloH), wh);
+  }
+  if(relH > 1e-6){
+    addCota3D(cotasGroup, {x:offXRight, y:-Hr+cicloH, z:cz}, {x:offXRight, y:0, z:cz}, "Relleno " + fmtCota(relH), wh);
+  }
 }
 
 /* ============================================================
@@ -3567,7 +3656,7 @@ function computeGeotecnico(props, legs){
 
   const Wzapata = (g.PZ * props.area * m.gc) / 1000;
   let Wrelleno, Wciclopeo = 0;
-  if(m.existeCiclopeo === "Si"){
+  if(m.existeCiclopeo === "Sí"){
     Wrelleno = (((Hr*props.area) - (areaDado*(Hr - m.espesorCiclopeo)*3)) - (m.espesorCiclopeo*props.area)) * m.gr/1000;
     Wciclopeo = ((m.espesorCiclopeo*props.area) - (areaDado*m.espesorCiclopeo*3)) * m.gcc/1000;
   } else {
@@ -4037,61 +4126,607 @@ function finalizeAreaEfectiva(combo, areaEfectiva){
 }
 
 /* ============================================================
-   MALLADO FEM (sección 4.4) — previsualización visual.
-   Confirmado con el usuario: elementos cuadriláteros puros, tamaño
-   editable en cm, MALLA UNIFORME (sin refinar cerca de los dados —
-   pedido explícito: "que todos sus elementos traten de ser iguales"),
-   sin exportar .STD todavía (eso queda para la Fase 3). Se genera con
-   una grilla de fondo pareja: nx/ny se calculan por redondeo (no
-   truncando) para que el tamaño real de celda quede lo más cerca
-   posible al pedido Y las celdas queden exactamente iguales entre sí
-   en cada eje (dx/dy constantes), en vez de dejar una celda sobrante
-   más chica en el borde de la grilla.
-   Los cuadriláteros se recortan contra el contorno exterior con
-   clipPolygon() (ya escrito para Área efectiva) — asume contorno
-   convexo, igual que el resto de la app. El hueco NO se recorta
-   geométricamente (evitaría el problema de recortar contra un
-   polígono no convexo): se dibuja encima con relleno sólido, mismo
-   truco visual que ya se usa en los diagramas de Navier (4.3).
+   MALLADO FEM (sección 4.4) — "Urdimbre Mesh".
+   Algoritmo: grilla regular alineada a los ejes sobre el interior
+   (la "urdimbre" — hilos fijos y parejos de un tejido) + Triangulación
+   de Delaunay Restringida SOLO en las zonas de transición donde esa
+   trama pareja no calza (huecos, esquinas, dados — el "hilo libre"),
+   recombinada en cuadriláteros donde la calidad lo permite, y una
+   reparación local final (suavizado de nodos libres + reconexión +
+   fusión de elementos diminutos) en los pocos elementos que quedan
+   fuera de norma — nunca toca el borde de la losa, huecos ni dados
+   (Hard Lines/Hard Points, garantiza conectividad nodal para STAAD).
+
+   Cada dado tiene además su propia malla LOCAL perfecta (cuadrícula
+   alineada a sus propios lados, no a los ejes globales, mínimo 2x2
+   elementos, tamaño interno redondeado a múltiplos de 20 cm) — válida
+   sin importar el ángulo de rotación de cada pata.
+
+   Prototipo y validación completos en un artifact aparte (sesión del
+   2026-07-11) antes de portarlo acá; funciones namespaced con prefijo
+   "um" (Urdimbre Mesh) para no chocar con polygonArea/pointInPolygon
+   ya existentes en esta app (firmas distintas: acá {x,y}, allá [x,y]).
    ============================================================ */
 
-function generateMallaFEM(outerC, cellSizeM){
-  if(!outerC || outerC.length<3 || !(cellSizeM>0)) return [];
+function umOrientation(a,b,c){ return (b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]); }
+function umPolygonArea(poly){ let a=0,n=poly.length; for(let i=0;i<n;i++){ const [x1,y1]=poly[i]; const [x2,y2]=poly[(i+1)%n]; a+=x1*y2-x2*y1; } return a/2; }
+function umEnsureCCW(poly){ return umPolygonArea(poly)>0 ? poly : poly.slice().reverse(); }
+function umPointInPolygon(p,poly){
+  const [x,y]=p; let inside=false; const n=poly.length;
+  for(let i=0;i<n;i++){
+    const [x1,y1]=poly[i], [x2,y2]=poly[(i+1)%n];
+    if(((y1>y)!==(y2>y)) && (x < (x2-x1)*(y-y1)/(y2-y1)+x1)) inside=!inside;
+  }
+  return inside;
+}
+function umSegmentsProperlyIntersect(p1,p2,p3,p4){
+  const d1=umOrientation(p3,p4,p1), d2=umOrientation(p3,p4,p2), d3=umOrientation(p1,p2,p3), d4=umOrientation(p1,p2,p4);
+  return ((d1>0)!==(d2>0)) && ((d3>0)!==(d4>0));
+}
+function umDistPointToSegment(p,a,b){
+  const [ax,ay]=a,[bx,by]=b,[px,py]=p;
+  const dx=bx-ax, dy=by-ay, len2=dx*dx+dy*dy;
+  if(len2<1e-12) return Math.hypot(px-ax,py-ay);
+  let t=((px-ax)*dx+(py-ay)*dy)/len2; t=Math.max(0,Math.min(1,t));
+  return Math.hypot(px-(ax+t*dx), py-(ay+t*dy));
+}
+function umCircumcircleContains(a,b,c,p){
+  const ax=a[0]-p[0], ay=a[1]-p[1], bx=b[0]-p[0], by=b[1]-p[1], cx=c[0]-p[0], cy=c[1]-p[1];
+  const det=(ax*ax+ay*ay)*(bx*cy-cx*by) - (bx*bx+by*by)*(ax*cy-cx*ay) + (cx*cx+cy*cy)*(ax*by-bx*ay);
+  return det>1e-9;
+}
+function umAngleAt(prev,cur,nxt){
+  const v1=[prev[0]-cur[0],prev[1]-cur[1]], v2=[nxt[0]-cur[0],nxt[1]-cur[1]];
+  const dot=v1[0]*v2[0]+v1[1]*v2[1], cr=v1[0]*v2[1]-v1[1]*v2[0];
+  return Math.atan2(Math.abs(cr),dot)*180/Math.PI;
+}
+function umPolygonQuality(poly){
+  const n=poly.length;
+  const sides=[]; for(let i=0;i<n;i++){ const a=poly[i], b=poly[(i+1)%n]; sides.push(Math.hypot(b[0]-a[0],b[1]-a[1])); }
+  const aspect=Math.max(...sides)/Math.max(Math.min(...sides),1e-9);
+  const angles=[]; for(let i=0;i<n;i++) angles.push(umAngleAt(poly[(i-1+n)%n],poly[i],poly[(i+1)%n]));
+  return {aspect, amax:Math.max(...angles), amin:Math.min(...angles)};
+}
+function umTriEdgesStatic(t){ return [[t[0],t[1]],[t[1],t[2]],[t[2],t[0]]]; }
+
+class UmDelaunayMesh{
+  constructor(points){ this.pts=points.slice(); this.tris=new Map(); }
+  addTri(a,b,c){ if(umOrientation(this.pts[a],this.pts[b],this.pts[c])<0){ const tmp=b; b=c; c=tmp; } this.tris.set(a+','+b+','+c,[a,b,c]); }
+  findTriWithEdge(u,v,excludeKey){ for(const [key,t] of this.tris){ if(key===excludeKey) continue; if(t.includes(u)&&t.includes(v)) return key; } return null; }
+  hasEdge(u,v){ return this.findTriWithEdge(u,v,null)!==null; }
+  buildUnconstrained(){
+    const n0=this.pts.length;
+    const xs=this.pts.map(p=>p[0]), ys=this.pts.map(p=>p[1]);
+    const dx=(Math.max(...xs)-Math.min(...xs))||1, dy=(Math.max(...ys)-Math.min(...ys))||1;
+    const dmax=Math.max(dx,dy)*20;
+    const midx=(Math.max(...xs)+Math.min(...xs))/2, midy=(Math.max(...ys)+Math.min(...ys))/2;
+    this.pts.push([midx-2*dmax,midy-dmax],[midx,midy+2*dmax],[midx+2*dmax,midy-dmax]);
+    const i1=n0,i2=n0+1,i3=n0+2;
+    this.addTri(i1,i2,i3);
+    for(let i=0;i<n0;i++){
+      const p=this.pts[i];
+      const bad=[];
+      for(const [key,t] of this.tris){ if(umCircumcircleContains(this.pts[t[0]],this.pts[t[1]],this.pts[t[2]],p)) bad.push(key); }
+      const edgeCount=new Map(), edgeDir=new Map();
+      for(const key of bad){ const t=this.tris.get(key); for(const [u,v] of umTriEdgesStatic(t)){ const k=[u,v].slice().sort((a,b)=>a-b).join(','); edgeCount.set(k,(edgeCount.get(k)||0)+1); edgeDir.set(k,[u,v]); } }
+      for(const key of bad) this.tris.delete(key);
+      for(const [k,cnt] of edgeCount){ if(cnt===1){ const [u,v]=edgeDir.get(k); this.addTri(u,v,i); } }
+    }
+    for(const key of Array.from(this.tris.keys())){ const t=this.tris.get(key); if(t.includes(i1)||t.includes(i2)||t.includes(i3)) this.tris.delete(key); }
+    this.pts=this.pts.slice(0,n0);
+  }
+  isConvexQuad(a,c,b,d){
+    const P=this.pts;
+    const s=[ umOrientation(P[a],P[c],P[b])>0, umOrientation(P[c],P[b],P[d])>0, umOrientation(P[b],P[d],P[a])>0, umOrientation(P[d],P[a],P[c])>0 ];
+    return s.every(x=>x) || s.every(x=>!x);
+  }
+  enforceEdge(u,v,maxIter=3000){
+    const pu=this.pts[u], pv=this.pts[v];
+    for(let iter=0; iter<maxIter; iter++){
+      if(this.hasEdge(u,v)) return true;
+      const crossings=[];
+      for(const [,t] of this.tris){
+        for(const [a,b] of umTriEdgesStatic(t)){
+          if(a===u||a===v||b===u||b===v) continue;
+          if(umSegmentsProperlyIntersect(pu,pv,this.pts[a],this.pts[b])) crossings.push([a,b]);
+        }
+      }
+      if(crossings.length===0) return false;
+      let flipped=false;
+      for(const [a,b] of crossings){
+        const key1=this.findTriWithEdge(a,b,null);
+        if(key1===null) continue;
+        const key2=this.findTriWithEdge(a,b,key1);
+        if(key2===null) continue;
+        const t1=this.tris.get(key1), t2=this.tris.get(key2);
+        const c=t1.find(x=>x!==a&&x!==b), d=t2.find(x=>x!==a&&x!==b);
+        if(!this.isConvexQuad(a,c,b,d)) continue;
+        this.tris.delete(key1); this.tris.delete(key2);
+        this.addTri(c,d,a); this.addTri(c,d,b);
+        flipped=true; break;
+      }
+      if(!flipped) return false;
+    }
+    return false;
+  }
+  enforceEdges(edges){ const failed=[]; for(const [u,v] of edges){ if(u===v) continue; if(!this.enforceEdge(u,v)) failed.push([u,v]); } return failed; }
+  removeOutsideDomain(outerIdx,holesIdx){
+    const outerPts=outerIdx.map(i=>this.pts[i]);
+    const holesPts=holesIdx.map(h=>h.map(i=>this.pts[i]));
+    for(const key of Array.from(this.tris.keys())){
+      const t=this.tris.get(key);
+      const cx=(this.pts[t[0]][0]+this.pts[t[1]][0]+this.pts[t[2]][0])/3;
+      const cy=(this.pts[t[0]][1]+this.pts[t[1]][1]+this.pts[t[2]][1])/3;
+      const c=[cx,cy];
+      let keep=umPointInPolygon(c,outerPts);
+      if(keep){ for(const h of holesPts){ if(umPointInPolygon(c,h)){ keep=false; break; } } }
+      if(!keep) this.tris.delete(key);
+    }
+  }
+}
+
+function umGridDims(outer,spacing){
+  const xs=outer.map(p=>p[0]), ys=outer.map(p=>p[1]);
+  const xmin=Math.min(...xs), xmax=Math.max(...xs), ymin=Math.min(...ys), ymax=Math.max(...ys);
+  const nx=Math.max(1,Math.round((xmax-xmin)/spacing)), ny=Math.max(1,Math.round((ymax-ymin)/spacing));
+  const dx=(xmax-xmin)/nx, dy=(ymax-ymin)/ny;
+  return {xmin,xmax,ymin,ymax,nx,ny,dx,dy};
+}
+function umDropTinyEnds(vals,lo,hi,cell,minFrac=0.5){
+  vals=vals.filter(v=>v!==lo&&v!==hi);
+  if(vals.length && (vals[0]-lo)<minFrac*cell) vals=vals.slice(1);
+  if(vals.length && (hi-vals[vals.length-1])<minFrac*cell) vals=vals.slice(0,-1);
+  return vals;
+}
+function umDensifyRingGridAligned(poly,xmin,dx,ymin,dy,fallbackSize){
+  // Para aristas horizontales/verticales usa puntos EXACTAMENTE sobre las
+  // líneas de la grilla interior (evita un "moiré": un serrucho fino de
+  // triángulos delgados a lo largo de todo el borde de un hueco/losa
+  // axis-aligned cuando su propio subdividido no calza exacto con dx/dy).
+  const n=poly.length, pts=[];
+  for(let i=0;i<n;i++){
+    const A=poly[i], B=poly[(i+1)%n];
+    if(Math.abs(A[1]-B[1])<1e-9 && Math.abs(A[0]-B[0])>1e-9){
+      const y=A[1], lo=Math.min(A[0],B[0]), hi=Math.max(A[0],B[0]);
+      const k0=Math.ceil((lo-xmin)/dx-1e-9), k1=Math.floor((hi-xmin)/dx+1e-9);
+      let gridXs=[]; for(let k=k0;k<=k1;k++){ const x=xmin+k*dx; if(x>=lo-1e-9&&x<=hi+1e-9) gridXs.push(x); }
+      gridXs=umDropTinyEnds(gridXs,lo,hi,dx);
+      let xs=Array.from(new Set([...gridXs,A[0]])).sort((a,b)=>a-b);
+      if(A[0]>B[0]) xs=xs.reverse();
+      xs.forEach(x=>pts.push([x,y]));
+    } else if(Math.abs(A[0]-B[0])<1e-9 && Math.abs(A[1]-B[1])>1e-9){
+      const x=A[0], lo=Math.min(A[1],B[1]), hi=Math.max(A[1],B[1]);
+      const k0=Math.ceil((lo-ymin)/dy-1e-9), k1=Math.floor((hi-ymin)/dy+1e-9);
+      let gridYs=[]; for(let k=k0;k<=k1;k++){ const y=ymin+k*dy; if(y>=lo-1e-9&&y<=hi+1e-9) gridYs.push(y); }
+      gridYs=umDropTinyEnds(gridYs,lo,hi,dy);
+      let ys=Array.from(new Set([...gridYs,A[1]])).sort((a,b)=>a-b);
+      if(A[1]>B[1]) ys=ys.reverse();
+      ys.forEach(y=>pts.push([x,y]));
+    } else {
+      const edgeLen=Math.hypot(B[0]-A[0],B[1]-A[1]);
+      const segCount=Math.max(1,Math.round(edgeLen/fallbackSize));
+      for(let k=0;k<segCount;k++){ const t=k/segCount; pts.push([A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t]); }
+    }
+  }
+  return pts;
+}
+function umSeedInteriorPoints(outer,holes,boundaryRings,spacing,grid){
+  const g=grid||umGridDims(outer,spacing);
+  const {xmin,ymin,nx,ny,dx,dy}=g;
+  const margin=spacing*0.5;
+  const boundaryEdges=[];
+  for(const ring of boundaryRings){ const n=ring.length; for(let i=0;i<n;i++) boundaryEdges.push([ring[i],ring[(i+1)%n]]); }
+  const result=[];
+  for(let j=1;j<ny;j++){
+    const y=ymin+j*dy;
+    for(let i=1;i<nx;i++){
+      const x=xmin+i*dx, p=[x,y];
+      if(umPointInPolygon(p,outer) && !holes.some(h=>umPointInPolygon(p,h))){
+        if(boundaryEdges.every(([a,b])=>umDistPointToSegment(p,a,b)>=margin)) result.push(p);
+      }
+    }
+  }
+  return result;
+}
+function umQuadCycle(a,b,c,d,pts){
+  const quad=[a,c,b,d];
+  const poly=quad.map(i=>pts[i]);
+  const signs=[0,1,2,3].map(i=>umOrientation(poly[i],poly[(i+1)%4],poly[(i+2)%4])>0);
+  if(!(signs.every(x=>x) || signs.every(x=>!x))) return null;
+  if(umPolygonArea(poly)<0) quad.reverse();
+  return quad;
+}
+function umRecombineToQuads(trisMap,pts,maxAspect,angleRange){
+  const triList=Array.from(trisMap.values());
+  const edgeMap=new Map();
+  triList.forEach((t,ti)=>{ umTriEdgesStatic(t).forEach(([a,b])=>{ const k=[a,b].slice().sort((x,y)=>x-y).join(','); if(!edgeMap.has(k)) edgeMap.set(k,[]); edgeMap.get(k).push(ti); }); });
+  const candidates=[];
+  for(const [edgeKey,adj] of edgeMap){
+    if(adj.length!==2) continue;
+    const [ti1,ti2]=adj, t1=triList[ti1], t2=triList[ti2];
+    const [a,b]=edgeKey.split(',').map(Number);
+    const c=t1.find(x=>x!==a&&x!==b), d=t2.find(x=>x!==a&&x!==b);
+    const quad=umQuadCycle(a,b,c,d,pts);
+    if(!quad) continue;
+    const {aspect,amax,amin}=umPolygonQuality(quad.map(i=>pts[i]));
+    if(aspect>maxAspect||amax>angleRange[1]||amin<angleRange[0]) continue;
+    const score=aspect+Math.max(0,amax-90)/90;
+    candidates.push({score,ti1,ti2,quad});
+  }
+  candidates.sort((x,y)=>x.score-y.score);
+  const used=new Set(), quads=[];
+  for(const cand of candidates){ if(used.has(cand.ti1)||used.has(cand.ti2)) continue; used.add(cand.ti1); used.add(cand.ti2); quads.push(cand.quad); }
+  const leftoverTris=triList.filter((t,ti)=>!used.has(ti));
+  return {quads, leftoverTris};
+}
+function umElemEdges(elem){ const n=elem.length; return Array.from({length:n},(_,i)=>[elem[i],elem[(i+1)%n]]); }
+function umBadness(poly,maxAspect,angleRange){
+  const {aspect,amax,amin}=umPolygonQuality(poly);
+  return Math.max(0,aspect-maxAspect)+Math.max(0,amax-angleRange[1])+Math.max(0,angleRange[0]-amin);
+}
+function umSmoothFreeVertices(elements,pts,lockedVertices,maxAspect,angleRange,iterations=20){
+  // Mueve SOLO los nodos libres (no Hard Point) que son vértice de un
+  // elemento fuera de norma, hacia el centroide de sus vecinos — se
+  // confirmó (prototipo) que ningún volteo/fusión por sí solo mejora nada;
+  // el defecto está en dónde caen esos nodos, no en cómo se conectan.
+  pts=pts.map(p=>[p[0],p[1]]);
+  const n=pts.length;
+  const adj=Array.from({length:n},()=>new Set());
+  const elemOf=Array.from({length:n},()=>[]);
+  elements.forEach((e,ei)=>{
+    umElemEdges(e).forEach(([a,b])=>{ adj[a].add(b); adj[b].add(a); });
+    e.forEach(v=>elemOf[v].push(ei));
+  });
+  const badnessSum=idxs=>idxs.reduce((s,ei)=>s+umBadness(elements[ei].map(i=>pts[i]),maxAspect,angleRange),0);
+  const stillValid=idxs=>{
+    for(const ei of idxs){
+      const e=elements[ei], ne=e.length;
+      for(let i=0;i<ne;i++){
+        if(umOrientation(pts[e[i]],pts[e[(i+1)%ne]],pts[e[(i+2)%ne]])<=0) return false;
+      }
+    }
+    return true;
+  };
+  for(let it=0; it<iterations; it++){
+    const candidates=new Set();
+    for(const e of elements){
+      if(umBadness(e.map(i=>pts[i]),maxAspect,angleRange)>0){
+        for(const v of e){ if(!lockedVertices.has(v)) candidates.add(v); }
+      }
+    }
+    if(candidates.size===0) break;
+    let anyChange=false;
+    for(const v of candidates){
+      if(adj[v].size===0) continue;
+      const old=pts[v];
+      const nbrs=Array.from(adj[v]);
+      const cx=nbrs.reduce((s,u)=>s+pts[u][0],0)/nbrs.length;
+      const cy=nbrs.reduce((s,u)=>s+pts[u][1],0)/nbrs.length;
+      const incident=elemOf[v];
+      const before=badnessSum(incident);
+      let applied=false;
+      for(const damp of [1.0,0.6,0.3,0.15]){
+        pts[v]=[old[0]+(cx-old[0])*damp, old[1]+(cy-old[1])*damp];
+        if(stillValid(incident) && badnessSum(incident)<before-1e-9){ applied=true; anyChange=true; break; }
+      }
+      if(!applied) pts[v]=old;
+    }
+    if(!anyChange) break;
+  }
+  return pts;
+}
+function umRotateTo(elem,val){ const idx=elem.indexOf(val); return elem.slice(idx).concat(elem.slice(0,idx)); }
+function umMergePolygon(e1,e2,a,b){
+  const hasEdge=(e,x,y)=>{ const n=e.length; for(let i=0;i<n;i++){ if(e[i]===x&&e[(i+1)%n]===y) return true; } return false; };
+  if(!hasEdge(e1,a,b)){ if(hasEdge(e1,b,a)) e1=e1.slice().reverse(); else return null; }
+  if(!hasEdge(e2,b,a)){ if(hasEdge(e2,a,b)) e2=e2.slice().reverse(); else return null; }
+  const r1=umRotateTo(e1,b), r2=umRotateTo(e2,a);
+  const merged=r1.slice(0,-1).concat(r2.slice(0,-1));
+  if(new Set(merged).size!==merged.length) return null;
+  return merged;
+}
+function umBestFanSplit(poly,pts,maxAspect,angleRange){
+  const n=poly.length;
+  if(n<3) return null;
+  let best=null;
+  for(let start=0; start<n; start++){
+    const tris=[]; let valid=true;
+    for(let k=1;k<n-1;k++){
+      const i1=(start+k)%n, i2=(start+k+1)%n;
+      const tri=[poly[start],poly[i1],poly[i2]];
+      if(umOrientation(pts[tri[0]],pts[tri[1]],pts[tri[2]])<=0){ valid=false; break; }
+      tris.push(tri);
+    }
+    if(!valid) continue;
+    const score=tris.reduce((s,t)=>s+umBadness(t.map(i=>pts[i]),maxAspect,angleRange),0);
+    if(best===null||score<best.score) best={score,tris};
+  }
+  return best?best.tris:null;
+}
+function umLocalRepair(elements,pts,maxAspect,angleRange,lockedEdges,maxPasses=4){
+  elements=elements.map(e=>e.slice());
+  for(let pass=0; pass<maxPasses; pass++){
+    const edgeMap=new Map();
+    elements.forEach((e,ei)=>{
+      umElemEdges(e).forEach(([a,b])=>{
+        const key=[a,b].slice().sort((x,y)=>x-y).join(',');
+        if(!edgeMap.has(key)) edgeMap.set(key,[]);
+        edgeMap.get(key).push(ei);
+      });
+    });
+    const bad=elements.map((e,ei)=>ei).filter(ei=>umBadness(elements[ei].map(i=>pts[i]),maxAspect,angleRange)>0);
+    bad.sort((x,y)=>umBadness(elements[y].map(i=>pts[i]),maxAspect,angleRange)-umBadness(elements[x].map(i=>pts[i]),maxAspect,angleRange));
+    if(bad.length===0) break;
+    const removed=new Set();
+    let changed=false;
+    for(const ei of bad){
+      if(removed.has(ei)) continue;
+      const e=elements[ei];
+      let bestMove=null;
+      for(const [a,b] of umElemEdges(e)){
+        const fkey=[a,b].slice().sort((x,y)=>x-y).join(',');
+        if(lockedEdges.has(fkey)) continue;
+        const neigh=(edgeMap.get(fkey)||[]).filter(x=>x!==ei && !removed.has(x));
+        if(neigh.length===0) continue;
+        const ej=neigh[0], e2=elements[ej];
+        const origScore=umBadness(e.map(i=>pts[i]),maxAspect,angleRange)+umBadness(e2.map(i=>pts[i]),maxAspect,angleRange);
+        if(e.length===3 && e2.length===3){
+          const c=e.find(x=>x!==a&&x!==b), d=e2.find(x=>x!==a&&x!==b);
+          const quad=umQuadCycle(a,b,c,d,pts);
+          if(!quad) continue;
+          const t1n=umOrientation(pts[c],pts[d],pts[a])>0?[c,d,a]:[c,a,d];
+          const t2n=umOrientation(pts[c],pts[d],pts[b])>0?[c,d,b]:[c,b,d];
+          const newScore=umBadness(t1n.map(i=>pts[i]),maxAspect,angleRange)+umBadness(t2n.map(i=>pts[i]),maxAspect,angleRange);
+          const gain=origScore-newScore;
+          if(gain>1e-9 && (bestMove===null||gain>bestMove.gain)) bestMove={gain,kind:'flip',ej,t1n,t2n};
+        } else {
+          const merged=umMergePolygon(e,e2,a,b);
+          if(!merged) continue;
+          const split=umBestFanSplit(merged,pts,maxAspect,angleRange);
+          if(!split) continue;
+          const newScore=split.reduce((s,t)=>s+umBadness(t.map(i=>pts[i]),maxAspect,angleRange),0);
+          const gain=origScore-newScore;
+          if(gain>1e-9 && (bestMove===null||gain>bestMove.gain)) bestMove={gain,kind:'merge',ej,split};
+        }
+      }
+      if(bestMove===null) continue;
+      if(bestMove.kind==='flip'){
+        elements[ei]=bestMove.t1n; elements[bestMove.ej]=bestMove.t2n;
+      } else {
+        elements[ei]=bestMove.split[0];
+        if(bestMove.split.length>1) elements[bestMove.ej]=bestMove.split[1];
+        else removed.add(bestMove.ej);
+        if(bestMove.split.length>2) elements.push(...bestMove.split.slice(2));
+      }
+      changed=true;
+    }
+    elements=elements.filter((e,i)=>!removed.has(i));
+    if(!changed) break;
+  }
+  return elements;
+}
+function umMinSide(poly){
+  const n=poly.length;
+  let m=Infinity;
+  for(let i=0;i<n;i++) m=Math.min(m,Math.hypot(poly[(i+1)%n][0]-poly[i][0],poly[(i+1)%n][1]-poly[i][1]));
+  return m;
+}
+function umIsConvexPoly(indices,pts){
+  const n=indices.length, poly=indices.map(i=>pts[i]);
+  const signs=Array.from({length:n},(_,i)=>umOrientation(poly[i],poly[(i+1)%n],poly[(i+2)%n])>0);
+  return signs.every(x=>x)||signs.every(x=>!x);
+}
+function umBestFanSplitByMinSide(poly,pts){
+  const n=poly.length;
+  if(n<3) return null;
+  let best=null;
+  for(let start=0; start<n; start++){
+    const tris=[]; let valid=true;
+    for(let k=1;k<n-1;k++){
+      const i1=(start+k)%n, i2=(start+k+1)%n;
+      const tri=[poly[start],poly[i1],poly[i2]];
+      if(umOrientation(pts[tri[0]],pts[tri[1]],pts[tri[2]])<=0){ valid=false; break; }
+      tris.push(tri);
+    }
+    if(!valid) continue;
+    const worst=Math.min(...tris.map(t=>umMinSide(t.map(i=>pts[i]))));
+    if(best===null||worst>best.worst) best={worst,tris};
+  }
+  return best?best.tris:null;
+}
+function umMergeTinyElements(elements,pts,elementSize,lockedEdges,minFrac=0.4,maxPasses=5){
+  // A diferencia de umLocalRepair (forma/ángulo), este criterio es
+  // puramente de TAMAÑO — fusiona con el vecino que más ayude, rompiendo
+  // la regularidad de la grilla solo en esa celda puntual, sin tocar
+  // ninguna arista Hard Line.
+  elements=elements.map(e=>e.slice());
+  const threshold=elementSize*minFrac;
+  for(let pass=0; pass<maxPasses; pass++){
+    const edgeMap=new Map();
+    elements.forEach((e,ei)=>{
+      umElemEdges(e).forEach(([a,b])=>{
+        const key=[a,b].slice().sort((x,y)=>x-y).join(',');
+        if(!edgeMap.has(key)) edgeMap.set(key,[]);
+        edgeMap.get(key).push(ei);
+      });
+    });
+    const tiny=elements.map((e,ei)=>ei).filter(ei=>umMinSide(elements[ei].map(i=>pts[i]))<threshold);
+    if(tiny.length===0) break;
+    tiny.sort((x,y)=>umMinSide(elements[x].map(i=>pts[i]))-umMinSide(elements[y].map(i=>pts[i])));
+    const removed=new Set();
+    let changed=false;
+    for(const ei of tiny){
+      if(removed.has(ei)) continue;
+      const e=elements[ei];
+      const oldMin=umMinSide(e.map(i=>pts[i]));
+      let best=null;
+      for(const [a,b] of umElemEdges(e)){
+        const key=[a,b].slice().sort((x,y)=>x-y).join(',');
+        if(lockedEdges.has(key)) continue;
+        const neigh=(edgeMap.get(key)||[]).filter(x=>x!==ei && !removed.has(x));
+        if(neigh.length===0) continue;
+        const ej=neigh[0], e2=elements[ej];
+        const merged=umMergePolygon(e,e2,a,b);
+        if(!merged) continue;
+        let candidate;
+        if(merged.length===4 && umIsConvexPoly(merged,pts)){
+          candidate=[merged];
+        } else {
+          const split=umBestFanSplitByMinSide(merged,pts);
+          if(!split) continue;
+          candidate=split;
+        }
+        const newMin=Math.min(...candidate.map(t=>umMinSide(t.map(i=>pts[i]))));
+        if(best===null||newMin>best.newMin) best={newMin,ej,candidate};
+      }
+      if(best===null || best.newMin<=oldMin+1e-9) continue;
+      elements[ei]=best.candidate[0];
+      if(best.candidate.length>1) elements[best.ej]=best.candidate[1];
+      else removed.add(best.ej);
+      if(best.candidate.length>2) elements.push(...best.candidate.slice(2));
+      changed=true;
+    }
+    elements=elements.filter((e,i)=>!removed.has(i));
+    if(!changed) break;
+  }
+  return elements;
+}
+function umMeshPedestalGrid(ped,elementSize){
+  // Malla LOCAL perfecta del dado: cuadrícula alineada a sus PROPIOS lados
+  // (no a los ejes X/Y globales), construida por interpolación directa,
+  // sin pasar por Delaunay — así queda perfecta (ángulos exactos de 90°,
+  // aspecto uniforme) sin importar el ángulo de rotación del dado. Mínimo
+  // 2x2 elementos por dado; el tamaño de elemento dentro del dado se
+  // redondea al múltiplo de 20 cm más cercano al tamaño de elemento global.
+  const p0=ped[0], p1=ped[1], p2=ped[2];
+  const ux=p1[0]-p0[0], uy=p1[1]-p0[1];
+  const width=Math.hypot(ux,uy);
+  const uhx=ux/width, uhy=uy/width;
+  const vx=p2[0]-p1[0], vy=p2[1]-p1[1];
+  const height=Math.hypot(vx,vy);
+  const vhx=vx/height, vhy=vy/height;
+  const snapped=Math.max(0.2, Math.round(elementSize/0.2)*0.2);
+  const nx=Math.max(2, Math.round(width/snapped));
+  const ny=Math.max(2, Math.round(height/snapped));
+  const grid=[];
+  for(let i=0;i<=nx;i++){
+    const col=[];
+    for(let j=0;j<=ny;j++){
+      col.push([
+        p0[0]+uhx*(width*i/nx)+vhx*(height*j/ny),
+        p0[1]+uhy*(width*i/nx)+vhy*(height*j/ny),
+      ]);
+    }
+    grid.push(col);
+  }
+  return {grid,nx,ny};
+}
+function umMeshSlab(outerRaw,holesRaw,pedestalsRaw,elementSize,maxAspect,angleRange){
+  const outer=umEnsureCCW(outerRaw.slice());
+  const holes=holesRaw.map(h=>umEnsureCCW(h.slice()));
+  const pedestals=pedestalsRaw.map(p=>umEnsureCCW(p.slice()));
+  const grid=umGridDims(outer,elementSize);
+  const outerD=umDensifyRingGridAligned(outer,grid.xmin,grid.dx,grid.ymin,grid.dy,elementSize);
+  const holesD=holes.map(h=>umDensifyRingGridAligned(h,grid.xmin,grid.dx,grid.ymin,grid.dy,elementSize));
+  let pts=[];
+  function addRing(ring){ const start=pts.length; pts=pts.concat(ring); return Array.from({length:ring.length},(_,k)=>start+k); }
+  const outerIdx=addRing(outerD);
+  const holesIdx=holesD.map(h=>addRing(h));
+
+  const pedestalsIdx=[], pedestalRings=[], pedestalQuads=[];
+  for(const ped of pedestals){
+    const {grid:pedGrid,nx,ny}=umMeshPedestalGrid(ped,elementSize);
+    const idxGrid=[];
+    for(let i=0;i<=nx;i++){ const col=[]; for(let j=0;j<=ny;j++){ col.push(pts.length); pts.push(pedGrid[i][j]); } idxGrid.push(col); }
+    const ring=[];
+    for(let i=0;i<nx;i++) ring.push(idxGrid[i][0]);
+    for(let j=0;j<ny;j++) ring.push(idxGrid[nx][j]);
+    for(let i=nx;i>0;i--) ring.push(idxGrid[i][ny]);
+    for(let j=ny;j>0;j--) ring.push(idxGrid[0][j]);
+    pedestalsIdx.push(ring);
+    pedestalRings.push(ring.map(i=>pts[i]));
+    for(let i=0;i<nx;i++){
+      for(let j=0;j<ny;j++){
+        pedestalQuads.push([idxGrid[i][j],idxGrid[i+1][j],idxGrid[i+1][j+1],idxGrid[i][j+1]]);
+      }
+    }
+  }
+
+  const boundaryRings=[outerD,...holesD,...pedestalRings];
+  const interiorPts=umSeedInteriorPoints(outer,holes,boundaryRings,elementSize,grid);
+  addRing(interiorPts);
+
+  const dm=new UmDelaunayMesh(pts);
+  dm.buildUnconstrained();
+
+  const constraintEdges=[];
+  for(const idx of [outerIdx,...holesIdx,...pedestalsIdx]){ const n=idx.length; for(let i=0;i<n;i++) constraintEdges.push([idx[i],idx[(i+1)%n]]); }
+  dm.enforceEdges(constraintEdges);
+  dm.removeOutsideDomain(outerIdx,holesIdx);
+  // El área de cada dado NO la triangula el CDT — ya tiene su propia malla
+  // perfecta (pedestalQuads); se excluye con el RECTÁNGULO ORIGINAL de 4
+  // esquinas (no el anillo fino, que tiene puntos medios colineales que
+  // rompen el ray-casting estándar cuando el dado está rotado).
+  if(pedestals.length){
+    for(const key of Array.from(dm.tris.keys())){
+      const t=dm.tris.get(key);
+      const cx=(dm.pts[t[0]][0]+dm.pts[t[1]][0]+dm.pts[t[2]][0])/3;
+      const cy=(dm.pts[t[0]][1]+dm.pts[t[1]][1]+dm.pts[t[2]][1])/3;
+      if(pedestals.some(p=>umPointInPolygon([cx,cy],p))) dm.tris.delete(key);
+    }
+  }
+
+  const {quads,leftoverTris}=umRecombineToQuads(dm.tris,dm.pts,maxAspect,angleRange);
+  let slabElements=[...quads,...leftoverTris];
+  let ptsFinal=dm.pts;
+  // Reparación local: primero mover los nodos libres hacia sus vecinos,
+  // recién después intentar reconectar (volteo/fusión) lo que la
+  // reubicación no haya arreglado, y por último fusionar lo que haya
+  // quedado diminuto por tamaño — nunca toca aristas/nodos Hard Line
+  // (contorno, huecos, dados), así que sus esquinas quedan protegidas.
+  const lockedEdges=new Set([outerIdx,...holesIdx,...pedestalsIdx].flatMap(idx=>{
+    const n=idx.length;
+    return Array.from({length:n},(_,i)=>[idx[i],idx[(i+1)%n]].slice().sort((x,y)=>x-y).join(','));
+  }));
+  const lockedVertices=new Set([outerIdx,...holesIdx,...pedestalsIdx].flat());
+  ptsFinal=umSmoothFreeVertices(slabElements,ptsFinal,lockedVertices,maxAspect,angleRange);
+  slabElements=umLocalRepair(slabElements,ptsFinal,maxAspect,angleRange,lockedEdges);
+  slabElements=umMergeTinyElements(slabElements,ptsFinal,elementSize,lockedEdges);
+  const elements=[...slabElements,...pedestalQuads];
+  return {points:ptsFinal, elements, nPedestalElements:pedestalQuads.length};
+}
+
+function generateMallaFEM(outerC, holeC, dados, cellSizeM){
+  if(!outerC || outerC.length<3 || !(cellSizeM>0)) return {elements:[], points:[], nPedestalElements:0};
   let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
   outerC.forEach(p=>{ xmin=Math.min(xmin,p.x); xmax=Math.max(xmax,p.x); ymin=Math.min(ymin,p.y); ymax=Math.max(ymax,p.y); });
 
   // Resguardo: si el usuario escribe un tamaño de elemento demasiado chico
-  // para el tamaño de la zapata, el conteo de celdas podría dispararse (y
-  // colgar el navegador) — se acota a máx. ~120 celdas por lado.
+  // para el tamaño de la zapata, el conteo de elementos podría dispararse
+  // (y colgar el navegador) — se acota a máx. ~120 divisiones por lado,
+  // mismo criterio que ya usaba el generador simple anterior.
   const spanX = xmax-xmin, spanY = ymax-ymin;
   const spanMax = Math.max(spanX, spanY);
   cellSizeM = Math.max(cellSizeM, spanMax/120);
 
-  const nx = Math.max(1, Math.round(spanX/cellSizeM));
-  const ny = Math.max(1, Math.round(spanY/cellSizeM));
-  const dx = spanX/nx, dy = spanY/ny;
+  const outerT = outerC.map(p=>[p.x,p.y]);
+  const holesT = (holeC && holeC.length>=3) ? [holeC.map(p=>[p.x,p.y])] : [];
+  const pedestalsT = Object.values(dados||{}).map(rect=>rect.map(p=>[p.x,p.y]));
 
-  const rawQuads = [];
-  for(let i=0;i<nx;i++){
-    const cx0 = xmin+i*dx, cx1 = xmin+(i+1)*dx;
-    for(let j=0;j<ny;j++){
-      const cy0 = ymin+j*dy, cy1 = ymin+(j+1)*dy;
-      rawQuads.push([{x:cx0,y:cy0},{x:cx1,y:cy0},{x:cx1,y:cy1},{x:cx0,y:cy1}]);
-    }
-  }
-
-  const clipped = [];
-  rawQuads.forEach(q=>{
-    const c = clipPolygon(q, outerC);
-    if(c.length>=3 && polygonArea(c) > 1e-7) clipped.push(c);
+  const r = umMeshSlab(outerT, holesT, pedestalsT, cellSizeM, 4.0, [45,130]);
+  const pointsXY = r.points.map(p=>({x:p[0],y:p[1]}));
+  const nPed = r.nPedestalElements;
+  const elements = r.elements.map((e,idx)=>{
+    const isPedestal = idx >= r.elements.length - nPed;
+    return { poly: e.map(i=>pointsXY[i]), cls: isPedestal ? "pedestal" : "good" };
   });
-  return clipped;
+  return {elements, points:pointsXY, nPedestalElements:nPed};
 }
 
-function renderMallaFEM(quads, outerC, holeC, dados){
+function renderMallaFEM(mesh, outerC, holeC){
   const wrap = document.getElementById("geoMallaDiagrama");
   const conteoEl = document.getElementById("geoMallaConteo");
-  if(!quads || !outerC || outerC.length<3){
+  if(!mesh || !outerC || outerC.length<3){
     wrap.innerHTML = "";
     conteoEl.textContent = "";
     return;
@@ -4103,27 +4738,25 @@ function renderMallaFEM(quads, outerC, holeC, dados){
   const w = xmax-xmin, h = ymax-ymin;
   const strokeW = Math.max(w,h)/450;
 
-  const cellsMarkup = quads.map(q=>
-    `<polygon points="${q.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="var(--brand-tint)" fill-opacity="0.4" stroke="var(--accent)" stroke-width="${strokeW}"/>`
-  ).join("");
+  const CLASS_STYLE = {
+    good:     {fill:"var(--brand-tint)", op:"0.4",  stroke:"var(--accent)"},
+    pedestal: {fill:"#c9822a",           op:"0.55", stroke:"#8a5a1a"},
+  };
+  const cellsMarkup = mesh.elements.map(({poly,cls})=>{
+    const s = CLASS_STYLE[cls] || CLASS_STYLE.good;
+    return `<polygon points="${poly.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="${s.fill}" fill-opacity="${s.op}" stroke="${s.stroke}" stroke-width="${strokeW}"/>`;
+  }).join("");
   const outerPts = outerC.map(p=>`${p.x},${-p.y}`).join(" ");
   const holeMarkup = (holeC && holeC.length>=3)
     ? `<polygon points="${holeC.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="var(--input-bg)" stroke="#c0392b" stroke-width="${strokeW*2}" stroke-dasharray="${Math.max(w,h)/120},${Math.max(w,h)/120}"/>`
     : "";
-  // Dados dibujados como su rectángulo real (no un punto) — un punto del
-  // mismo color que el trazo de la malla se perdía visualmente entre las
-  // líneas de la grilla.
-  const dadoMarkup = Object.values(dados).map(rect=>
-    `<polygon points="${rect.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="#c9822a" fill-opacity="0.55" stroke="#8a5a1a" stroke-width="${strokeW*1.5}"/>`
-  ).join("");
 
-  wrap.innerHTML = `<svg viewBox="${xmin} ${-ymax} ${w} ${h}" style="width:100%; height:510px; display:block;">
+  wrap.innerHTML = `<svg viewBox="${xmin} ${-ymax} ${w} ${h}" style="width:100%; height:760px; display:block;">
     ${cellsMarkup}
     <polygon points="${outerPts}" fill="none" stroke="var(--accent)" stroke-width="${strokeW*2.5}"/>
     ${holeMarkup}
-    ${dadoMarkup}
   </svg>`;
-  conteoEl.textContent = `Elementos generados: ${quads.length}`;
+  conteoEl.textContent = `Elementos generados: ${mesh.elements.length}`;
 }
 
 function renderGeotecnico(geo){
@@ -4165,7 +4798,7 @@ function renderGeotecnico(geo){
     }
     const esMax = peorVolteo && r===peorVolteo;
     return `<tr><td style="text-align:left;">${r.combo}</td>` +
-      `<td>${r.FSV!=null ? fmt(r.FSV,3) : "—"}</td><td class="${esMax ? "cell-max-highlight" : ""}">${r.eficienciaVolteo!=null ? fmt(r.eficienciaVolteo*100,2)+"%" : "—"}</td>` +
+      `<td>${r.FSV!=null ? fmt(r.FSV,3) : "—"}</td><td class="${esMax ? "cell-max-highlight" : ""}">${r.eficienciaVolteo!=null ? fmt(r.eficienciaVolteo*100,0)+"%" : "—"}</td>` +
       `<td>${resultado}</td></tr>`;
   }).join("");
 }
@@ -4174,6 +4807,18 @@ function renderGeotecnico(geo){
 // centrado en el centroide que usan props/legs/vista3D/planta), usando la
 // matriz propia del SVG — así funciona sin importar el viewBox o el tamaño
 // real en pantalla del diagrama.
+// Ray casting estándar — true si p está adentro del polígono (cerrado
+// implícitamente entre el último y el primer vértice).
+function pointInPolygon(p, poly){
+  let inside = false;
+  for(let i=0, j=poly.length-1; i<poly.length; j=i++){
+    const xi=poly[i].x, yi=poly[i].y, xj=poly[j].x, yj=poly[j].y;
+    const intersect = ((yi>p.y)!==(yj>p.y)) && (p.x < (xj-xi)*(p.y-yi)/(yj-yi)+xi);
+    if(intersect) inside = !inside;
+  }
+  return inside;
+}
+
 function svgEventToPlan(svg, evt){
   const pt = svg.createSVGPoint();
   pt.x = evt.clientX; pt.y = evt.clientY;
@@ -4266,6 +4911,15 @@ function renderCapacidadPortante(cap, props, outerC, holeC){
     const readout = document.getElementById(`navierReadout${i}`);
     svg.addEventListener("mousemove", (e)=>{
       const p = svgEventToPlan(svg, e);
+      // Fuera del contorno (o dentro del hueco, si hay) no hay esfuerzo real
+      // que mostrar — antes se mostraba igual, extrapolando la fórmula más
+      // allá de la zapata, lo cual no tiene sentido físico.
+      const dentro = pointInPolygon(p, outerC) && !(holeC && holeC.length>=3 && pointInPolygon(p, holeC));
+      if(!dentro){
+        cursor.classList.add("hidden");
+        readout.textContent = "τ al pasar el cursor: —";
+        return;
+      }
       const tau = row.RFYTotal/props.area + row.MxTotal*p.y/props.Ix + row.MzTotal*p.x/props.Iy;
       cursor.setAttribute("cx", p.x);
       cursor.setAttribute("cy", -p.y);
@@ -4288,7 +4942,7 @@ function renderCapacidadPortante(cap, props, outerC, holeC){
     const esMax = peorCapacidad && row===peorCapacidad;
     return `<tr><td style="text-align:left;">${row.combo}</td><td>${fmt(row.maxTau,3)}</td>` +
       `<td>${areaCell}</td><td>${qPromCell}</td>` +
-      `<td>${fmt(cap.QultDesign,3)}</td><td class="${esMax ? "cell-max-highlight" : ""}">${isFinite(row.eficiencia) ? fmt(row.eficiencia*100,2)+"%" : "—"}</td></tr>`;
+      `<td>${fmt(cap.QultDesign,3)}</td><td class="${esMax ? "cell-max-highlight" : ""}">${isFinite(row.eficiencia) ? fmt(row.eficiencia*100,0)+"%" : "—"}</td></tr>`;
   }).join("");
 
   tbody.querySelectorAll(".areaEfectivaLink").forEach(a=>{
@@ -4364,6 +5018,7 @@ function renderAll(){
   setValueIfNotFocused("g_QADM", state.geom.QADM);
   setValueIfNotFocused("g_FS", state.geom.FS);
   setValueIfNotFocused("g_mallaTamElem", state.geom.mallaTamElem);
+  document.getElementById("g_mallaTamElemUnit").textContent = `${state.geom.mallaTamElem} cm`;
   setValueIfNotFocused("ang_P1", state.angles.P1);
   setValueIfNotFocused("ang_P1a", state.angles.P1a);
   setValueIfNotFocused("ang_P1b", state.angles.P1b);
@@ -4399,8 +5054,9 @@ function renderAll(){
   lastGeoData = { geo, cap, props, outerC, holeC: state.holeEnabled ? holeC : null }; // usado por los modales de animación del Brazo y del Área efectiva (abiertos por clic, fuera del flujo normal de render)
 
   const mallaCellSizeM = (state.geom.mallaTamElem||20)/100;
-  const mallaQuads = generateMallaFEM(outerC, mallaCellSizeM);
-  renderMallaFEM(mallaQuads, outerC, state.holeEnabled ? holeC : null, dados);
+  const mallaHoleC = state.holeEnabled ? holeC : null;
+  const mallaMesh = generateMallaFEM(outerC, mallaHoleC, dados, mallaCellSizeM);
+  renderMallaFEM(mallaMesh, outerC, mallaHoleC);
 
   saveToStorage();
 }
@@ -4470,9 +5126,19 @@ function initTheme(){
 // tabs-bar queda pegado exactamente debajo, sin overlap ni hueco, y no se
 // mueve aunque el contenido de la pestaña activa cambie de alto (ej. al
 // aparecer/actualizarse el mensaje de estado de "Cargar desde PDF…").
+// --stickytop-h = altura combinada de command-bar + tabs-bar (ambos
+// sticky, apilados). La usa .calc-sidenav (nav lateral de la pestaña
+// "Cálculos", también sticky) para no quedar tapada por el tabs-bar — antes
+// tenía un "top" fijo a mano (78px) calculado para cuando solo el
+// command-bar era sticky; al hacer sticky también el tabs-bar, ese valor
+// quedó corto y el nav lateral se metía debajo del tabs-bar al hacer scroll.
 function updateCmdbarHeightVar(){
   const bar = document.querySelector(".command-bar");
-  if(bar) document.documentElement.style.setProperty("--cmdbar-h", bar.offsetHeight+"px");
+  const tabsBar = document.querySelector(".tabs-bar");
+  const cmdH = bar ? bar.offsetHeight : 57;
+  const tabsH = tabsBar ? tabsBar.offsetHeight : 49;
+  document.documentElement.style.setProperty("--cmdbar-h", cmdH+"px");
+  document.documentElement.style.setProperty("--stickytop-h", (cmdH+tabsH)+"px");
 }
 
 function initTabs(){
@@ -5044,12 +5710,12 @@ function initBindings(){
     document.getElementById("mat_"+field).addEventListener("input", (e)=>{
       const v = parseDecimal(e.target.value);
       state.materiales[field] = isNaN(v) ? 0 : v;
-      saveToStorage();
+      renderAll();
     });
   });
   document.getElementById("mat_existeCiclopeo").addEventListener("change", (e)=>{
     state.materiales.existeCiclopeo = e.target.value;
-    saveToStorage();
+    renderAll();
   });
 
   document.getElementById("btnZoomIn").addEventListener("click", ()=> setPlanZoom(planZoom*1.25));
