@@ -237,6 +237,11 @@ tbody tr:hover{background:var(--brand-tint);}
 .table-scroll{
   overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius-md); margin-bottom:14px;
 }
+#tblRevisiones td{white-space:nowrap; line-height:1.5;}
+#tblRevisiones th:nth-child(1), #tblRevisiones td:nth-child(1),
+#tblRevisiones th:nth-child(3), #tblRevisiones td:nth-child(3),
+#tblRevisiones th:nth-child(4), #tblRevisiones td:nth-child(4){width:1%;}
+#tblRevisiones th:nth-child(2), #tblRevisiones td:nth-child(2){width:auto; white-space:normal;}
 .table-scroll table{margin:0;}
 .table-scroll th{position:sticky; top:0;}
 .cell-max-highlight{background:var(--brand-tint); font-weight:700;}
@@ -577,6 +582,10 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <button class="btn icon-only subtle" id="btnTheme" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
     </button>
+    <a class="btn subtle" id="btnHelp" href="help.html" target="_blank" rel="noopener" title="Ayuda" style="text-decoration:none;">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.3" stroke="currentColor" stroke-width="1.3"/><path d="M6.1 6.2a1.9 1.9 0 1 1 2.8 1.7c-.6.35-.9.7-.9 1.3v.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.4" r="0.75" fill="currentColor"/></svg>
+      Ayuda
+    </a>
   </div>
 </header>
 
@@ -621,7 +630,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
             <tr><td>V1.5</td><td style="text-align:left">Se agrega la regla de considerar pesos adicionales y se añade nueva función para considerar reacciones</td><td>Ing. Juan Espinosa</td><td>04/06/2025</td></tr>
             <tr><td>V1.6</td><td style="text-align:left">Se incorpora la adición de reacciones unitarias y se programa procedimiento de Automallado</td><td>Ing. Juan Espinosa</td><td>15/12/2025</td></tr>
             <tr><td>V1.7</td><td style="text-align:left">Se añade opción para rotar dados sobre sus ejes locales, así como discretizar la carga axial en el perímetro del dado</td><td>Ing. Juan Espinosa</td><td>12/05/2026</td></tr>
-            <tr><td>V2.0</td><td style="text-align:left">Desarrollo en aplicación WEB</td><td>Ing. Juan Espinosa</td><td>15/07/2026</td></tr>
+            <tr><td>V2.0</td><td style="text-align:left"><b>Desarrollo en aplicación web</b> (esta versión) — geometría, propiedades de sección, reacciones (con importación desde PDF), revisión geotécnica por volteo y capacidad portante para Autosoportada 3P, previsualización de mallado FEM "Urdimbre Mesh" y sección de Ayuda integrada</td><td>Ing. Juan Espinosa</td><td>15/07/2026</td></tr>
           </tbody>
         </table>
         <p class="small" style="margin-top:12px; color:var(--muted);">Si se requieren ajustes o revisión de cálculos contactar a los desarrolladores.</p>
@@ -1054,7 +1063,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
         </div>
         <div class="geoContenido">
           <p class="small" style="margin:0 0 10px; color:var(--muted);">Malla "Urdimbre": grilla regular sobre el interior + triangulación restringida en huecos/esquinas/dados, recombinada en cuadriláteros y reparada localmente (dados resaltados en naranja, con su propia malla perfecta). Es solo una previsualización visual — todavía no genera el archivo .STD para STAAD.</p>
-          <label class="field" style="max-width:360px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="120" id="g_mallaTamElem" style="max-width:150px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">20 cm</span></label>
+          <label class="field" style="max-width:360px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="120" id="g_mallaTamElem" style="max-width:150px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">50 cm</span></label>
           <div id="geoMallaDiagrama" class="navier-card" style="max-width:1180px; margin:0 auto;"></div>
           <p class="small" style="margin:8px 0 0; color:var(--muted);" id="geoMallaConteo"></p>
         </div>
@@ -2524,7 +2533,7 @@ function defaultState(){
     outer: [],
     holeEnabled: false,
     hole: [],
-    geom: { PZ:0.65, Pd:3, Lo:4, AD:0.6, LD:0.6, HD:0.25, CX:0, CY:0, QADM:8, FS:3, mallaTamElem:20 },
+    geom: { PZ:0.65, Pd:3, Lo:4, AD:0.6, LD:0.6, HD:0.25, CX:0, CY:0, QADM:8, FS:3, mallaTamElem:50 },
     angles: { P1:45, P1a:-30, P1b:30 },
     reaccionesPorTipo: {
       "Autosoportada 3P": defaultReacciones("Autosoportada 3P"),
