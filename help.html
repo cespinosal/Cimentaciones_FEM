@@ -274,14 +274,14 @@
  4.27858662,-1.65464592
  0.41256121, 5.04150650
 -1.58743879, 5.04150650</pre>
-  <p>Estos archivos se generan típicamente desde AutoCAD con la rutina embebida <code>SHAPEPTS.lsp</code> (cargala con el comando <code>APPLOAD</code>): usá <code>SHAPEPTS</code> para hacer clic-a-clic sobre cada vértice, o <code>SHAPEPLINE</code> para extraer los vértices de una polilínea ya dibujada. El botón <b>Descargar SHAPEPTS.lsp</b>, dentro de la misma sección, entrega la rutina.</p>
+  <p>Estos archivos se generan típicamente desde AutoCAD con la rutina embebida <code>SHAPEPTS.lsp</code> (cárgala con el comando <code>APPLOAD</code>): usa <code>SHAPEPTS</code> para hacer clic-a-clic sobre cada vértice, o <code>SHAPEPLINE</code> para extraer los vértices de una polilínea ya dibujada. El botón <b>Descargar SHAPEPTS.lsp</b>, dentro de la misma sección, entrega la rutina.</p>
   <div class="alert alert-note">
     <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#FFC107" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div>Las coordenadas <b>no se editan a mano</b> dentro de la app — la tabla de vértices es de solo lectura (con un botón ✕ para borrar un punto suelto). Para corregir una coordenada, corregí el archivo de origen y volvé a importar.</div>
+    <div>Las coordenadas <b>no se editan a mano</b> dentro de la app — la tabla de vértices es de solo lectura (con un botón ✕ para borrar un punto suelto). Para corregir una coordenada, corrige el archivo de origen y vuelve a importar.</div>
   </div>
 
   <h3>2.2 — Hueco interior (archivo <code>.txt</code>, ej. <code>Hueco.txt</code>)</h3>
-  <p>Mismo formato que el contorno exterior. Se usa solo si la cimentación es una losa con abertura central (ej. para paso de instalaciones). Activá primero el switch <b>Incluir hueco en la zapata</b> — recién ahí aparece el botón <b>Importar Hueco…</b>. Si tu cimentación no tiene hueco, dejá el switch apagado (no hace falta cargar nada).</p>
+  <p>Mismo formato que el contorno exterior. Se usa solo si la cimentación es una losa con abertura central (ej. para paso de instalaciones). Activa primero el switch <b>Incluir hueco en la zapata</b> — hasta entonces aparece el botón <b>Importar Hueco…</b>. Si tu cimentación no tiene hueco, deja el switch apagado (no hace falta cargar nada).</p>
   <p>Ejemplo real:</p>
   <pre class="code-block">-2.08743879,-1.49994538
  0.91256121,-1.49994538
@@ -289,7 +289,7 @@
 -2.08743879, 1.50005462</pre>
 
   <h3>2.3 — PDF de reacciones de la torre</h3>
-  <p>Se carga con el botón <b>Cargar desde PDF…</b> en la pestaña <b>Reacciones</b>. Es el reporte de reacciones exportado directamente por el software de análisis estructural de la torre (mismo PDF que ya generás para el diseño de la torre, sin editar).</p>
+  <p>Se carga con el botón <b>Cargar desde PDF…</b> en la pestaña <b>Reacciones</b>. Es el reporte de reacciones exportado directamente por el software de análisis estructural de la torre (mismo PDF que ya generas para el diseño de la torre, sin editar).</p>
   <p>Qué busca la app dentro del PDF, según el <b>Tipo de estructura</b> seleccionado:</p>
   <ul>
     <li><b>Autosoportada 3P / 4P / M4:</b> la sección titulada <b>"Resumen de Reacciones"</b> (o <b>"Support Forces Summary"</b> si el reporte está en inglés) — columnas Radius, Elevation, Azimuth, Nodo, FX, FY, FZ, por cada pata y cada combinación de carga.</li>
@@ -305,18 +305,18 @@
 <section class="help-section" id="s3">
   <h2>3. Flujo de trabajo paso a paso</h2>
   <ol class="step-list">
-    <li><kbd class="step">①</kbd><b>Preparar los archivos de entrada.</b> Tené a mano el <code>.txt</code> del contorno exterior, el <code>.txt</code> del hueco (si aplica) y el PDF de reacciones de la torre.</li>
+    <li><kbd class="step">①</kbd><b>Preparar los archivos de entrada.</b> Ten a mano el <code>.txt</code> del contorno exterior, el <code>.txt</code> del hueco (si aplica) y el PDF de reacciones de la torre.</li>
     <li><kbd class="step">②</kbd><b>Abrir <code>index.html</code></b> con doble clic — no requiere servidor.</li>
-    <li><kbd class="step">③</kbd>En la pestaña <b>Definición de la zapata</b>, elegí el <b>Tipo de estructura</b>, hacé clic en <b>Importar Contorno Exterior…</b> y elegí tu archivo. Si tu losa tiene hueco, activá <b>Incluir hueco en la zapata</b> y hacé clic en <b>Importar Hueco…</b>.</li>
-    <li><kbd class="step">④</kbd>Revisá la <b>Vista en planta</b> y las <b>Propiedades de sección calculadas</b> (misma pestaña, más abajo) — confirmá que el polígono se vea como esperás y que el área/centroide sean razonables.</li>
-    <li><kbd class="step">⑤</kbd>En la pestaña <b>Reacciones</b>, hacé clic en <b>Cargar desde PDF…</b> y seleccioná el reporte de tu torre (o completá la tabla a mano si preferís). Revisá los valores importados antes de seguir.</li>
-    <li><kbd class="step">⑥</kbd>En la pestaña <b>Cálculos</b>, completá <b>2.- Características de los materiales</b> (f'c, Fy, pesos volumétricos) y <b>3.- Datos geométricos de la cimentación</b> (peralte, profundidad de desplante, dados, capacidad admisible del suelo, factor de seguridad).</li>
-    <li><kbd class="step">⑦</kbd>Revisá los resultados que se recalculan automáticamente al completar los datos anteriores: <b>4.1 Criterios de resistencia</b>, <b>4.2 Revisión por volteo</b>, <b>4.3 Revisión por capacidad de carga</b> (diagramas de esfuerzo) y <b>4.4 Mallado FEM</b> (previsualización).</li>
-    <li><kbd class="step">⑧</kbd>Guardá tu avance con <b>Guardar como…</b> (descarga un archivo <code>.gfem</code> con todo el proyecto) para poder retomarlo después con <b>Abrir proyecto…</b>.</li>
+    <li><kbd class="step">③</kbd>En la pestaña <b>Definición de la zapata</b>, elige el <b>Tipo de estructura</b>, haz clic en <b>Importar Contorno Exterior…</b> y elige tu archivo. Si tu losa tiene hueco, activa <b>Incluir hueco en la zapata</b> y haz clic en <b>Importar Hueco…</b>.</li>
+    <li><kbd class="step">④</kbd>Revisa la <b>Vista en planta</b> y las <b>Propiedades de sección calculadas</b> (misma pestaña, más abajo) — confirma que el polígono se vea como esperas y que el área/centroide sean razonables.</li>
+    <li><kbd class="step">⑤</kbd>En la pestaña <b>Reacciones</b>, haz clic en <b>Cargar desde PDF…</b> y selecciona el reporte de tu torre (o completa la tabla a mano si prefieres). Revisa los valores importados antes de seguir.</li>
+    <li><kbd class="step">⑥</kbd>En la pestaña <b>Cálculos</b>, completa <b>2.- Características de los materiales</b> (f'c, Fy, pesos volumétricos) y <b>3.- Datos geométricos de la cimentación</b> (peralte, profundidad de desplante, dados, capacidad admisible del suelo, factor de seguridad).</li>
+    <li><kbd class="step">⑦</kbd>Revisa los resultados que se recalculan automáticamente al completar los datos anteriores: <b>4.1 Criterios de resistencia</b>, <b>4.2 Revisión por volteo</b>, <b>4.3 Revisión por capacidad de carga</b> (diagramas de esfuerzo) y <b>4.4 Mallado FEM</b> (previsualización).</li>
+    <li><kbd class="step">⑧</kbd>Guarda tu avance con <b>Guardar como…</b> (descarga un archivo <code>.gfem</code> con todo el proyecto) para poder retomarlo después con <b>Abrir proyecto…</b>.</li>
   </ol>
   <div class="alert alert-note">
     <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#FFC107" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div>No hay un paso de "ejecutar cálculo": <b>todo se recalcula automáticamente</b> apenas cambiás cualquier dato de entrada (vértices, reacciones, materiales, geometría). No hace falta ningún botón "Calcular" general — sí existen botones puntuales como <b>Calcular…</b> dentro de la tabla de Área efectiva (4.3), que abren una animación específica para esa combinación.</div>
+    <div>No hay un paso de "ejecutar cálculo": <b>todo se recalcula automáticamente</b> apenas cambias cualquier dato de entrada (vértices, reacciones, materiales, geometría). No hace falta ningún botón "Calcular" general — sí existen botones puntuales como <b>Calcular…</b> dentro de la tabla de Área efectiva (4.3), que abren una animación específica para esa combinación.</div>
   </div>
 </section>
 
@@ -372,14 +372,14 @@
   <h2>5. Interpretación de resultados</h2>
 
   <h3>5.1 — Diagrama de esfuerzo de contacto (Ley de Navier, sección 4.3)</h3>
-  <p>Para cada combinación de carga <code>0.9D + 1.0W</code> (90°, 60° y Normal), la app dibuja el polígono de la zapata con un mapa de color tipo "jet" (azul → cian → verde → amarillo → rojo) que representa el esfuerzo de contacto <b>τ</b> contra el suelo en cada punto del perímetro, calculado con la fórmula de Navier: <code>τ = R_FY/Área + Mx·y/Ix + My·x/Iy</code>. Pasá el cursor sobre el diagrama para ver el valor de τ en cualquier punto, no solo en los vértices.</p>
-  <p>La tabla <b>4.3.2 Eficiencias</b> muestra, por combinación: <code>τ_max</code>, <b>Área efectiva</b> (hacé clic en esa celda para ver la animación que la calcula), <code>Q_prom</code>, <code>Ф·Qult</code> y la <b>Eficiencia</b> final (el mayor entre τ_max y Q_prom, dividido entre Ф·Qult).</p>
+  <p>Para cada combinación de carga <code>0.9D + 1.0W</code> (90°, 60° y Normal), la app dibuja el polígono de la zapata con un mapa de color tipo "jet" (azul → cian → verde → amarillo → rojo) que representa el esfuerzo de contacto <b>τ</b> contra el suelo en cada punto del perímetro, calculado con la fórmula de Navier: <code>τ = R_FY/Área + Mx·y/Ix + My·x/Iy</code>. Pasa el cursor sobre el diagrama para ver el valor de τ en cualquier punto, no solo en los vértices.</p>
+  <p>La tabla <b>4.3.2 Eficiencias</b> muestra, por combinación: <code>τ_max</code>, <b>Área efectiva</b> (haz clic en esa celda para ver la animación que la calcula), <code>Q_prom</code>, <code>Ф·Qult</code> y la <b>Eficiencia</b> final (el mayor entre τ_max y Q_prom, dividido entre Ф·Qult).</p>
 
   <h3>5.2 — Tabla de reacciones por pata</h3>
   <p>En la pestaña <b>Reacciones</b>, cada fila es una combinación de carga y cada columna una pata (o, para Monopolo, el único punto de apoyo). Las columnas <code>FX</code>, <code>FY</code>, <code>FZ</code> están en toneladas; <code>Radius</code>/<code>Elevation</code> en metros, <code>Azimuth</code> en grados.</p>
 
   <h3>5.3 — Revisión por volteo (sección 4.2)</h3>
-  <p>La tabla <b>4.2.2 Eficiencias a volteo</b> muestra, por combinación, el <b>FSV</b> (factor de seguridad al volteo) y la <b>Eficiencia</b>, junto con una columna <b>Resultado</b> que indica <b>CUMPLE</b> o <b>NO CUMPLE</b> directamente — no hace falta interpretar el número vos mismo, la herramienta ya aplica el criterio de aceptación.</p>
+  <p>La tabla <b>4.2.2 Eficiencias a volteo</b> muestra, por combinación, el <b>FSV</b> (factor de seguridad al volteo) y la <b>Eficiencia</b>, junto con una columna <b>Resultado</b> que indica <b>CUMPLE</b> o <b>NO CUMPLE</b> directamente — no hace falta interpretar el número tú mismo, la herramienta ya aplica el criterio de aceptación.</p>
 
   <h3>5.4 — Mallado FEM (sección 4.4)</h3>
   <div class="alert alert-warning">
@@ -417,7 +417,7 @@
     <dd>Norma ANSI/TIA-222 (revisión H), estándar de referencia para el diseño estructural de torres y estructuras de soporte de antenas en telecomunicaciones — incluye los criterios de revisión geotécnica que usa esta app.</dd>
 
     <dt>Ley de Navier / esfuerzo de contacto</dt>
-    <dd>Fórmula clásica de mecánica de materiales (τ = P/A ± M·y/I) usada acá para estimar la presión de contacto entre la zapata/losa y el suelo, en cualquier punto del perímetro, combinando la carga axial y los momentos de vuelco.</dd>
+    <dd>Fórmula clásica de mecánica de materiales (τ = P/A ± M·y/I) usada aquí para estimar la presión de contacto entre la zapata/losa y el suelo, en cualquier punto del perímetro, combinando la carga axial y los momentos de vuelco.</dd>
 
     <dt>Momento de vuelco</dt>
     <dd>Momento que tiende a "volcar" la cimentación por el efecto de las cargas horizontales de viento actuando a una altura sobre la base — se revisa contra el momento resistente (peso propio + relleno) en la sección 4.2.</dd>

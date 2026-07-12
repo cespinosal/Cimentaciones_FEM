@@ -209,6 +209,14 @@ html{ scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent; }
 .card > .body{padding:16px;}
 .section-title{font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); margin:16px 0 8px; font-weight:700;}
 .section-title:first-child{margin-top:0;}
+/* Título de GRUPO dentro de "Cálculos" — agrupa varias tarjetas (4.1 a 4.5)
+   bajo un mismo encabezado numerado ("4.- ..."), sin ser una tarjeta en sí
+   (no tiene cuerpo propio, el contenido vive en las subtarjetas de abajo). */
+.calc-group-title{
+  font-weight:700; font-size:16px; color:var(--accent);
+  margin:26px 0 10px; padding-bottom:8px; border-bottom:2px solid var(--border-strong);
+}
+.calc-group-title:first-child{margin-top:0;}
 
 /* ---------- MessageBar ---------- */
 .message-bar{
@@ -285,6 +293,23 @@ tbody tr:hover{background:var(--brand-tint);}
 #areaEfectivaLegend .item{display:flex; align-items:center; gap:5px;}
 #areaEfectivaLegend .swatch{width:11px; height:11px; border-radius:2px; display:inline-block;}
 
+/* ---------- Modal de ampliación de un diagrama de Navier (4.3) ---------- */
+#navierModalOverlay{
+  position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,.55);
+  display:flex; align-items:center; justify-content:center;
+  overflow-y:auto; padding:24px 0;
+}
+#navierModalOverlay.hidden{display:none;}
+#navierModalBox{
+  background:var(--panel); border:1px solid var(--border-strong); border-radius:var(--radius-lg);
+  box-shadow:var(--shadow8); width:min(760px, 94vw); padding:18px;
+  max-height:calc(100vh - 48px); overflow-y:auto;
+}
+#navierModalBox .head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+#navierModalBox .head h3{margin:0; font-size:15px; color:var(--accent);}
+#navierModalSvg{width:100%; height:min(70vh, 640px); display:block; background:var(--canvas); border:1px solid var(--border); border-radius:var(--radius-md); cursor:crosshair;}
+#navierModalReadout{text-align:center; font-size:13px; color:var(--muted); margin-top:8px; min-height:1.4em;}
+
 /* ---------- Fórmula estilo LaTeX (sin librería externa: fracciones apiladas
    a mano con flex, variables en itálica con una fuente tipo "math") ---------- */
 .formula-box{
@@ -302,10 +327,11 @@ tbody tr:hover{background:var(--brand-tint);}
 .formula-box .frac .den{padding:2px 5px 0;}
 
 /* ---------- Diagramas de esfuerzo (Ley de Navier, sección 4.3) ---------- */
-.navier-card{border:1px solid var(--border); border-radius:var(--radius-md); padding:4px; background:var(--canvas);}
+.navier-card{position:relative; border:1px solid var(--border); border-radius:var(--radius-md); padding:4px; background:var(--canvas);}
 .navier-card .navier-title{text-align:center; font-weight:600; font-size:12.5px; color:var(--text); margin:2px 0 4px;}
 .navier-card svg{width:100%; height:280px; display:block; cursor:crosshair;}
 .navier-card .navier-readout{text-align:center; font-size:12px; color:var(--muted); margin-top:4px; min-height:1.4em;}
+.navier-expand-btn{position:absolute; top:4px; right:4px; z-index:5; width:24px; height:24px; font-size:14px; line-height:1;}
 
 /* ---------- Inputs ----------
    Los campos numéricos son type="text" + inputmode="decimal" (no
@@ -355,6 +381,26 @@ label.field .unit{color:var(--subtle); width:30px; font-size:12px;}
 .prop{display:flex; justify-content:space-between; border-bottom:1px dashed var(--border); padding:4px 0; font-size:12.5px;}
 .prop .k{color:var(--muted);}
 .prop .v{font-variant-numeric:tabular-nums; font-weight:600; font-family:var(--font-mono);}
+.card:has(.prop.has-formula){overflow:visible;}
+.prop.has-formula{position:relative; cursor:help;}
+.prop.has-formula .k{text-decoration:underline dotted var(--muted); text-underline-offset:3px;}
+.prop.has-formula .formula-tip{
+  display:none; position:absolute; left:0; top:calc(100% + 6px); z-index:20;
+  background:var(--panel-2); border:1px solid var(--border-strong); border-radius:6px;
+  padding:8px 12px; font-size:14px; font-style:italic; white-space:nowrap;
+  box-shadow:0 6px 18px rgba(0,0,0,.25); color:var(--text);
+}
+.prop.has-formula:hover .formula-tip{display:block;}
+.frac{display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; margin:0 3px; font-size:0.92em; line-height:1.1;}
+.frac .num{padding:0 3px 1px; border-bottom:1px solid currentColor;}
+.frac .den{padding:1px 3px 0;}
+.sqrt{white-space:nowrap;}
+.sqrt .rad{font-size:1.15em;}
+.sqrt .radicand{border-top:1px solid currentColor; padding:0 3px;}
+#propsConcreto{grid-template-columns:1fr;}
+#propsConcreto .prop{flex-wrap:nowrap; gap:12px;}
+#propsConcreto .prop .k{white-space:nowrap;}
+#propsConcreto .prop .v{white-space:nowrap;}
 
 /* ---------- SVG plan ---------- */
 svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid var(--border); border-radius:var(--radius-md); display:block;}
@@ -393,7 +439,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
 .hidden{display:none !important;}
 
 /* ---------- Layout de la pestaña Cálculos: nav lateral + contenido ---------- */
-.calc-layout{display:flex; align-items:flex-start; gap:14px;}
+.calc-layout{display:flex; align-items:flex-start; gap:14px; max-width:1374px; margin:0 auto;}
 .calc-sidenav{
   flex:0 0 168px; position:sticky; top:calc(var(--stickytop-h, 106px) + 8px); align-self:flex-start;
   display:flex; flex-direction:column; gap:1px; max-height:calc(100vh - var(--stickytop-h, 106px) - 26px); overflow-y:auto;
@@ -510,7 +556,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
 (function(){
   const overlay = document.getElementById('splash-overlay');
   if(!overlay) return;
-  const phrases = ['Cargando motor de cálculo...', 'Cargando geometría de ejemplo...', 'Cargando interfaz de usuario...'];
+  const phrases = ['Cargando motor de cálculo...', 'Cargando motor de mallado FEM...', 'Cargando interfaz de usuario...'];
   const totalMs = 5000;
   const slot = totalMs / phrases.length;
   const captionEl = document.getElementById('splash-caption');
@@ -609,7 +655,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
             <span class="tb-logo-text">GeoCim<small>Ingeniería de cimentaciones</small></span>
           </div>
           <div class="tb-title">
-            <div class="tb-title-main">ZAPATA GENERAL DE 3 DADOS</div>
+            <div class="tb-title-main">REVISIÓN DE CIMENTACIÓN POR FEM</div>
             <div class="tb-title-sub">Hoja de revisiones</div>
           </div>
           <div class="tb-rev">
@@ -809,7 +855,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           <tr><td>Asset Number:</td><td><input type="text" id="proy_assetNum" aria-label="Asset Number"></td></tr>
           <tr><td>Asset Name:</td><td><input type="text" id="proy_assetName" aria-label="Asset Name"></td></tr>
           <tr><td>Ingeniero:</td><td><input type="text" id="proy_engineer" aria-label="Ingeniero"></td></tr>
-          <tr><td>Fecha:</td><td><input type="text" id="proy_date" aria-label="Fecha" placeholder="DD/MM/AAAA"></td></tr>
+          <tr><td>Fecha:</td><td><input type="date" id="proy_date" aria-label="Fecha"></td></tr>
           <tr><td>País:</td><td>
             <select id="proy_country" aria-label="País">
               <option value="Chile">Chile</option>
@@ -960,6 +1006,8 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
       </div>
     </div>
 
+    <div class="calc-group-title" id="grp-geo">4.- DISEÑO GEOTÉCNICO</div>
+
     <section class="card" id="sec-geo-41" aria-labelledby="h-geo-41">
       <div class="head"><span id="h-geo-41">4.1.- Criterios de resistencia</span></div>
       <div class="body">
@@ -1064,8 +1112,79 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
         <div class="geoContenido">
           <p class="small" style="margin:0 0 10px; color:var(--muted);">Malla "Urdimbre": grilla regular sobre el interior + triangulación restringida en huecos/esquinas/dados, recombinada en cuadriláteros y reparada localmente (dados resaltados en naranja, con su propia malla perfecta). Es solo una previsualización visual — todavía no genera el archivo .STD para STAAD.</p>
           <label class="field" style="max-width:360px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="120" id="g_mallaTamElem" style="max-width:150px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">50 cm</span></label>
+          <label class="field" style="max-width:280px; margin-bottom:12px;"><span class="lbl">Mostrar números de placas</span><input type="checkbox" id="chkMallaNumeros"></label>
+          <label class="field" style="max-width:280px; margin-bottom:12px;"><span class="lbl">Mostrar nodos de la malla</span><input type="checkbox" id="chkMallaNodos"></label>
           <div id="geoMallaDiagrama" class="navier-card" style="max-width:1180px; margin:0 auto;"></div>
           <p class="small" style="margin:8px 0 0; color:var(--muted);" id="geoMallaConteo"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-geo-45" aria-labelledby="h-geo-45">
+      <div class="head"><span id="h-geo-45">4.5.- Coeficiente de Balasto</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido">
+          <label class="field" style="max-width:420px; margin-bottom:12px;">
+            <span class="lbl">Cálculo del Coeficiente de Balasto</span>
+            <select id="g_metodoBalasto">
+              <option value="" disabled selected hidden>Selecciona un método…</option>
+              <option value="desplazamientos">Desplazamientos</option>
+              <option value="mecanicaSuelos">Mecánica de suelos</option>
+            </select>
+          </label>
+
+          <div id="balastoDesplazamientos" class="hidden">
+            <label class="field" style="max-width:420px; margin-bottom:12px;">
+              <span class="lbl">Análisis de asentamientos</span>
+              <input type="text" inputmode="decimal" step="any" id="g_asentamiento">
+              <span class="unit">cm</span>
+            </label>
+            <div class="props-grid" id="balastoKManual"></div>
+          </div>
+
+          <div id="balastoMecanicaSuelos" class="hidden">
+            <label class="field" style="max-width:420px; margin-bottom:12px;">
+              <span class="lbl">Módulo K de Mecánica de suelos</span>
+              <input type="text" inputmode="decimal" step="any" id="g_moduloK" style="max-width:110px;">
+              <select id="g_moduloKUnidad" style="max-width:110px; flex-shrink:0;">
+                <option value="kg/cm3">kg/cm³</option>
+                <option value="kg/m3">kg/m³</option>
+                <option value="Tn/m3">Tn/m³</option>
+              </select>
+            </label>
+            <div class="props-grid" id="balastoKInterno"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-geo-46" aria-labelledby="h-geo-46">
+      <div class="head"><span id="h-geo-46">4.6.- Propiedades Concreto</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido">
+          <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Estos datos solo se muestran, se calculan de manera automática a partir de f'c.</p>
+          <div class="props-grid" id="propsConcreto"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-geo-47" aria-labelledby="h-geo-47">
+      <div class="head"><span id="h-geo-47">4.7.- Exportación de modelo</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido">
+          <button type="button" class="btn primary" id="btnExportStaad">Exportar modelo a Staad.pro</button>
         </div>
       </div>
     </section>
@@ -1094,6 +1213,17 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           <div class="item"><span class="swatch" style="background:#2e9e4f;"></span>Área efectiva (traslape)</div>
         </div>
         <div id="areaEfectivaResultados"></div>
+      </div>
+    </div>
+
+    <div id="navierModalOverlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="navierModalTitle">
+      <div id="navierModalBox">
+        <div class="head">
+          <h3 id="navierModalTitle">Ley de Navier</h3>
+          <button type="button" class="btn subtle icon-only" id="btnCerrarNavierModal" aria-label="Cerrar">✕</button>
+        </div>
+        <svg id="navierModalSvg"></svg>
+        <div id="navierModalReadout">τ al pasar el cursor: —</div>
       </div>
     </div>
 
@@ -2426,17 +2556,48 @@ function computeSectionProperties(polygons){
    2. ESTADO
    ============================================================ */
 
-const EXAMPLE_VERTICES = [
-  [-1.0260604299770058, -2.8190778623577253],
-  [1.026060429977007, -2.819077862357725],
-  [2.5980762113533165, -1.4999999999999991],
-  [2.954423259036624, 0.5209445330007924],
-  [1.9283628290596169, 2.298133329356935],
-  [1.8369701987210297e-16, 3],
-  [-1.9283628290596182, 2.298133329356934],
-  [-2.954423259036624, 0.5209445330007908],
-  [-2.598076211353316, -1.5000000000000004]
-].map(([x,y])=>({x,y}));
+// Ejemplo real por defecto (antes reconstruido a mano acá mismo, ahora
+// tomado tal cual del proyecto guardado C:\Users\cespi\Downloads\Hoja FEM\Ejemplo.gfem
+// — zapata hexagonal real de una torre de 3 patas, con geometría, materiales
+// y reacciones reales ya cargadas). El hueco viaja cargado (mismo criterio
+// que un .gfem real) pero queda desactivado (holeEnabled:false) — el
+// usuario puede activarlo con el switch sin tener que volver a importarlo.
+const EXAMPLE_GFEM = {
+  "tipoEstructura": "Autosoportada 3P",
+  "outer": [
+    { "x": -5.45346419, "y": -1.65464592 },
+    { "x": -4.45346419, "y": -3.38669673 },
+    { "x": 3.27858662, "y": -3.38669673 },
+    { "x": 4.27858662, "y": -1.65464592 },
+    { "x": 0.41256121, "y": 5.0415065 },
+    { "x": -1.58743879, "y": 5.0415065 }
+  ],
+  "holeEnabled": false,
+  "hole": [
+    { "x": -2.08743879, "y": -1.49994538 },
+    { "x": 0.91256121, "y": -1.49994538 },
+    { "x": 0.91256121, "y": 1.50005462 },
+    { "x": -2.08743879, "y": 1.50005462 }
+  ],
+  "geom": { "PZ": 0.7, "Pd": 3.5, "Lo": 5, "AD": 0.6, "LD": 0.6, "HD": 0.3, "CX": 0, "CY": 0, "QADM": 8, "FS": 3, "mallaTamElem": 20 },
+  "angles": { "P1": 0, "P1a": 0, "P1b": 0 },
+  "reaccionesPorTipo": {
+    "Autosoportada 3P": [
+      { "1": { "radius": 2.97, "elevation": 0, "azimuth": 0, "fx": -0.18, "fy": 2.74, "fz": -0.18 }, "1b": { "radius": 2.97, "elevation": 0, "azimuth": 240, "fx": -1, "fy": -8.5, "fz": -0.48 }, "1a": { "radius": 2.97, "elevation": 0, "azimuth": 120, "fx": -1.32, "fy": 13.98, "fz": 0.66 } },
+      { "1": { "radius": 2.97, "elevation": 0, "azimuth": 0, "fx": -0.15, "fy": 9.05, "fz": -0.9 }, "1b": { "radius": 2.97, "elevation": 0, "azimuth": 240, "fx": -1.09, "fy": -9.87, "fz": -0.63 }, "1a": { "radius": 2.97, "elevation": 0, "azimuth": 120, "fx": -0.86, "fy": 9.05, "fz": 0.32 } },
+      { "1": { "radius": 2.97, "elevation": 0, "azimuth": 0, "fx": 0, "fy": 16.81, "fz": -1.81 }, "1b": { "radius": 2.97, "elevation": 0, "azimuth": 240, "fx": -0.46, "fy": -4.29, "fz": -0.46 }, "1a": { "radius": 2.97, "elevation": 0, "azimuth": 120, "fx": 0.46, "fy": -4.29, "fz": -0.46 } },
+      { "1": { "radius": 2.97, "elevation": 0, "azimuth": 0, "fx": -1.02, "fy": 2.47, "fz": -0.13 }, "1b": { "radius": 2.97, "elevation": 0, "azimuth": 240, "fx": -6.62, "fy": -62.73, "fz": -3.24 }, "1a": { "radius": 2.97, "elevation": 0, "azimuth": 120, "fx": -6.85, "fy": 67.67, "fz": 3.36 } },
+      { "1": { "radius": 2.97, "elevation": 0, "azimuth": 0, "fx": -0.85, "fy": 39.07, "fz": -4.31 }, "1b": { "radius": 2.97, "elevation": 0, "azimuth": 240, "fx": -7.13, "fy": -70.72, "fz": -4.12 }, "1a": { "radius": 2.97, "elevation": 0, "azimuth": 120, "fx": -4.16, "fy": 39.06, "fz": 1.42 } },
+      { "1": { "radius": 2.97, "elevation": 0, "azimuth": 0, "fx": 0, "fy": 84.07, "fz": -9.56 }, "1b": { "radius": 2.97, "elevation": 0, "azimuth": 240, "fx": -3.49, "fy": -38.33, "fz": -3.14 }, "1a": { "radius": 2.97, "elevation": 0, "azimuth": 120, "fx": 3.49, "fy": -38.33, "fz": -3.14 } },
+      { "1": { "radius": 2.97, "elevation": 0, "azimuth": 0, "fx": -1.02, "fy": 3.29, "fz": -0.18 }, "1b": { "radius": 2.97, "elevation": 0, "azimuth": 240, "fx": -6.57, "fy": -61.98, "fz": -3.21 }, "1a": { "radius": 2.97, "elevation": 0, "azimuth": 120, "fx": -6.9, "fy": 68.57, "fz": 3.39 } },
+      { "1": { "radius": 2.97, "elevation": 0, "azimuth": 0, "fx": -0.85, "fy": 39.93, "fz": -4.37 }, "1b": { "radius": 2.97, "elevation": 0, "azimuth": 240, "fx": -7.08, "fy": -69.98, "fz": -4.09 }, "1a": { "radius": 2.97, "elevation": 0, "azimuth": 120, "fx": -4.21, "fy": 39.92, "fz": 1.45 } },
+      { "1": { "radius": 2.97, "elevation": 0, "azimuth": 0, "fx": 0, "fy": 84.98, "fz": -9.62 }, "1b": { "radius": 2.97, "elevation": 0, "azimuth": 240, "fx": -3.44, "fy": -37.55, "fz": -3.12 }, "1a": { "radius": 2.97, "elevation": 0, "azimuth": 120, "fx": 3.44, "fy": -37.55, "fz": -3.12 } }
+    ]
+  },
+  "proyecto": { "assetNum": "", "assetName": "", "engineer": "", "date": "", "country": "Costa Rica", "request": "" },
+  "materiales": { "fc": 210, "gc": 2400, "gr": 1600, "fy": 4200, "existeCiclopeo": "No", "espesorCiclopeo": 1, "gcc": 2200, "pesoAdicional": 0 },
+  "tipoTorre": "Autosoportada 3P"
+};
 
 // Cada tipo de estructura tiene su propia tabla de Reacciones (combos de
 // carga TIA-222-H), independiente de las demás. Dos "formas" de tabla:
@@ -2533,7 +2694,7 @@ function defaultState(){
     outer: [],
     holeEnabled: false,
     hole: [],
-    geom: { PZ:0.65, Pd:3, Lo:4, AD:0.6, LD:0.6, HD:0.25, CX:0, CY:0, QADM:8, FS:3, mallaTamElem:50 },
+    geom: { PZ:0.65, Pd:3, Lo:4, AD:0.6, LD:0.6, HD:0.25, CX:0, CY:0, QADM:8, FS:3, mallaTamElem:50, metodoBalasto:"", asentamiento:0, moduloK:0, moduloKUnidad:"kg/cm3" },
     angles: { P1:45, P1a:-30, P1b:30 },
     reaccionesPorTipo: {
       "Autosoportada 3P": defaultReacciones("Autosoportada 3P"),
@@ -2545,8 +2706,13 @@ function defaultState(){
 }
 
 function exampleState(){
-  const s = defaultState();
-  s.outer = EXAMPLE_VERTICES.map(p=>({...p}));
+  const s = mergeState(defaultState(), EXAMPLE_GFEM);
+  // reaccionesPorTipo no está en la lista de sub-objetos que mergeState()
+  // combina en profundidad (solo geom/materiales/angles/proyecto) — se
+  // combina acá aparte para no perder las tablas por defecto (en blanco)
+  // de "Autosoportada 4P"/"Monopolo", que EXAMPLE_GFEM no trae (solo trae
+  // la de "Autosoportada 3P", la única con datos reales).
+  s.reaccionesPorTipo = Object.assign({}, defaultState().reaccionesPorTipo, EXAMPLE_GFEM.reaccionesPorTipo);
   return s;
 }
 
@@ -3139,7 +3305,14 @@ function update3D(props, legs, dados, outerC, holeC){
   zapataMesh.rotation.x = -Math.PI/2; // el shape (XY) pasa a horizontal (XZ); la extrusión +Z pasa a +Y
   zapataMesh.position.y = -Pd;
   mesh3dGroup.add(zapataMesh);
-  const zapataEdges = new THREE.LineSegments(new THREE.EdgesGeometry(zapataGeo), new THREE.LineBasicMaterial({color:0x3a4250}));
+  // Umbral de ángulo alto (default es 1°): con hueco, el triangulador interno
+  // (earcut) agrega una diagonal "puente" entre el hueco y el contorno para
+  // poder triangular el polígono — esa diagonal es plana (0°) pero por
+  // imprecisión de punto flotante a veces se cuela como arista visible con
+  // el umbral por defecto. Con un umbral alto se filtra, sin perder las
+  // aristas reales (esquinas del contorno, paredes verticales, borde del
+  // hueco), que difieren en mucho más que unos pocos grados.
+  const zapataEdges = new THREE.LineSegments(new THREE.EdgesGeometry(zapataGeo, 15), new THREE.LineBasicMaterial({color:0x3a4250}));
   zapataEdges.rotation.x = -Math.PI/2;
   zapataEdges.position.y = -Pd;
   mesh3dGroup.add(zapataEdges);
@@ -3202,13 +3375,13 @@ function update3D(props, legs, dados, outerC, holeC){
           mesh3dGroup.add(sprite);
         }
 
-        // El Excel fuente empareja cada reacción con la posición de pata por
-        // orden de fila/columna, no por nombre (ver misma nota en
-        // computeGeotecnico/LEG_POSITION_MAP) — confirmado con el usuario
-        // (MZ·FY salía con signo contrario). Para que la flecha dibujada en
-        // cada dado corresponda a la reacción real de esa posición, se usa
-        // el mapeo cruzado, no el sufijo directo del nombre de la posición.
-        const POSITION_TO_REACTION = { "P1b":"1a", "P1a":"1b", "P1":"1" };
+        // OJO: esto es SOLO para la vista 3D (flechas/etiquetas) — no toca
+        // computeGeotecnico ni su LEG_POSITION_MAP (el cálculo de volteo
+        // sigue con el mapeo cruzado que ya está verificado contra el
+        // Excel). Visualmente, el usuario confirmó que la flecha de cada
+        // dado debe mostrar la reacción de SU PROPIA posición (mapeo
+        // directo), no la de la posición espejo.
+        const POSITION_TO_REACTION = { "P1b":"1b", "P1a":"1a", "P1":"1" };
         ["P1b","P1a","P1"].forEach(key=>{
           const suffix = POSITION_TO_REACTION[key];
           const row = comboRow[suffix];
@@ -3286,6 +3459,23 @@ function update3D(props, legs, dados, outerC, holeC){
       cicloMesh.rotation.x = -Math.PI/2;
       cicloMesh.position.y = -Hr;
       mesh3dGroup.add(cicloMesh);
+    }
+
+    // --- Relleno de la cavidad del hueco: coherente con computeGeotecnico
+    // (el hueco no queda vacío, se rellena con relleno o con ciclópeo según
+    // corresponda) — se dibuja un sólido aparte, del alto completo Hr,
+    // usando solo el contorno del hueco (no el de toda la zapata), para no
+    // tocar las capas de relleno/ciclópeo generales de arriba.
+    if(state.holeEnabled && holeC.length>=3){
+      const holeCCW = polygonSignedArea(holeC) >= 0 ? holeC : holeC.slice().reverse();
+      const holeShape = new THREE.Shape(holeCCW.map(p=>new THREE.Vector2(p.x, -p.y)));
+      const holeFillGeo = new THREE.ExtrudeGeometry(holeShape, {depth:Hr, bevelEnabled:false, curveSegments:24});
+      const holeFillMesh = hayCiclopeo
+        ? new THREE.Mesh(holeFillGeo, concreteMat(0x7d8b8f, {transparent:true, opacity:0.55}))
+        : new THREE.Mesh(holeFillGeo, solidMat(0x7a6a55, {transparent:true, opacity:0.35}));
+      holeFillMesh.rotation.x = -Math.PI/2;
+      holeFillMesh.position.y = -Hr;
+      mesh3dGroup.add(holeFillMesh);
     }
   }
 
@@ -3564,11 +3754,49 @@ function fmt(v, decimals){
   return Number(v).toLocaleString("en-US", {minimumFractionDigits:decimals, maximumFractionDigits:decimals});
 }
 
-function propRow(container, label, value, unit){
+function propRow(container, label, value, unit, formulaHtml){
   const div = document.createElement("div");
-  div.className = "prop";
-  div.innerHTML = `<span class="k">${label}</span><span class="v">${value}${unit? " "+unit:""}</span>`;
+  div.className = "prop" + (formulaHtml ? " has-formula" : "");
+  div.innerHTML = `<span class="k">${label}</span><span class="v">${value}${unit? " "+unit:""}</span>`
+    + (formulaHtml ? `<div class="formula-tip">${formulaHtml}</div>` : "");
   container.appendChild(div);
+}
+
+// Valor interno del coeficiente de balasto, siempre normalizado a kg/m3
+// sin importar el método (desplazamientos o mecánica de suelos) ni la
+// unidad elegida por el usuario en ese segundo método.
+// Propiedades del concreto derivadas de f'c (kg/cm²), sección 4.6.
+// G se asume como 0.4*Ec (aproximación usual para concreto) y v se
+// obtiene despejando de la relación E = 2G(1+v), es decir v = E/(2G) - 1.
+function getPropsConcreto(){
+  const fc = state.materiales.fc;
+  const Ec = 15100 * Math.sqrt(fc);
+  const G = 0.4 * Ec;
+  const v = Ec / (2 * G) - 1;
+  return { Ec, G, v };
+}
+
+function sqrtHtml(radicand){
+  return `<span class="sqrt"><span class="rad">&radic;</span><span class="radicand">${radicand}</span></span>`;
+}
+function fracHtml(num, den){
+  return `<span class="frac"><span class="num">${num}</span><span class="den">${den}</span></span>`;
+}
+
+function getKBalastoKgm3(){
+  if(state.geom.metodoBalasto === "desplazamientos"){
+    const asentamiento_m = state.geom.asentamiento / 100;
+    if(!(asentamiento_m > 0)) return NaN;
+    const kTnM3 = state.geom.QADM / asentamiento_m;
+    return kTnM3 * 1000;
+  }
+  if(state.geom.metodoBalasto === "mecanicaSuelos"){
+    const k = state.geom.moduloK;
+    if(state.geom.moduloKUnidad === "kg/cm3") return k * 1e6;
+    if(state.geom.moduloKUnidad === "Tn/m3") return k * 1000;
+    return k;
+  }
+  return NaN;
 }
 
 function renderProperties(props){
@@ -3663,13 +3891,20 @@ function computeGeotecnico(props, legs){
   const dadoVert = Hr + g.HD; // "LD" en el Excel original (longitud vertical del dado)
   const areaDado = Math.max(0.05,g.AD) * Math.max(0.05,g.LD); // rectangular AD×LD (reemplaza el AD² del Excel)
 
+  // props.area ya descuenta el hueco (correcto para Wzapata: ahí no hay
+  // concreto de zapata). Pero el hueco SÍ se rellena por encima de la
+  // zapata: con relleno si no hay ciclópeo, o con ciclópeo si lo hay
+  // (pedido explícito del usuario) — se suma esa área de vuelta, con la
+  // altura completa Hr, al material que corresponda.
+  const holeArea = (state.holeEnabled && state.hole && state.hole.length>=3) ? polygonArea(state.hole) : 0;
+
   const Wzapata = (g.PZ * props.area * m.gc) / 1000;
   let Wrelleno, Wciclopeo = 0;
   if(m.existeCiclopeo === "Sí"){
     Wrelleno = (((Hr*props.area) - (areaDado*(Hr - m.espesorCiclopeo)*3)) - (m.espesorCiclopeo*props.area)) * m.gr/1000;
-    Wciclopeo = ((m.espesorCiclopeo*props.area) - (areaDado*m.espesorCiclopeo*3)) * m.gcc/1000;
+    Wciclopeo = (((m.espesorCiclopeo*props.area) - (areaDado*m.espesorCiclopeo*3)) + (holeArea*Hr)) * m.gcc/1000;
   } else {
-    Wrelleno = ((Hr*props.area) - (areaDado*Hr*3)) * m.gr/1000;
+    Wrelleno = (((Hr*props.area) - (areaDado*Hr*3)) + (holeArea*Hr)) * m.gr/1000;
   }
   const Wdados = (areaDado * dadoVert * m.gc * 3)/1000;
   const Wadicional = (m.pesoAdicional||0)/1000;
@@ -4642,8 +4877,8 @@ function umMeshSlab(outerRaw,holesRaw,pedestalsRaw,elementSize,maxAspect,angleRa
   const outerIdx=addRing(outerD);
   const holesIdx=holesD.map(h=>addRing(h));
 
-  const pedestalsIdx=[], pedestalRings=[], pedestalQuads=[];
-  for(const ped of pedestals){
+  const pedestalsIdx=[], pedestalRings=[], pedestalQuads=[], pedestalQuadDado=[];
+  pedestals.forEach((ped, pedIdx)=>{
     const {grid:pedGrid,nx,ny}=umMeshPedestalGrid(ped,elementSize);
     const idxGrid=[];
     for(let i=0;i<=nx;i++){ const col=[]; for(let j=0;j<=ny;j++){ col.push(pts.length); pts.push(pedGrid[i][j]); } idxGrid.push(col); }
@@ -4657,12 +4892,22 @@ function umMeshSlab(outerRaw,holesRaw,pedestalsRaw,elementSize,maxAspect,angleRa
     for(let i=0;i<nx;i++){
       for(let j=0;j<ny;j++){
         pedestalQuads.push([idxGrid[i][j],idxGrid[i+1][j],idxGrid[i+1][j+1],idxGrid[i][j+1]]);
+        pedestalQuadDado.push(pedIdx);
       }
     }
-  }
+  });
 
   const boundaryRings=[outerD,...holesD,...pedestalRings];
-  const interiorPts=umSeedInteriorPoints(outer,holes,boundaryRings,elementSize,grid);
+  // umSeedInteriorPoints solo descarta puntos cerca del BORDE de cada dado
+  // (por el margen de distancia a boundaryEdges) — un punto bien adentro de
+  // un dado, lejos de su anillo, pasaba ese filtro igual y quedaba como
+  // nodo huérfano: se agregaba a JOINT COORDINATES pero ningún elemento lo
+  // usaba, porque el triángulo que lo contenía se elimina más abajo por
+  // caer dentro del dado (el dado ya tiene su propia malla perfecta).
+  let interiorPts=umSeedInteriorPoints(outer,holes,boundaryRings,elementSize,grid);
+  if(pedestals.length){
+    interiorPts=interiorPts.filter(p=> !pedestals.some(ped=>umPointInPolygon(p,ped)));
+  }
   addRing(interiorPts);
 
   const dm=new UmDelaunayMesh(pts);
@@ -4702,7 +4947,7 @@ function umMeshSlab(outerRaw,holesRaw,pedestalsRaw,elementSize,maxAspect,angleRa
   slabElements=umLocalRepair(slabElements,ptsFinal,maxAspect,angleRange,lockedEdges);
   slabElements=umMergeTinyElements(slabElements,ptsFinal,elementSize,lockedEdges);
   const elements=[...slabElements,...pedestalQuads];
-  return {points:ptsFinal, elements, nPedestalElements:pedestalQuads.length};
+  return {points:ptsFinal, elements, nPedestalElements:pedestalQuads.length, pedestalQuadDado, pedestalsIdx};
 }
 
 function generateMallaFEM(outerC, holeC, dados, cellSizeM){
@@ -4718,6 +4963,7 @@ function generateMallaFEM(outerC, holeC, dados, cellSizeM){
   const spanMax = Math.max(spanX, spanY);
   cellSizeM = Math.max(cellSizeM, spanMax/120);
 
+  const dadoNames = Object.keys(dados||{});
   const outerT = outerC.map(p=>[p.x,p.y]);
   const holesT = (holeC && holeC.length>=3) ? [holeC.map(p=>[p.x,p.y])] : [];
   const pedestalsT = Object.values(dados||{}).map(rect=>rect.map(p=>[p.x,p.y]));
@@ -4725,11 +4971,57 @@ function generateMallaFEM(outerC, holeC, dados, cellSizeM){
   const r = umMeshSlab(outerT, holesT, pedestalsT, cellSizeM, 4.0, [45,130]);
   const pointsXY = r.points.map(p=>({x:p[0],y:p[1]}));
   const nPed = r.nPedestalElements;
+  const nSlab = r.elements.length - nPed;
   const elements = r.elements.map((e,idx)=>{
-    const isPedestal = idx >= r.elements.length - nPed;
-    return { poly: e.map(i=>pointsXY[i]), cls: isPedestal ? "pedestal" : "good" };
+    const isPedestal = idx >= nSlab;
+    return {
+      poly: e.map(i=>pointsXY[i]),
+      cls: isPedestal ? "pedestal" : "good",
+      dadoIndex: isPedestal ? r.pedestalQuadDado[idx - nSlab] : null
+    };
   });
-  return {elements, points:pointsXY, nPedestalElements:nPed};
+  // IDs de nodo (1-based, mismos que JOINT COORDINATES) del perímetro de
+  // cada dado, por nombre — usado para los grupos JOINT del export STAAD.
+  const pedestalRingsByName = {};
+  dadoNames.forEach((name, i) => {
+    pedestalRingsByName[name] = (r.pedestalsIdx[i] || []).map(idx => idx+1);
+  });
+  return {elements, points:pointsXY, nPedestalElements:nPed, pedestalRingsByName};
+}
+
+// Renumeración de las placas (elementos) para el export a STAAD: primero
+// los dados, después la losa en general. Cada dado debe quedar con
+// numeración CONTINUA (todas sus placas seguidas) antes de pasar al
+// siguiente — se agrupan por dadoIndex (asignado en generateMallaFEM, según
+// el orden en que umMeshSlab mallò cada dado) y los grupos entre sí, igual
+// que dentro de cada grupo y en la losa, se ordenan de abajo hacia arriba
+// (y ascendente) con x ascendente como desempate determinístico.
+function renumerarElementosMalla(elements){
+  const centroide = (poly)=>{
+    let cx=0, cy=0;
+    poly.forEach(p=>{ cx+=p.x; cy+=p.y; });
+    return { x: cx/poly.length, y: cy/poly.length };
+  };
+  const conCentroide = elements.map(e => Object.assign({}, e, { _c: centroide(e.poly) }));
+  const porYX = (a,b)=> (a._c.y - b._c.y) || (a._c.x - b._c.x);
+
+  const dados = conCentroide.filter(e=>e.cls==="pedestal");
+  const losa  = conCentroide.filter(e=>e.cls!=="pedestal").sort(porYX);
+
+  const gruposDado = new Map();
+  dados.forEach(e=>{
+    if(!gruposDado.has(e.dadoIndex)) gruposDado.set(e.dadoIndex, []);
+    gruposDado.get(e.dadoIndex).push(e);
+  });
+  const dadosOrdenados = Array.from(gruposDado.values())
+    .map(grupo=>{
+      const yProm = grupo.reduce((s,e)=>s+e._c.y, 0) / grupo.length;
+      return { grupo: grupo.slice().sort(porYX), yProm };
+    })
+    .sort((a,b)=> a.yProm - b.yProm)
+    .flatMap(g=>g.grupo);
+
+  return [...dadosOrdenados, ...losa].map((e,idx)=> Object.assign({}, e, { id: idx+1 }));
 }
 
 function renderMallaFEM(mesh, outerC, holeC){
@@ -4760,10 +5052,34 @@ function renderMallaFEM(mesh, outerC, holeC){
     ? `<polygon points="${holeC.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="var(--input-bg)" stroke="#c0392b" stroke-width="${strokeW*2}" stroke-dasharray="${Math.max(w,h)/120},${Math.max(w,h)/120}"/>`
     : "";
 
+  // TEMPORAL — solo para validar visualmente el orden de renumerarElementosMalla
+  // (dados primero, después losa, de abajo hacia arriba). Se borra una vez
+  // confirmado el orden.
+  let labelsMarkup = "";
+  if(mostrarNumerosMalla){
+    const numerados = renumerarElementosMalla(mesh.elements);
+    const fontSizeNum = Math.max(w,h)/110;
+    labelsMarkup = numerados.map(e=>
+      `<text x="${e._c.x}" y="${-e._c.y}" font-size="${fontSizeNum}" text-anchor="middle" dominant-baseline="middle" fill="#000" stroke="#fff" stroke-width="${fontSizeNum*0.15}" paint-order="stroke" font-weight="700">${e.id}</text>`
+    ).join("");
+  }
+
+  let nodesMarkup = "";
+  if(mostrarNodosMalla && mesh.points){
+    const nodeR = Math.max(w,h)/240;
+    const fontSizeNodo = Math.max(w,h)/130;
+    nodesMarkup = mesh.points.map((p,idx)=>
+      `<circle cx="${p.x}" cy="${-p.y}" r="${nodeR}" fill="#fff" stroke="#000" stroke-width="${strokeW}"/>` +
+      `<text x="${p.x}" y="${-p.y - nodeR*1.6}" font-size="${fontSizeNodo}" text-anchor="middle" fill="#000" stroke="#fff" stroke-width="${fontSizeNodo*0.12}" paint-order="stroke" font-weight="700">${idx+1}</text>`
+    ).join("");
+  }
+
   wrap.innerHTML = `<svg viewBox="${xmin} ${-ymax} ${w} ${h}" style="width:100%; height:760px; display:block;">
     ${cellsMarkup}
     <polygon points="${outerPts}" fill="none" stroke="var(--accent)" stroke-width="${strokeW*2.5}"/>
     ${holeMarkup}
+    ${labelsMarkup}
+    ${nodesMarkup}
   </svg>`;
   conteoEl.textContent = `Elementos generados: ${mesh.elements.length}`;
 }
@@ -4835,6 +5151,424 @@ function svgEventToPlan(svg, evt){
   return { x: p.x, y: -p.y };
 }
 
+let lastNavierCtx = null;
+let currentNavierModalIndex = null;
+let lastMallaMesh = null;
+let mostrarNumerosMalla = false;
+let mostrarNodosMalla = false;
+
+// Construye el contenido interno (defs+polígono+vértices+cursor) de un
+// diagrama de Navier — compartido entre las tarjetas de la grilla y el
+// modal de "Ampliar", para no duplicar la lógica del degradado.
+function navierSvgInner(row, gradId, cursorId, ctx){
+  let gx = row.MzTotal/ctx.props.Iy, gy = row.MxTotal/ctx.props.Ix;
+  const glen = Math.hypot(gx,gy);
+  let pMin = {x:0,y:0}, pMax = {x:0,y:0};
+  if(glen > 1e-9){
+    gx/=glen; gy/=glen;
+    let minProj=Infinity, maxProj=-Infinity;
+    ctx.outerC.forEach(p=>{
+      const proj = p.x*gx + p.y*gy;
+      if(proj<minProj) minProj=proj;
+      if(proj>maxProj) maxProj=proj;
+    });
+    pMin = {x:minProj*gx, y:minProj*gy};
+    pMax = {x:maxProj*gx, y:maxProj*gy};
+  }
+  const verts = ctx.outerC.map((p,vi)=>
+    `<circle cx="${p.x}" cy="${-p.y}" r="${ctx.r*0.55}" fill="var(--accent)"/>` +
+    `<text x="${p.x}" y="${-p.y - ctx.r*1.1}" font-size="${ctx.fontSize}" text-anchor="middle" fill="var(--text)" stroke="none">${fmt(row.stresses[vi],2)}</text>`
+  ).join("");
+  return `<defs>
+      <linearGradient id="${gradId}" gradientUnits="userSpaceOnUse" x1="${pMin.x}" y1="${-pMin.y}" x2="${pMax.x}" y2="${-pMax.y}">
+        <stop offset="0%" stop-color="#00008f"/>
+        <stop offset="25%" stop-color="#00ffff"/>
+        <stop offset="50%" stop-color="#00ff00"/>
+        <stop offset="75%" stop-color="#ffff00"/>
+        <stop offset="100%" stop-color="#ff0000"/>
+      </linearGradient>
+    </defs>
+    <polygon points="${ctx.polyPts}" fill="url(#${gradId})" stroke="var(--accent)" stroke-width="${Math.max(ctx.w,ctx.h)/250}"/>
+    ${ctx.holePts ? `<polygon points="${ctx.holePts}" fill="var(--input-bg)" stroke="#c0392b" stroke-width="${Math.max(ctx.w,ctx.h)/250}" stroke-dasharray="${Math.max(ctx.w,ctx.h)/120},${Math.max(ctx.w,ctx.h)/120}"/>` : ""}
+    ${verts}
+    <circle id="${cursorId}" r="${ctx.r*0.7}" fill="none" stroke="var(--danger-fg)" stroke-width="${Math.max(ctx.w,ctx.h)/250}" class="hidden"/>`;
+}
+
+function closeNavierModal(){
+  currentNavierModalIndex = null;
+  document.getElementById("navierModalOverlay").classList.add("hidden");
+}
+
+function openNavierModal(i){
+  if(!lastNavierCtx) return;
+  const ctx = lastNavierCtx;
+  const row = ctx.cap.rows[i];
+  if(!row) return;
+  currentNavierModalIndex = i;
+  document.getElementById("navierModalTitle").textContent = `Ley de Navier — ${row.combo}`;
+  const svg = document.getElementById("navierModalSvg");
+  svg.setAttribute("viewBox", `${ctx.xmin} ${-ctx.ymax} ${ctx.w} ${ctx.h}`);
+  svg.innerHTML = navierSvgInner(row, "navierModalGrad", "navierModalCursor", ctx);
+  document.getElementById("navierModalCursor").classList.add("hidden");
+  document.getElementById("navierModalReadout").textContent = "τ al pasar el cursor: —";
+  document.getElementById("navierModalOverlay").classList.remove("hidden");
+}
+
+/* ---------- Exportación de modelo a STAAD.Pro (sección 4.7) ---------- */
+// Regla de los 79 caracteres (misma convención que TSA/viewer.html): STAAD
+// declara INPUT WIDTH 79, así que ninguna línea del .std puede superar esa
+// longitud. Los comentarios (líneas que empiezan con "*") se continúan con
+// otra línea que también empieza con "* "; el resto de las líneas se corta
+// en el último espacio antes de la columna 78 y se continúa con "-".
+function aplicarAnchoStaad79(texto){
+  return texto.split("\n").map(line=>{
+    if(line.length <= 79) return line;
+    if(line.startsWith("*")){
+      const partes = [];
+      let rem = line;
+      while(rem.length > 79){
+        let corte = 79;
+        while(corte > 1 && rem[corte] !== " ") corte--;
+        if(corte <= 1) corte = 79;
+        partes.push(rem.slice(0, corte));
+        rem = "* " + rem.slice(corte).trimStart();
+      }
+      partes.push(rem);
+      return partes.join("\n");
+    }
+    const partes = [];
+    let rem = line;
+    while(rem.length > 79){
+      let corte = 78;
+      while(corte > 0 && rem[corte] !== " ") corte--;
+      if(corte === 0) corte = 78;
+      partes.push(rem.slice(0, corte) + "-");
+      rem = rem.slice(corte).trimStart();
+    }
+    partes.push(rem);
+    return partes.join("\n");
+  }).join("\n");
+}
+
+// Empaqueta "grupos" de texto ya formateados en líneas de máx. maxLen
+// caracteres (misma lógica que _staadWrapGroups de TSA/viewer.html): cada
+// grupo se separa con "sep"; al cerrar una línea (porque el siguiente grupo
+// ya no entra) se le agrega "lineEnd" al final.
+function staadWrapGroups(groups, maxLen = 79, sep = " ", lineEnd = ""){
+  if(!groups.length) return "";
+  const lines = [];
+  let cur = groups[0];
+  for(let i=1; i<groups.length; i++){
+    const candidate = `${cur}${sep}${groups[i]}`;
+    if(candidate.length + lineEnd.length > maxLen){
+      lines.push(cur);
+      cur = groups[i];
+    } else {
+      cur = candidate;
+    }
+  }
+  lines.push(cur);
+  return lines.map((l,i)=> i < lines.length-1 ? `${l}${lineEnd}` : l).join("\n") + "\n";
+}
+
+// Formatea un número para STAAD: redondeado a 6 decimales (limpia ruido de
+// punto flotante) y sin ceros ni punto decimal sobrantes (p.ej. -2.8, no
+// -2.800000; 0, no 0.000000).
+function fmtStaadNum(v){
+  if(Math.abs(v) < 1e-9) v = 0;
+  let s = v.toFixed(6);
+  s = s.replace(/0+$/, "").replace(/\.$/, "");
+  return s === "-0" ? "0" : s;
+}
+
+// Relación de ejes FEM (app) -> STAAD: Staad(X,Y,Z) = FEM(X,-Z,Y). La malla
+// "Urdimbre" hoy solo trae (x,y) por nodo (sin z, es una sola placa plana
+// sin variación de elevación), así que FEM Z = 0 y por lo tanto Staad Y = 0.
+
+function polygonSignedArea2D(poly){
+  let a = 0;
+  for(let i=0; i<poly.length; i++){
+    const p1 = poly[i], p2 = poly[(i+1)%poly.length];
+    a += p1.x*p2.y - p2.x*p1.y;
+  }
+  return a/2;
+}
+
+// STAAD define la normal de cada Shell con la regla de la mano derecha según
+// el orden de nodos en ELEMENT INCIDENCES — para que la normal quede
+// consistente en TODAS las placas, deben tener el mismo sentido de giro.
+// Por la relación de ejes de arriba (Staad Y = -FEM Z = 0), la normal
+// resultante apunta hacia +Y de Staad (hacia arriba) cuando el polígono
+// está en sentido HORARIO en el plano (x,y) de la app — si algún elemento
+// viene antihorario (área con signo positivo) se invierte su orden aquí.
+function orientarNormalArribaStaad(poly){
+  return polygonSignedArea2D(poly) > 0 ? poly.slice().reverse() : poly;
+}
+
+// Comprime una lista de IDs (nodos, elementos, etc.) en tokens "A TO B"
+// para las corridas de 3 o más consecutivos, y números sueltos para el
+// resto (corridas de 1 o 2) — los nodos del perímetro de un dado NO son
+// consecutivos entre sí (el anillo salta los nodos interiores de su malla),
+// así que no alcanza con un solo "A TO B": hay que detectar cada corrida
+// por separado.
+function comprimirRangosStaad(ids){
+  const ordenado = [...new Set(ids)].sort((a,b)=>a-b);
+  const tokens = [];
+  let i = 0;
+  while(i < ordenado.length){
+    let j = i;
+    while(j+1 < ordenado.length && ordenado[j+1] === ordenado[j]+1) j++;
+    if(j - i + 1 >= 3){
+      tokens.push(`${ordenado[i]} TO ${ordenado[j]}`);
+    } else {
+      for(let k=i; k<=j; k++) tokens.push(`${ordenado[k]}`);
+    }
+    i = j+1;
+  }
+  return tokens;
+}
+
+// Se arma en bloques, siguiendo las indicaciones del usuario en el orden en
+// que las va dando. Por ahora: encabezado + nodos de la malla "Urdimbre"
+// (JOINT COORDINATES).
+function generarStaadModel(){
+  const p = state.proyecto;
+  const header = [
+    `STAAD SPACE ${p.assetNum} ${p.assetName}`,
+    `* ---------------------------------------------------------`,
+    `* GENERADO EN GFEM - ZAPATAS FEM V2.0`,
+    `* PROGRAMA DESARROLLADO POR: ING. JUAN CHRISTIAN ESPINOSA LOPEZ`,
+    `* ---------------------------------------------------------`,
+    `* AVISO: PROGRAMA EN DESARROLLO TODOS LOS DATOS DEBEN SER`,
+    `* REVISADOS POR EL INGENIERO RESPONSABLE ANTES DE USARSE EN DISENO.`,
+    `* ---------------------------------------------------------`,
+    `STAR JOB INFORMATION`,
+    `ENGINEER DATE ${p.date}`,
+    `ENGINEER NAME ${p.engineer}`,
+    `JOB NAME ${p.request}`,
+    `END JOB INFORMATION`,
+    `*//////////////////////////////////////////////////////////////`,
+    `****** CALCULO DE ZAPATA POR FEM *****`,
+    `*//////////////////////////////////////////////////////////////`,
+    `INPUT WIDTH 79`,
+    `UNIT METER KG`,
+    `JOINT COORDINATES`
+  ].join("\n");
+
+  const puntos = (lastMallaMesh && lastMallaMesh.points) ? lastMallaMesh.points : [];
+  const gruposNodos = puntos.map((pt, idx) =>
+    `${idx+1} ${fmtStaadNum(pt.x)} ${fmtStaadNum(-(pt.z||0))} ${fmtStaadNum(pt.y)}`
+  );
+  const nodos = gruposNodos.length ? staadWrapGroups(gruposNodos, 79, "; ", ";").trimEnd() : "";
+
+  // ELEMENT INCIDENCES SHELL: mismo orden/numeración de renumerarElementosMalla
+  // (dados contiguos primero, después losa, de abajo hacia arriba). Los nodos
+  // de cada placa se identifican por referencia contra "puntos" (misma
+  // numeración 1..n usada arriba en JOINT COORDINATES).
+  const nodeIdMap = new Map();
+  puntos.forEach((pt, idx) => nodeIdMap.set(pt, idx+1));
+  const elementosNumerados = lastMallaMesh ? renumerarElementosMalla(lastMallaMesh.elements) : [];
+  const gruposElementos = elementosNumerados.map(e => {
+    const polyOrientado = orientarNormalArribaStaad(e.poly);
+    return `${e.id} ${polyOrientado.map(pt => nodeIdMap.get(pt)).join(" ")}`;
+  });
+  const incidenciasHeader = [
+    `*//////////////////////////////////////////////////////////////`,
+    `ELEMENT INCIDENCES SHELL`,
+    `*//////////////////////////////////////////////////////////////`
+  ].join("\n");
+  const elementos = gruposElementos.length
+    ? [incidenciasHeader, staadWrapGroups(gruposElementos, 79, "; ", ";").trimEnd()].join("\n")
+    : "";
+
+  // START GROUP DEFINITION: un grupo JOINT por dado, con los nodos de su
+  // perímetro (no toda su malla interior) — comprimidos en rangos "A TO B"
+  // donde son consecutivos.
+  const ringsByName = (lastMallaMesh && lastMallaMesh.pedestalRingsByName) ? lastMallaMesh.pedestalRingsByName : {};
+  // "P1" antes que "P1A"/"P1B": por longitud de nombre y, a igual longitud,
+  // alfabético (P1A antes que P1B).
+  const nombresDado = Object.keys(ringsByName).sort((a,b)=> a.length - b.length || a.localeCompare(b));
+  const gruposJoint = nombresDado.map(nombre =>
+    `_${nombre} ${comprimirRangosStaad(ringsByName[nombre]).join(" ")}`
+  );
+  const grupos = gruposJoint.length
+    ? [
+        `*//////////////////////////////////////////////////////////////`,
+        `START GROUP DEFINITION`,
+        `*//////////////////////////////////////////////////////////////`,
+        `JOINT`,
+        ...gruposJoint,
+        `END GROUP DEFINITION`
+      ].join("\n")
+    : "";
+
+  const totalShell = lastMallaMesh ? lastMallaMesh.elements.length : 0;
+
+  // PROPIEDADES: espesor de todas las placas = peralte de la zapata (Pz),
+  // ya en metros (mismas unidades del modelo, UNIT METER KG).
+  const propiedades = totalShell ? [
+    `*//////////////////////////////////////////////////////////////`,
+    `***** PROPIEDADES *****`,
+    `*//////////////////////////////////////////////////////////////`,
+    `ELEMENT PROPERTY`,
+    `1 TO ${totalShell} THICKNESS ${fmtStaadNum(state.geom.PZ)}`
+  ].join("\n") : "";
+
+  // MATERIALES: Ec, G y f'c se muestran en kg/cm² en la sección 4.6, pero acá
+  // el modelo está en kg-m (UNIT METER KG) — 1 kg/cm² = 10000 kg/m².
+  const KGCM2_A_KGM2 = 1e4;
+  const pc = getPropsConcreto();
+  const materiales = [
+    `*//////////////////////////////////////////////////////////////`,
+    `***** MATERIALES *****`,
+    `*//////////////////////////////////////////////////////////////`,
+    `DEFINE MATERIAL START`,
+    `ISOTROPIC CONCRETE`,
+    `E ${fmtStaadNum(pc.Ec*KGCM2_A_KGM2)}`,
+    `POISSON ${fmtStaadNum(pc.v)}`,
+    `DENSITY 2400`,
+    `ALPHA 5.5e-06`,
+    `DAMP 0.05`,
+    `G ${fmtStaadNum(pc.G*KGCM2_A_KGM2)}`,
+    `TYPE CONCRETE`,
+    `STRENGTH FCU ${fmtStaadNum(state.materiales.fc*KGCM2_A_KGM2)}`,
+    `END DEFINE MATERIAL`
+  ].join("\n");
+
+  const constantes = [
+    `*//////////////////////////////////////////////////////////////`,
+    `***** CONSTANTES *****`,
+    `*//////////////////////////////////////////////////////////////`,
+    `CONSTANTS`,
+    `MATERIAL CONCRETE ALL`
+  ].join("\n");
+
+  // APOYOS: resorte de suelo con el coeficiente de balasto ya normalizado a
+  // kg/m³ (sección 4.5), sin importar el método (Desplazamientos/Mecánica
+  // de suelos) que haya elegido el usuario.
+  const apoyos = totalShell ? [
+    `*//////////////////////////////////////////////////////////////`,
+    `***** APOYOS *****`,
+    `*//////////////////////////////////////////////////////////////`,
+    `SUPPORTS`,
+    `1 TO ${totalShell} PLATE MAT DIRECT Y SUBGRADE ${fmtStaadNum(getKBalastoKgm3())} PRINT COMPRESSION`
+  ].join("\n") : "";
+
+  // ESTADOS DE CARGA: LOAD 2 (Relleno) reparte el peso de relleno/ciclópeo/
+  // adicional (ya calculados en Tn en 4.- Diseño Geotécnico) como presión
+  // uniforme en kg/m² sobre toda la losa.
+  const geoW = (lastGeoData && lastGeoData.geo && lastGeoData.geo.supported) ? lastGeoData.geo : null;
+  const areaZapata = (lastGeoData && lastGeoData.props) ? lastGeoData.props.area : 0;
+  let presionRelleno = 0;
+  if(geoW && areaZapata > 0){
+    const pesoTn = (geoW.Wrelleno||0) + (geoW.Wciclopeo||0) + (geoW.Wadicional||0);
+    presionRelleno = (pesoTn*1000) / areaZapata;
+  }
+  const cargas = totalShell ? [
+    `*//////////////////////////////////////////////////////////////`,
+    `***** ESTADOS DE CARGA *****`,
+    `*//////////////////////////////////////////////////////////////`,
+    `LOAD 1 PP`,
+    `SELFWEIGHT Y -1 LIST ALL`,
+    `*******************************************`,
+    `*//////////////////////////////////////////////////////////////`,
+    `LOAD 2 RELLENO`,
+    `ELEMENT LOAD`,
+    `1 TO ${totalShell} PR GY -${fmtStaadNum(presionRelleno)}`,
+    `*******************************************`
+  ].join("\n") : "";
+
+  // LOAD 3..8: reacción Fy de cada combo de viento, repartida en partes
+  // iguales entre los nodos del perímetro de cada dado (JOINT LOAD sobre el
+  // grupo aplica el mismo valor a TODOS sus nodos, así que hay que dividir
+  // el total entre "# nodos" para no multiplicar la carga real por N). El
+  // signo se invierte porque Fy>=0 en la tabla de Reacciones es compresión
+  // (empuje hacia abajo = -Y global en Staad), igual convención que ya usa
+  // la vista 3D y computeGeotecnico.
+  //
+  // La posición física (P1/P1a/P1b) de cada reacción (1/1a/1b) usa el mismo
+  // mapeo cruzado YA VERIFICADO en computeGeotecnico (LEG_POSITION_MAP) —
+  // es un dato real de cálculo, no la vista 3D (que el usuario pidió dejar
+  // en mapeo directo solo para esa visualización).
+  const POSICION_A_SUFIJO_RESULTADO = { "P1b":"1a", "P1a":"1b", "P1":"1" };
+  function reaccionFyPorPosicion(comboTexto, posicion){
+    const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
+    const reacciones = getCurrentReacciones();
+    if(!cfgTorre || !reacciones) return null;
+    const idx = matchComboIndex(comboTexto, cfgTorre.combos);
+    if(idx < 0 || !reacciones[idx]) return null;
+    const row = reacciones[idx][POSICION_A_SUFIJO_RESULTADO[posicion]];
+    return row ? row.fy : null;
+  }
+  function bloqueJointLoadFy(numLoad, nombreLoad, comboTexto){
+    const lineas = nombresDado.map(nombre=>{
+      const fy = reaccionFyPorPosicion(comboTexto, nombre);
+      const nNodos = (ringsByName[nombre]||[]).length;
+      if(fy==null || !nNodos) return null;
+      const fyKg = fy*1000; // la tabla de Reacciones está en Tn; el modelo en kg
+      return `_${nombre} FY ${fmtStaadNum(-fyKg/nNodos)}`;
+    }).filter(Boolean);
+    if(!lineas.length) return "";
+    return [
+      `*//////////////////////////////////////////////////////////////`,
+      `LOAD ${numLoad} ${nombreLoad}`,
+      `JOINT LOAD`,
+      ...lineas,
+      `*******************************************`
+    ].join("\n");
+  }
+
+  const load3 = bloqueJointLoadFy(3, "1.2D + 1.0W 90", "1.2D + 1.0W 90°");
+  const load4 = bloqueJointLoadFy(4, "1.2D + 1.0W 60", "1.2D + 1.0W 60°");
+  const load5 = bloqueJointLoadFy(5, "1.2D + 1.0W Normal", "1.2D + 1.0W Normal");
+  const load6 = bloqueJointLoadFy(6, "1.0D + 1.0W 90", "1.0D + 1.0W Service 90°");
+  const load7 = bloqueJointLoadFy(7, "1.0D + 1.0W 60", "1.0D + 1.0W Service 60°");
+  const load8 = bloqueJointLoadFy(8, "1.0D + 1.0W Normal", "1.0D + 1.0W Service Normal");
+
+  // LOAD 9..14: combinaciones (REPEAT LOAD) — literal, solo combinan los
+  // casos anteriores por número, no requieren datos adicionales.
+  const combinaciones = totalShell ? [
+    `***** COMBINACIONES ESTRUCTURALES *****`,
+    `*******************************************`,
+    `*//////////////////////////////////////////////////////////////`,
+    `LOAD 9 VIENTO A 90 + RELLENO`,
+    `REPEAT LOAD`,
+    `1 1.2 2 1.2 3 1.0`,
+    `*******************************************`,
+    `*//////////////////////////////////////////////////////////////`,
+    `LOAD 10 VIENTO A 60 + RELLENO`,
+    `REPEAT LOAD`,
+    `1 1.2 2 1.2 4 1.0`,
+    `*******************************************`,
+    `*//////////////////////////////////////////////////////////////`,
+    `LOAD 11 VIENTO A NORMAL + RELLENO`,
+    `REPEAT LOAD`,
+    `1 1.2 2 1.2 5 1.0`,
+    `*******************************************`,
+    `***** COMBINACIONES DESPLAZAMIENTOS *****`,
+    `*******************************************`,
+    `*//////////////////////////////////////////////////////////////`,
+    `LOAD 12 VIENTO SERVICIO A 90 + RELLENO`,
+    `REPEAT LOAD`,
+    `1 1.0 2 1.0 6 1.0`,
+    `*******************************************`,
+    `*//////////////////////////////////////////////////////////////`,
+    `LOAD 13 VIENTO SERVICIO A 60 + RELLENO`,
+    `REPEAT LOAD`,
+    `1 1.0 2 1.0 7 1.0`,
+    `*******************************************`,
+    `*//////////////////////////////////////////////////////////////`,
+    `LOAD 14 VIENTO SERVICIO NORMAL + RELLENO`,
+    `REPEAT LOAD`,
+    `1 1.0 2 1.0 8 1.0`,
+    `*//////////////////////////////////////////////////////////////`,
+    `PERFORM ANALYSIS PRINT ALL`,
+    `FINISH`
+  ].join("\n") : "";
+
+  return aplicarAnchoStaad79([header, nodos, elementos, grupos, propiedades, materiales, constantes, apoyos, cargas, load3, load4, load5, load6, load7, load8, combinaciones].filter(Boolean).join("\n")).toUpperCase();
+}
+
 function renderCapacidadPortante(cap, props, outerC, holeC){
   const wrap = document.getElementById("geoNavierDiagramas");
   const tbody = document.querySelector("#tblCapacidadEficiencia tbody");
@@ -4873,46 +5607,22 @@ function renderCapacidadPortante(cap, props, outerC, holeC){
   // línea diagonal aunque el eje real del gradiente sea vertical. Al
   // proyectar sobre el eje y reconstruir el punto EN el eje, el segmento
   // queda siempre perfectamente alineado con la dirección real.
+  const navierCtx = { cap, props, outerC, holeC, xmin, xmax, ymin, ymax, w, h, r, fontSize, polyPts, holePts };
+  lastNavierCtx = navierCtx;
+
   wrap.innerHTML = cap.rows.map((row,i)=>{
-    let gx = row.MzTotal/props.Iy, gy = row.MxTotal/props.Ix;
-    const glen = Math.hypot(gx,gy);
-    let pMin = {x:0,y:0}, pMax = {x:0,y:0};
-    if(glen > 1e-9){
-      gx/=glen; gy/=glen;
-      let minProj=Infinity, maxProj=-Infinity;
-      outerC.forEach(p=>{
-        const proj = p.x*gx + p.y*gy;
-        if(proj<minProj) minProj=proj;
-        if(proj>maxProj) maxProj=proj;
-      });
-      pMin = {x:minProj*gx, y:minProj*gy};
-      pMax = {x:maxProj*gx, y:maxProj*gy};
-    }
-    const gradId = `navierGrad${i}`;
-    const verts = outerC.map((p,vi)=>
-      `<circle cx="${p.x}" cy="${-p.y}" r="${r*0.55}" fill="var(--accent)"/>` +
-      `<text x="${p.x}" y="${-p.y - r*1.1}" font-size="${fontSize}" text-anchor="middle" fill="var(--text)" stroke="none">${fmt(row.stresses[vi],2)}</text>`
-    ).join("");
+    const inner = navierSvgInner(row, `navierGrad${i}`, `navierCursor${i}`, navierCtx);
     return `<div class="navier-card">
+      <button type="button" class="btn subtle icon-only navier-expand-btn" data-row-index="${i}" title="Ampliar" aria-label="Ampliar">⤢</button>
       <div class="navier-title">${row.combo}</div>
-      <svg id="navierSvg${i}" viewBox="${xmin} ${-ymax} ${w} ${h}">
-        <defs>
-          <linearGradient id="${gradId}" gradientUnits="userSpaceOnUse" x1="${pMin.x}" y1="${-pMin.y}" x2="${pMax.x}" y2="${-pMax.y}">
-            <stop offset="0%" stop-color="#00008f"/>
-            <stop offset="25%" stop-color="#00ffff"/>
-            <stop offset="50%" stop-color="#00ff00"/>
-            <stop offset="75%" stop-color="#ffff00"/>
-            <stop offset="100%" stop-color="#ff0000"/>
-          </linearGradient>
-        </defs>
-        <polygon points="${polyPts}" fill="url(#${gradId})" stroke="var(--accent)" stroke-width="${Math.max(w,h)/250}"/>
-        ${holePts ? `<polygon points="${holePts}" fill="var(--input-bg)" stroke="#c0392b" stroke-width="${Math.max(w,h)/250}" stroke-dasharray="${Math.max(w,h)/120},${Math.max(w,h)/120}"/>` : ""}
-        ${verts}
-        <circle id="navierCursor${i}" r="${r*0.7}" fill="none" stroke="var(--danger-fg)" stroke-width="${Math.max(w,h)/250}" class="hidden"/>
-      </svg>
+      <svg id="navierSvg${i}" viewBox="${xmin} ${-ymax} ${w} ${h}">${inner}</svg>
       <div class="navier-readout" id="navierReadout${i}">τ al pasar el cursor: —</div>
     </div>`;
   }).join("");
+
+  wrap.querySelectorAll(".navier-expand-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=> openNavierModal(parseInt(btn.dataset.rowIndex, 10)));
+  });
 
   cap.rows.forEach((row,i)=>{
     const svg = document.getElementById(`navierSvg${i}`);
@@ -5028,6 +5738,32 @@ function renderAll(){
   setValueIfNotFocused("g_FS", state.geom.FS);
   setValueIfNotFocused("g_mallaTamElem", state.geom.mallaTamElem);
   document.getElementById("g_mallaTamElemUnit").textContent = `${state.geom.mallaTamElem} cm`;
+  setValueIfNotFocused("g_metodoBalasto", state.geom.metodoBalasto);
+  setValueIfNotFocused("g_asentamiento", state.geom.asentamiento);
+  setValueIfNotFocused("g_moduloK", state.geom.moduloK);
+  setValueIfNotFocused("g_moduloKUnidad", state.geom.moduloKUnidad);
+  // Solo se muestra el bloque del método elegido — nada hasta que el
+  // usuario seleccione una de las dos opciones.
+  document.getElementById("balastoDesplazamientos").classList.toggle("hidden", state.geom.metodoBalasto !== "desplazamientos");
+  document.getElementById("balastoMecanicaSuelos").classList.toggle("hidden", state.geom.metodoBalasto !== "mecanicaSuelos");
+  const kManualEl = document.getElementById("balastoKManual");
+  kManualEl.innerHTML = "";
+  const asentamiento_m = state.geom.asentamiento / 100;
+  const kManual = asentamiento_m > 0 ? state.geom.QADM / asentamiento_m : NaN;
+  propRow(kManualEl, "K manual", fmt(kManual, 2), "Tn/m³");
+  propRow(kManualEl, "K (interno)", fmt(getKBalastoKgm3(), 2), "kg/m³");
+  const kInternoEl = document.getElementById("balastoKInterno");
+  kInternoEl.innerHTML = "";
+  propRow(kInternoEl, "K (interno)", fmt(getKBalastoKgm3(), 2), "kg/m³");
+  const propsConcretoEl = document.getElementById("propsConcreto");
+  propsConcretoEl.innerHTML = "";
+  const pc = getPropsConcreto();
+  propRow(propsConcretoEl, "Módulo de Elasticidad del Concreto Ec", fmt(pc.Ec, 4), "Kg/cm²",
+    `E<sub>c</sub> = 15100&middot;${sqrtHtml("f'c")}`);
+  propRow(propsConcretoEl, "Relación de Poisson v", fmt(pc.v, 2), "",
+    `v = ${fracHtml("E<sub>c</sub>", "2G")} &minus; 1`);
+  propRow(propsConcretoEl, "Módulo de Corte G", fmt(pc.G, 5), "Kg/cm²",
+    `G = 0.4&middot;E<sub>c</sub>`);
   setValueIfNotFocused("ang_P1", state.angles.P1);
   setValueIfNotFocused("ang_P1a", state.angles.P1a);
   setValueIfNotFocused("ang_P1b", state.angles.P1b);
@@ -5065,6 +5801,7 @@ function renderAll(){
   const mallaCellSizeM = (state.geom.mallaTamElem||20)/100;
   const mallaHoleC = state.holeEnabled ? holeC : null;
   const mallaMesh = generateMallaFEM(outerC, mallaHoleC, dados, mallaCellSizeM);
+  lastMallaMesh = mallaMesh;
   renderMallaFEM(mallaMesh, outerC, mallaHoleC);
 
   saveToStorage();
@@ -5182,14 +5919,24 @@ function initCalcSideNav(){
   const nav = document.getElementById("calcSideNav");
   const main = document.querySelector(".calc-main");
   if(!nav || !main) return;
-  const sections = Array.from(main.querySelectorAll("section.card")).filter(sec=>!sec.classList.contains("hidden"));
-  nav.innerHTML = sections.map(sec=>{
-    const headSpan = sec.querySelector(".head span");
-    const label = headSpan ? headSpan.textContent : sec.id;
+  // ".calc-group-title" (ej. "4.- DISEÑO GEOTÉCNICO") agrupa varias tarjetas
+  // sin ser una tarjeta en sí — se incluye en el nav igual que las section.card,
+  // en el mismo orden en que aparecen en el documento (una sola consulta con
+  // selector combinado, no dos consultas separadas, para no perder el orden).
+  const items = Array.from(main.querySelectorAll("section.card, .calc-group-title"))
+    .filter(el=>!el.classList.contains("hidden"));
+  nav.innerHTML = items.map(el=>{
+    if(el.classList.contains("calc-group-title")){
+      // Mismo estilo que el resto de los ítems (1.-, 2.-, 3.-) — sin
+      // tratamiento visual aparte, solo ubicado en su posición real.
+      return `<a href="#${el.id}" data-target="${el.id}">${el.textContent.trim()}</a>`;
+    }
+    const headSpan = el.querySelector(".head span");
+    const label = headSpan ? headSpan.textContent : el.id;
     // Numeración tipo "3.1.- ..." indica una subsección de "3.- ..." —
     // se indenta levemente en el nav para reflejar esa jerarquía.
     const isSub = /^\d+\.\d+\./.test(label.trim());
-    return `<a href="#${sec.id}" data-target="${sec.id}"${isSub ? ' class="sub"' : ""}>${label}</a>`;
+    return `<a href="#${el.id}" data-target="${el.id}"${isSub ? ' class="sub"' : ""}>${label}</a>`;
   }).join("");
 
   const links = Array.from(nav.querySelectorAll("a"));
@@ -5209,7 +5956,7 @@ function initCalcSideNav(){
       if(link) link.classList.add("active");
     });
   }, {rootMargin: "-90px 0px -70% 0px", threshold: 0});
-  sections.forEach(sec=>observer.observe(sec));
+  items.forEach(el=>observer.observe(el));
 }
 
 /* ============================================================
@@ -5617,6 +6364,35 @@ function initBindings(){
     if(e.target.id === "areaEfectivaModalOverlay") closeAreaEfectivaModal();
   });
 
+  document.getElementById("btnCerrarNavierModal").addEventListener("click", closeNavierModal);
+  document.getElementById("navierModalOverlay").addEventListener("click", (e)=>{
+    if(e.target.id === "navierModalOverlay") closeNavierModal();
+  });
+  document.getElementById("navierModalSvg").addEventListener("mousemove", (e)=>{
+    if(!lastNavierCtx || currentNavierModalIndex == null) return;
+    const ctx = lastNavierCtx;
+    const row = ctx.cap.rows[currentNavierModalIndex];
+    const svg = e.currentTarget;
+    const cursor = document.getElementById("navierModalCursor");
+    const readout = document.getElementById("navierModalReadout");
+    const p = svgEventToPlan(svg, e);
+    const dentro = pointInPolygon(p, ctx.outerC) && !(ctx.holeC && ctx.holeC.length>=3 && pointInPolygon(p, ctx.holeC));
+    if(!dentro){
+      cursor.classList.add("hidden");
+      readout.textContent = "τ al pasar el cursor: —";
+      return;
+    }
+    const tau = row.RFYTotal/ctx.props.area + row.MxTotal*p.y/ctx.props.Ix + row.MzTotal*p.x/ctx.props.Iy;
+    cursor.setAttribute("cx", p.x);
+    cursor.setAttribute("cy", -p.y);
+    cursor.classList.remove("hidden");
+    readout.textContent = `τ en (${fmt(p.x,2)}, ${fmt(p.y,2)}): ${fmt(tau,2)} Tn/m²`;
+  });
+  document.getElementById("navierModalSvg").addEventListener("mouseleave", ()=>{
+    document.getElementById("navierModalCursor").classList.add("hidden");
+    document.getElementById("navierModalReadout").textContent = "τ al pasar el cursor: —";
+  });
+
   document.getElementById("btnImportReaccionesPdf").addEventListener("click", ()=>{
     document.getElementById("filePdfReacciones").click();
   });
@@ -5684,6 +6460,17 @@ function initBindings(){
     }
   });
 
+  document.getElementById("btnExportStaad").addEventListener("click", (e)=>{
+    e.preventDefault();
+    const texto = generarStaadModel().replace(/\n/g, "\r\n");
+    const blob = new Blob([texto], {type:"text/plain"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const nombre = (state.proyecto.assetNum || "modelo").trim() || "modelo";
+    a.href = url; a.download = `${nombre}.std`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
   document.getElementById("btnDownloadLsp").addEventListener("click", (e)=>{
     e.preventDefault();
     const blob = new Blob([SHAPEPTS_LSP], {type:"text/plain"});
@@ -5696,6 +6483,14 @@ function initBindings(){
   document.getElementById("chkHole").addEventListener("change", (e)=>{
     state.holeEnabled = e.target.checked;
     renderAll();
+  });
+  document.getElementById("chkMallaNumeros").addEventListener("change", (e)=>{
+    mostrarNumerosMalla = e.target.checked;
+    renderMallaFEM(lastMallaMesh, lastPlanArgs ? lastPlanArgs.outerC : null, state.holeEnabled && lastPlanArgs ? lastPlanArgs.holeC : null);
+  });
+  document.getElementById("chkMallaNodos").addEventListener("change", (e)=>{
+    mostrarNodosMalla = e.target.checked;
+    renderMallaFEM(lastMallaMesh, lastPlanArgs ? lastPlanArgs.outerC : null, state.holeEnabled && lastPlanArgs ? lastPlanArgs.holeC : null);
   });
   document.getElementById("tipoEstructura").addEventListener("change", (e)=>{
     state.tipoEstructura = e.target.value;
@@ -5726,6 +6521,10 @@ function initBindings(){
     state.materiales.existeCiclopeo = e.target.value;
     renderAll();
   });
+  document.getElementById("g_metodoBalasto").addEventListener("change", (e)=>{
+    state.geom.metodoBalasto = e.target.value;
+    renderAll();
+  });
 
   document.getElementById("btnZoomIn").addEventListener("click", ()=> setPlanZoom(planZoom*1.25));
   document.getElementById("btnZoomOut").addEventListener("click", ()=> setPlanZoom(planZoom/1.25));
@@ -5745,6 +6544,12 @@ function initBindings(){
   bindGeomInput("g_QADM","geom","QADM");
   bindGeomInput("g_FS","geom","FS");
   bindGeomInput("g_mallaTamElem","geom","mallaTamElem");
+  bindGeomInput("g_asentamiento","geom","asentamiento");
+  bindGeomInput("g_moduloK","geom","moduloK");
+  document.getElementById("g_moduloKUnidad").addEventListener("change", (e)=>{
+    state.geom.moduloKUnidad = e.target.value;
+    renderAll();
+  });
   bindGeomInput("ang_P1","angles","P1");
   bindGeomInput("ang_P1a","angles","P1a");
   bindGeomInput("ang_P1b","angles","P1b");
