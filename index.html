@@ -229,11 +229,25 @@ html{ scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent; }
 .message-bar.success{background:var(--success-bg); color:var(--success-fg); border-color:var(--success-border);}
 .message-bar.info{background:var(--brand-tint); color:var(--accent); border-color:var(--accent-border);}
 
+/* ---------- Subsecciones agrupadas (5.3.x y similares) ---------- */
+.calc-subsection{
+  border:1px solid var(--border); border-radius:var(--radius-md);
+  padding:16px 18px; margin-bottom:16px; background:var(--panel-2);
+}
+.calc-subsection:last-child{margin-bottom:0;}
+.calc-subsection-title{
+  font-weight:700; color:var(--accent); font-size:13px;
+  margin:0 0 14px; padding-bottom:8px; border-bottom:1px solid var(--border);
+}
+.calc-subsection .message-bar{margin-top:12px; margin-bottom:0;}
+
 /* ---------- Tables ---------- */
 table{border-collapse:collapse; width:100%; font-size:13px;}
 #tblReacciones{table-layout:fixed;}
 #tblReacciones td{padding:3px 5px;}
 #tblReacciones input[inputmode="decimal"]{padding:4px 3px; text-align:center;}
+#tblElementosMecanicos td{padding:3px 5px;}
+#tblElementosMecanicos input{padding:3px; text-align:center;}
 th,td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:center; white-space:nowrap;}
 th{
   color:var(--accent); font-weight:700; text-align:center; font-size:11px; text-transform:uppercase;
@@ -401,6 +415,10 @@ label.field .unit{color:var(--subtle); width:30px; font-size:12px;}
 #propsConcreto .prop{flex-wrap:nowrap; gap:12px;}
 #propsConcreto .prop .k{white-space:nowrap;}
 #propsConcreto .prop .v{white-space:nowrap;}
+/* % Acero / % Momento: forzar cada uno a su propia fila completa, así
+   quedan apilados en ese orden sin importar cuántas columnas quepan. */
+#flexionInfExistComputed .prop:nth-last-child(-n+2),
+#flexionSupExistComputed .prop:nth-last-child(-n+2){ grid-column:1 / -1; }
 
 /* ---------- SVG plan ---------- */
 svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid var(--border); border-radius:var(--radius-md); display:block;}
@@ -641,7 +659,9 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <button type="button" class="tab-btn" data-tab="zapata" role="tab" aria-selected="false">Definición de la zapata</button>
     <button type="button" class="tab-btn" data-tab="reacciones" role="tab" aria-selected="false">Reacciones</button>
     <button type="button" class="tab-btn" data-tab="cimentacion" role="tab" aria-selected="false">Cálculos</button>
-    <button type="button" class="tab-btn" data-tab="motor" role="tab" aria-selected="false">Motor de cálculo</button>
+    <button type="button" class="tab-btn" data-tab="interaccion" role="tab" aria-selected="false">Interacción 3D</button>
+    <button type="button" class="tab-btn" data-tab="acero3d" role="tab" aria-selected="false">Acero 3D</button>
+    <button type="button" class="tab-btn" data-tab="motor" role="tab" aria-selected="false">Motor FEM</button>
   </div>
 
   <div class="tab-panels">
@@ -1189,6 +1209,384 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
       </div>
     </section>
 
+    <div class="calc-group-title" id="grp-diseno">5.- DISEÑO ESTRUCTURAL</div>
+
+    <section class="card" id="sec-diseno-51" aria-labelledby="h-diseno-51">
+      <div class="head"><span id="h-diseno-51">5.1.- Elementos mecánicos de diseño</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido">
+          <p class="small" style="margin:0 0 10px; color:var(--muted);">Resumen de la malla de placas exportada de STAAD (máximos/mínimos por franja) — datos de entrada para el diseño estructural por ACI 318 (flexión, cortante, punzonamiento).</p>
+          <div style="overflow-x:auto;">
+          <table id="tblElementosMecanicos">
+            <thead>
+              <tr>
+                <th rowspan="2" scope="col" style="text-align:left">&nbsp;</th>
+                <th rowspan="2" scope="col">Plate</th>
+                <th rowspan="2" scope="col">L/C</th>
+                <th colspan="2" scope="colgroup">Shear (Local)</th>
+                <th colspan="3" scope="colgroup">Membrane (Local)</th>
+                <th colspan="3" scope="colgroup">Bending Moment (Local)</th>
+              </tr>
+              <tr>
+                <th scope="col">SQX kg/cm²</th>
+                <th scope="col">SQY kg/cm²</th>
+                <th scope="col">SX kg/cm²</th>
+                <th scope="col">SY kg/cm²</th>
+                <th scope="col">SXY kg/cm²</th>
+                <th scope="col">MX MTon-m/m</th>
+                <th scope="col">MY MTon-m/m</th>
+                <th scope="col">MXY MTon-m/m</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-diseno-52" aria-labelledby="h-diseno-52">
+      <div class="head"><span id="h-diseno-52">5.2.- Criterios y parámetros de diseño</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido" style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap;">
+          <div style="flex:0 0 340px;">
+            <label class="field" style="max-width:340px; margin-bottom:12px;">
+              <span class="lbl">Recubrimiento (r)</span>
+              <input type="text" inputmode="decimal" step="any" id="dis_r">
+              <span class="unit">cm</span>
+            </label>
+            <label class="field" style="max-width:340px; margin-bottom:12px;">
+              <span class="lbl">Tipo de dado (αs)</span>
+              <select id="dis_alphaS">
+                <option value="40">Dado central (αs = 40)</option>
+                <option value="30">Dado a borde (αs = 30)</option>
+                <option value="20">Dado en esquina (αs = 20)</option>
+              </select>
+            </label>
+          </div>
+          <div class="props-grid" id="disenoParamsComputed" style="flex:1 1 420px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-diseno-53" aria-labelledby="h-diseno-53">
+      <div class="head"><span id="h-diseno-53">5.3.- Revisión por flexión</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido">
+          <p class="small" style="margin:0 0 16px; color:var(--muted);">Momento de diseño combinado con Wood-Armer (Mx, My y Mxy de la misma fila de la tabla 5.1) — se toma la fila que gobierna, entre las 16, para cada lecho.</p>
+
+          <div class="calc-subsection">
+          <p class="calc-subsection-title">5.3.1.- Revisión a flexión en Lecho Inferior</p>
+          <div class="props-grid" id="flexionInfComputed"></div>
+          <label class="field" style="max-width:340px; margin:10px 0 12px;">
+            <span class="lbl">Varilla propuesta</span>
+            <select id="dis_varInf">
+              <optgroup label="Milimétrico">
+                <option value="⌀6mm">⌀6 mm</option>
+                <option value="⌀8mm">⌀8 mm</option>
+                <option value="⌀10mm">⌀10 mm</option>
+                <option value="⌀12mm">⌀12 mm</option>
+                <option value="⌀16mm">⌀16 mm</option>
+                <option value="⌀18mm">⌀18 mm</option>
+                <option value="⌀20mm">⌀20 mm</option>
+                <option value="⌀22mm">⌀22 mm</option>
+                <option value="⌀25mm">⌀25 mm</option>
+                <option value="⌀28mm">⌀28 mm</option>
+                <option value="⌀32mm">⌀32 mm</option>
+                <option value="⌀36mm">⌀36 mm</option>
+              </optgroup>
+              <optgroup label="Imperial">
+                <option value="#3">#3</option>
+                <option value="#4">#4</option>
+                <option value="#5">#5</option>
+                <option value="#6">#6</option>
+                <option value="#7">#7</option>
+                <option value="#8">#8</option>
+                <option value="#9">#9</option>
+                <option value="#10">#10</option>
+                <option value="#11">#11</option>
+                <option value="#12">#12</option>
+              </optgroup>
+            </select>
+          </label>
+          <div class="props-grid" id="flexionInfBarra"></div>
+          <div id="flexionInfResultado"></div>
+          </div>
+
+          <div class="calc-subsection">
+          <p class="calc-subsection-title">5.3.2.- Comparación con acero existente (Lecho Inferior)</p>
+          <div style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:10px;">
+            <label class="field" style="max-width:220px;">
+              <span class="lbl" style="font-weight:700;">Varilla existente</span>
+              <select id="dis_varInfExist">
+                <optgroup label="Milimétrico">
+                  <option value="⌀6mm">⌀6 mm</option>
+                  <option value="⌀8mm">⌀8 mm</option>
+                  <option value="⌀10mm">⌀10 mm</option>
+                  <option value="⌀12mm">⌀12 mm</option>
+                  <option value="⌀16mm">⌀16 mm</option>
+                  <option value="⌀18mm">⌀18 mm</option>
+                  <option value="⌀20mm">⌀20 mm</option>
+                  <option value="⌀22mm">⌀22 mm</option>
+                  <option value="⌀25mm">⌀25 mm</option>
+                  <option value="⌀28mm">⌀28 mm</option>
+                  <option value="⌀32mm">⌀32 mm</option>
+                  <option value="⌀36mm">⌀36 mm</option>
+                </optgroup>
+                <optgroup label="Imperial">
+                  <option value="#3">#3</option>
+                  <option value="#4">#4</option>
+                  <option value="#5">#5</option>
+                  <option value="#6">#6</option>
+                  <option value="#7">#7</option>
+                  <option value="#8">#8</option>
+                  <option value="#9">#9</option>
+                  <option value="#10">#10</option>
+                  <option value="#11">#11</option>
+                  <option value="#12">#12</option>
+                </optgroup>
+              </select>
+            </label>
+            <label class="field" style="max-width:220px;">
+              <span class="lbl" style="font-weight:700;">Separación existente</span>
+              <input type="text" inputmode="decimal" step="any" id="dis_sepInfExist">
+              <span class="unit">cm</span>
+            </label>
+          </div>
+          <div class="props-grid" id="flexionInfExistComputed"></div>
+          <div id="flexionInfExistResultado"></div>
+          </div>
+
+          <div class="calc-subsection">
+          <p class="calc-subsection-title">5.3.3.- Revisión a flexión en Lecho Superior</p>
+          <div class="props-grid" id="flexionSupComputed"></div>
+          <label class="field" style="max-width:340px; margin:10px 0 12px;">
+            <span class="lbl">Varilla propuesta</span>
+            <select id="dis_varSup">
+              <optgroup label="Milimétrico">
+                <option value="⌀6mm">⌀6 mm</option>
+                <option value="⌀8mm">⌀8 mm</option>
+                <option value="⌀10mm">⌀10 mm</option>
+                <option value="⌀12mm">⌀12 mm</option>
+                <option value="⌀16mm">⌀16 mm</option>
+                <option value="⌀18mm">⌀18 mm</option>
+                <option value="⌀20mm">⌀20 mm</option>
+                <option value="⌀22mm">⌀22 mm</option>
+                <option value="⌀25mm">⌀25 mm</option>
+                <option value="⌀28mm">⌀28 mm</option>
+                <option value="⌀32mm">⌀32 mm</option>
+                <option value="⌀36mm">⌀36 mm</option>
+              </optgroup>
+              <optgroup label="Imperial">
+                <option value="#3">#3</option>
+                <option value="#4">#4</option>
+                <option value="#5">#5</option>
+                <option value="#6">#6</option>
+                <option value="#7">#7</option>
+                <option value="#8">#8</option>
+                <option value="#9">#9</option>
+                <option value="#10">#10</option>
+                <option value="#11">#11</option>
+                <option value="#12">#12</option>
+              </optgroup>
+            </select>
+          </label>
+          <div class="props-grid" id="flexionSupBarra"></div>
+          <div id="flexionSupResultado"></div>
+          </div>
+
+          <div class="calc-subsection">
+          <p class="calc-subsection-title">5.3.4.- Comparación con acero existente (Lecho Superior)</p>
+          <div style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:10px;">
+            <label class="field" style="max-width:220px;">
+              <span class="lbl" style="font-weight:700;">Varilla existente</span>
+              <select id="dis_varSupExist">
+                <optgroup label="Milimétrico">
+                  <option value="⌀6mm">⌀6 mm</option>
+                  <option value="⌀8mm">⌀8 mm</option>
+                  <option value="⌀10mm">⌀10 mm</option>
+                  <option value="⌀12mm">⌀12 mm</option>
+                  <option value="⌀16mm">⌀16 mm</option>
+                  <option value="⌀18mm">⌀18 mm</option>
+                  <option value="⌀20mm">⌀20 mm</option>
+                  <option value="⌀22mm">⌀22 mm</option>
+                  <option value="⌀25mm">⌀25 mm</option>
+                  <option value="⌀28mm">⌀28 mm</option>
+                  <option value="⌀32mm">⌀32 mm</option>
+                  <option value="⌀36mm">⌀36 mm</option>
+                </optgroup>
+                <optgroup label="Imperial">
+                  <option value="#3">#3</option>
+                  <option value="#4">#4</option>
+                  <option value="#5">#5</option>
+                  <option value="#6">#6</option>
+                  <option value="#7">#7</option>
+                  <option value="#8">#8</option>
+                  <option value="#9">#9</option>
+                  <option value="#10">#10</option>
+                  <option value="#11">#11</option>
+                  <option value="#12">#12</option>
+                </optgroup>
+              </select>
+            </label>
+            <label class="field" style="max-width:220px;">
+              <span class="lbl" style="font-weight:700;">Separación existente</span>
+              <input type="text" inputmode="decimal" step="any" id="dis_sepSupExist">
+              <span class="unit">cm</span>
+            </label>
+          </div>
+          <div class="props-grid" id="flexionSupExistComputed"></div>
+          <div id="flexionSupExistResultado"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-diseno-54" aria-labelledby="h-diseno-54">
+      <div class="head"><span id="h-diseno-54">5.4.- Revisión por cortante en una dirección</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido">
+          <div class="calc-subsection">
+          <div class="props-grid" id="cortante1DComputed"></div>
+          <div id="cortante1DResultado"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-diseno-55" aria-labelledby="h-diseno-55">
+      <div class="head"><span id="h-diseno-55">5.5.- Revisión por punzonamiento</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido">
+          <div class="calc-subsection">
+          <div class="props-grid" id="punzonamientoComputed"></div>
+          <div id="punzonamientoResultado"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-diseno-56" aria-labelledby="h-diseno-56">
+      <div class="head"><span id="h-diseno-56">5.6.- Revisión de dados de desplante</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido">
+          <p class="small" style="margin:0 0 16px; color:var(--muted);">Configuración del armado longitudinal y transversal del dado (los datos abajo son los que edita el usuario).</p>
+
+          <div class="calc-subsection">
+          <p class="calc-subsection-title">Armado del dado</p>
+          <div style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:10px; align-items:flex-end;">
+            <label class="field" style="flex:0 0 170px;">
+              <span class="lbl" style="font-weight:700; white-space:nowrap;">Varillas en X</span>
+              <input type="number" step="2" min="0" id="dis_dadoN1">
+              <span class="unit">varillas</span>
+            </label>
+            <label class="field" style="flex:0 0 150px;">
+              <span class="lbl" style="font-weight:700;">Varilla</span>
+              <select id="dis_dadoVar1"></select>
+            </label>
+            <label class="field" style="flex:0 0 170px;">
+              <span class="lbl" style="font-weight:700; white-space:nowrap;">Varillas en Y</span>
+              <input type="number" step="2" min="0" id="dis_dadoN2">
+              <span class="unit">varillas</span>
+            </label>
+            <label class="field" style="flex:0 0 150px;">
+              <span class="lbl" style="font-weight:700;">Varilla</span>
+              <select id="dis_dadoVar2"></select>
+            </label>
+          </div>
+          <div style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:10px; align-items:flex-end;">
+            <label class="field" style="flex:0 0 120px;">
+              <span class="lbl" style="font-weight:700;">Con</span>
+              <input type="text" inputmode="decimal" step="any" id="dis_dadoEstribosRamas">
+              <span class="unit">estribos</span>
+            </label>
+            <label class="field" style="flex:0 0 150px;">
+              <span class="lbl" style="font-weight:700;">Del número</span>
+              <select id="dis_dadoEstriboVar"></select>
+            </label>
+            <label class="field" style="flex:0 0 130px;">
+              <span class="lbl" style="font-weight:700;">Separación</span>
+              <input type="text" inputmode="decimal" step="any" id="dis_dadoEstriboSep">
+              <span class="unit">cm</span>
+            </label>
+            <label class="field" style="flex:0 0 130px;">
+              <span class="lbl" style="font-weight:700;">Recubrimiento</span>
+              <input type="text" inputmode="decimal" step="any" id="dis_dadoRecubrimiento">
+              <span class="unit">cm</span>
+            </label>
+          </div>
+          <div class="props-grid" id="dadoArmadoComputed"></div>
+          <div id="dadoCuantiaResultado"></div>
+          <div style="margin-top:16px; overflow-x:auto;">
+            <svg id="esquemaDadoSvg" style="width:100%; max-width:520px; height:auto; display:block; margin:0 auto;"></svg>
+          </div>
+          </div>
+
+          <div class="calc-subsection">
+          <p class="calc-subsection-title">5.6.1.- Revisión por compresión axial</p>
+          <div class="props-grid" id="dadoCompresionComputed"></div>
+          <div id="dadoCompresionResultado"></div>
+          </div>
+
+          <div class="calc-subsection">
+          <p class="calc-subsection-title">5.6.2.- Revisión por tensión axial</p>
+          <div class="props-grid" id="dadoTensionComputed"></div>
+          <div id="dadoTensionResultado"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-resumen-eficiencias" aria-labelledby="h-resumen-eficiencias">
+      <div class="head"><span id="h-resumen-eficiencias">6.- Resumen de eficiencias</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido">
+          <p class="small" style="margin:0 0 12px; color:var(--muted);">Todas las revisiones de la hoja, con su eficiencia (demanda/capacidad) y estado — la fila con mayor eficiencia es la que gobierna el diseño.</p>
+          <div style="overflow-x:auto;">
+          <table id="tblResumenEficiencias">
+            <thead>
+              <tr>
+                <th scope="col" style="text-align:left">Revisión</th>
+                <th scope="col">Sección</th>
+                <th scope="col">Eficiencia</th>
+                <th scope="col">Estado</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <div id="brazoModalOverlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="brazoModalTitle">
       <div id="brazoModalBox">
         <div class="head">
@@ -1242,11 +1640,106 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     </section>
       </div>
     </div>
+    </div>
+
+    <div class="tab-panel" data-tab="interaccion">
+    <section class="card" id="sec-interaccion" aria-labelledby="h-interaccion">
+      <div class="head"><span id="h-interaccion">Diagrama de interacción P-M-M del dado</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido">
+          <p class="small" style="margin:0 0 14px; color:var(--muted);">Superficie de interacción biaxial del dado (ACI 318-19, Cap. 22), con los puntos de demanda (Pu, Mux, Muy) de cada combinación estructural en las 3 patas. Unidades Tn y Tn-m, consistentes con el resto de la app.</p>
+          <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start;">
+            <div style="flex:1 1 560px; min-width:320px;">
+              <div style="position:relative;">
+                <div id="interaccionPlot" style="width:100%; height:560px; min-height:400px;"></div>
+                <div id="interaccionResumen" style="position:absolute; top:8px; right:8px; z-index:5; padding:6px 10px; border-radius:var(--radius-md); font-weight:700; font-size:13px;"></div>
+              </div>
+              <div class="row-actions" style="margin-top:10px; flex-wrap:wrap;">
+                <button class="btn subtle" id="btnVistaIso" type="button">Isométrica</button>
+                <button class="btn subtle" id="btnVistaPMx" type="button">P vs Mx</button>
+                <button class="btn subtle" id="btnVistaPMy" type="button">P vs My</button>
+                <button class="btn subtle" id="btnVistaMxMy" type="button">Mx vs My</button>
+                <button class="btn subtle" id="btnExportPngPMM" type="button">Exportar PNG</button>
+                <button class="btn subtle" id="btnExportCsvPMM" type="button">Exportar CSV</button>
+              </div>
+            </div>
+            <div style="flex:0 0 230px;">
+              <label class="field" style="margin-bottom:10px;"><span class="lbl">Superficie resistente</span><input type="checkbox" id="chkSupResistente" checked></label>
+              <label class="field" style="margin-bottom:10px;"><span class="lbl">Superficie nominal</span><input type="checkbox" id="chkSupNominal" checked></label>
+              <label class="field" style="margin-bottom:10px;"><span class="lbl">Puntos de demanda</span><input type="checkbox" id="chkPuntosDemanda" checked></label>
+              <label class="field" style="margin-bottom:10px;"><span class="lbl">Líneas al origen</span><input type="checkbox" id="chkLineasOrigen"></label>
+              <label class="field" style="max-width:200px; margin-bottom:10px;">
+                <span class="lbl">Opacidad superficies</span>
+                <input type="range" min="5" max="60" step="5" id="sliderOpacidad">
+              </label>
+              <label class="field" style="max-width:200px; margin-bottom:10px;">
+                <span class="lbl">Pata</span>
+                <select id="selPataPMM">
+                  <option value="todas">Todas</option>
+                  <option value="P1">P1</option>
+                  <option value="P1a">P1a</option>
+                  <option value="P1b">P1b</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    </div>
+
+    <div class="tab-panel" data-tab="acero3d">
+    <section class="card" id="sec-acero3d" aria-labelledby="h-acero3d">
+      <div class="head"><span id="h-acero3d">6.- Armadura — vista 3D del acero de refuerzo</span></div>
+      <div class="body">
+        <div class="geoNoSoportado message-bar warning hidden" role="status">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
+        </div>
+        <div class="geoContenido">
+          <p class="small" style="margin:0 0 12px; color:var(--muted);">Acero de refuerzo de la losa (lechos inferior/superior) y de los 3 dados (longitudinal + estribos), con longitudes de desarrollo y ganchos según ACI 318-19 — a partir del armado ya definido en 5.3 y 5.6.</p>
+          <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start;">
+            <div style="flex:1 1 560px; min-width:320px; position:relative; width:100%; max-width:100%;">
+              <div style="position:relative; width:100%; height:620px; background:var(--canvas); border-radius:var(--radius-lg); overflow:hidden; border:1px solid var(--border);">
+                <canvas id="canvasAcero3d" style="width:100%; height:100%; display:block;"></canvas>
+                <div id="acero3dNoWebgl" class="hidden message-bar error" role="alert" style="position:absolute; inset:12px; margin:0;">
+                  <span>Tu navegador no soporta WebGL — no se puede mostrar esta vista.</span>
+                </div>
+                <div id="acero3dLeyenda" style="position:absolute; bottom:12px; left:12px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 12px; font-size:11.5px; z-index:5; max-width:320px;"></div>
+              </div>
+              <div class="row-actions" style="margin-top:10px; flex-wrap:wrap;">
+                <button class="btn subtle" id="btnAceroVistaIso" type="button">Isométrica</button>
+                <button class="btn subtle" id="btnAceroVistaPlanta" type="button">Planta</button>
+                <button class="btn subtle" id="btnAceroVistaAlzadoX" type="button">Alzado X</button>
+                <button class="btn subtle" id="btnAceroVistaAlzadoZ" type="button">Alzado Z</button>
+                <button class="btn subtle" id="btnAceroExportPng" type="button">Exportar PNG</button>
+              </div>
+            </div>
+            <div style="flex:0 0 220px;">
+              <label class="field" style="margin-bottom:8px;"><span class="lbl">Lecho inferior zapata</span><input type="checkbox" id="chkAceroLechoInf" checked></label>
+              <label class="field" style="margin-bottom:8px;"><span class="lbl">Lecho superior zapata</span><input type="checkbox" id="chkAceroLechoSup" checked></label>
+              <label class="field" style="margin-bottom:8px;"><span class="lbl">Longitudinal dado</span><input type="checkbox" id="chkAceroLongDado" checked></label>
+              <label class="field" style="margin-bottom:8px;"><span class="lbl">Estribos dado</span><input type="checkbox" id="chkAceroEstribo" checked></label>
+              <label class="field" style="margin-bottom:8px;"><span class="lbl">Concreto (fantasma)</span><input type="checkbox" id="chkAceroConcreto" checked></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    </div>
 
     <div class="tab-panel" data-tab="motor">
     <section class="card" id="sec-docs" aria-labelledby="h-docs">
-      <div class="head"><span id="h-docs">Motor de cálculo — referencias normativas</span></div>
+      <div class="head"><span id="h-docs">Motor FEM — referencias normativas</span></div>
       <div class="body">
+        <div class="message-bar info" role="status" style="margin-bottom:16px;">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span><b>Sección en desarrollo.</b> El objetivo del Motor FEM es correr el análisis por elementos finitos de la cimentación directamente dentro de la app, usando la malla "Urdimbre Mesh" ya generada (sección 4.4), para dejar de depender de exportar el modelo a STAAD.Pro y analizarlo por fuera.</span>
+        </div>
         <div class="doc-block">
           <h3>Propiedades de sección del polígono</h3>
           <p>Área, centroide, momentos de inercia (Ix, Iy, Ixy), ejes principales, módulos resistentes elásticos y propiedades plásticas (Zx, Zy) se calculan mediante el <b>método de Green / shoelace generalizado</b> sobre los vértices del polígono, con soporte para huecos por sustracción de área. Es el mismo algoritmo usado en <code>Shapebuilder</code> (herramienta propia del usuario) — portado a JavaScript y verificado numéricamente contra los valores ya validados en la hoja de cálculo original (área, Ix/Iy, Zx/Zy del polígono de ejemplo). Solo se muestran en pantalla los valores de uso habitual (Depth, Width, Área, Xc, Yc, Ix, Iy); el resto (Ixy, módulos resistentes, propiedades principales/plásticas) queda calculado internamente para las fases siguientes.</p>
@@ -2367,6 +2860,8 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
 
 </script>
 
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
 <script>
 (function(){
 "use strict";
@@ -2688,12 +3183,28 @@ function flagSvgMarkup(country){
     `<g clip-path="url(#flagClip)">${inner}</g></svg>`;
 }
 
+// 5.1.- Elementos mecánicos de diseño: resumen Max/Min de la malla de placas
+// exportada de STAAD, una fila fija por cada extremo (igual estructura que
+// la tabla "Resumen Malla (Max-Min)" que ya usa el usuario para ACI 318).
+const ELEM_MEC_ROWS = [
+  "Max Qx","Min Qx","Max Qy","Min Qy",
+  "Max Sx","Min Sx","Max Sy","Min Sy","Max Sxy","Min Sxy",
+  "Max Mx","Min Mx","Max My","Min My","Max Mxy","Min Mxy"
+];
+function defaultElementosMecanicos(){
+  return ELEM_MEC_ROWS.map(label => ({
+    label, plate:"", lc:"",
+    sqx:0, sqy:0, sx:0, sy:0, sxy:0, mx:0, my:0, mxy:0
+  }));
+}
+
 function defaultState(){
   return {
     tipoEstructura: "Autosoportada 3P",
     outer: [],
     holeEnabled: false,
     hole: [],
+    elementosMecanicos: defaultElementosMecanicos(),
     geom: { PZ:0.65, Pd:3, Lo:4, AD:0.6, LD:0.6, HD:0.25, CX:0, CY:0, QADM:8, FS:3, mallaTamElem:50, metodoBalasto:"", asentamiento:0, moduloK:0, moduloKUnidad:"kg/cm3" },
     angles: { P1:45, P1a:-30, P1b:30 },
     reaccionesPorTipo: {
@@ -2701,7 +3212,9 @@ function defaultState(){
       "Autosoportada 4P": defaultReacciones("Autosoportada 4P")
     },
     proyecto: { assetNum:"", assetName:"", engineer:"", date:"", country:"Colombia", request:"" },
-    materiales: { fc:210, gc:2400, gr:1600, fy:4200, existeCiclopeo:"No", espesorCiclopeo:1.00, gcc:2200, pesoAdicional:0 }
+    materiales: { fc:210, gc:2400, gr:1600, fy:4200, existeCiclopeo:"No", espesorCiclopeo:1.00, gcc:2200, pesoAdicional:0 },
+    diseno: { r:7.5, phiFlexion:0.9, phiCortante:0.75, alphaS:40, varInf:"#5", varSup:"#5", varInfExist:"#5", sepInfExist:15, varSupExist:"#5", sepSupExist:15,
+      dadoN1:14, dadoVar1:"#4", dadoN2:10, dadoVar2:"#4", dadoEstribosRamas:1, dadoEstriboVar:"#3", dadoEstriboSep:15, dadoRecubrimiento:5 }
   };
 }
 
@@ -2728,7 +3241,7 @@ const THEME_KEY = "cimentacionesFEM.theme";
 // "undefined" en el input) — por eso esos 4 sub-objetos se fusionan aparte.
 function mergeState(defaults, saved){
   const merged = Object.assign({}, defaults, saved || {});
-  ["geom","materiales","angles","proyecto"].forEach(key=>{
+  ["geom","materiales","angles","proyecto","diseno"].forEach(key=>{
     merged[key] = Object.assign({}, defaults[key], (saved && saved[key]) || {});
   });
   return merged;
@@ -3776,11 +4289,930 @@ function getPropsConcreto(){
   return { Ec, G, v };
 }
 
+// 5.2.- Criterios y parámetros de diseño estructural (ACI 318-19). β1 es el
+// factor del bloque equivalente de Whitney (22.2.2.4.3); c1/c2 usan AD y LD
+// por separado (no se asume dado cuadrado, a diferencia del Excel original);
+// b0 es el perímetro de la sección crítica a d/2 del dado (22.6.4.1), con la
+// misma forma simplificada del Excel según el tipo de dado (αs).
+function getCriteriosDiseno(){
+  const fc = state.materiales.fc;
+  const beta1 = fc <= 280 ? 0.85 : (fc > 560 ? 0.65 : (0.85 - (fc-280)*(0.05/70)));
+  const r = state.diseno.r;
+  const d = state.geom.PZ - r/100;
+  const c1 = state.geom.AD + d;
+  const c2 = state.geom.LD + d;
+  const alphaS = state.diseno.alphaS;
+  const b0 = alphaS === "40" || alphaS === 40 ? 2*(c1+c2)
+    : (alphaS === "30" || alphaS === 30 ? 2*(c1+c2)*0.75 : (c1+c2));
+  return { beta1, d, c1, c2, b0 };
+}
+
+// Áreas de varilla — combina el sistema milimétrico (diámetros de la propia
+// hoja del Excel: 6 a 36 mm, área = π·d²/4·0.01, en cm²) con el imperial
+// (#3 a #12, valores fijos de la misma tabla).
+const REBAR_DIAMS_MM = [6,8,10,12,16,18,20,22,25,28,32,36];
+const REBAR_AREAS = {
+  "#3":0.71, "#4":1.27, "#5":1.99, "#6":2.87, "#7":3.88,
+  "#8":5.07, "#9":6.41, "#10":7.94, "#11":9.58, "#12":11.4
+};
+REBAR_DIAMS_MM.forEach(d => { REBAR_AREAS[`⌀${d}mm`] = (Math.PI*d*d/4)*0.01; });
+
+function rebarOptionsHtml(){
+  const mm = REBAR_DIAMS_MM.map(d=>`<option value="⌀${d}mm">⌀${d} mm</option>`).join("");
+  const imp = ["#3","#4","#5","#6","#7","#8","#9","#10","#11","#12"].map(n=>`<option value="${n}">${n}</option>`).join("");
+  return `<optgroup label="Milimétrico">${mm}</optgroup><optgroup label="Imperial">${imp}</optgroup>`;
+}
+
+// 5.3.- Momento de diseño combinado con Wood-Armer, POR FILA (cada fila de
+// la tabla 5.1 ya trae su propio Mx, My, Mxy simultáneos — a diferencia del
+// Excel original, que mezclaba Mx/My de filas distintas sin su Mxy
+// correspondiente). Convención confirmada: momento positivo = tensión abajo
+// = refuerzo inferior (normal de la malla ya garantizada hacia arriba en el
+// export STAAD, ver orientarNormalArribaStaad).
+function getMomentosDisenoFlexion(){
+  let muInf = -Infinity, muSup = Infinity;
+  state.elementosMecanicos.forEach(row=>{
+    const absMxy = Math.abs(row.mxy);
+    muInf = Math.max(muInf, row.mx + absMxy, row.my + absMxy);
+    muSup = Math.min(muSup, row.mx - absMxy, row.my - absMxy);
+  });
+  return {
+    muInferior: Math.max(isFinite(muInf) ? muInf : 0, 0),
+    muSuperior: Math.abs(Math.min(isFinite(muSup) ? muSup : 0, 0))
+  };
+}
+
+// Acero mínimo de flexión en losas y zapatas: ACI 318-19 §7.6.1.1 (losas
+// en una dirección) remite directamente a §24.4.3.2 (acero por temperatura
+// y contracción) como su As,min — NO a §9.6.1.2 (esa es para VIGAS, da un
+// mínimo mayor, 3√f'c/fy ó 200/fy en psi, y no aplica acá). El Capítulo 13
+// (Cimentaciones) confirma el mismo criterio para zapatas. Por eso "acero
+// por temperatura" y "acero mínimo de flexión" son la MISMA cláusula acá,
+// y aplica igual para lecho inferior y superior.
+function getRhoMinTemperatura(fy){
+  if(fy <= 4200) return 0.0020;
+  return Math.max(0.0018 * 4200/fy, 0.0014);
+}
+
+// Diseño por flexión de una franja de 1 m de ancho (b=100 cm), sección
+// rectangular simplemente reforzada, bloque rectangular equivalente de
+// esfuerzos — deducido directamente de ACI 318-19, no del Excel:
+//   §22.2.2.4.1: bloque equivalente 0.85f'c sobre el área a = As·fy/(0.85f'c·b)
+//   §22.3.2.1:   Mn = As·fy·(d − a/2), con As=ρbd, resuelto en forma cerrada
+//                para ρ (ecuación cuadrática estándar de diseño a flexión)
+//   §21.2.2:     deformación unitaria neta a tracción εt=0.005 (límite de
+//                sección controlada por tracción, usada para ρmax)
+//   §22.2.2.1:   deformación última del concreto εcu=0.003
+function calcularFlexion(mu, cd){
+  const fc = state.materiales.fc, fy = state.materiales.fy, phi = state.diseno.phiFlexion;
+  const b = 100, dCm = cd.d * 100;
+  const Mu_kgcm = mu * 100000; // Tn-m/m -> kg-cm (por metro de ancho)
+  const Rn = Mu_kgcm / (phi * b * dCm*dCm);
+  const disc = 1 - 2*Rn/(0.85*fc);
+  const rho = disc >= 0 ? (0.85*fc/fy) * (1 - Math.sqrt(disc)) : NaN;
+  const epsCu = 0.003, epsT = 0.005;
+  const rhoMin = getRhoMinTemperatura(fy);
+  const rhoMax = (epsCu/(epsCu+epsT)) * 0.85 * cd.beta1 * (fc/fy);
+  const rhoUsar = Math.min(Math.max(rho, rhoMin), rhoMax);
+  const asReq = rhoUsar * b * dCm;
+  return { Rn, rho, rhoMin, rhoMax, rhoUsar, asReq };
+}
+
+// Muestra un resultado de revisión como message-bar (verde/rojo/gris según
+// corresponda), reusando el mismo componente visual de otras secciones.
+function renderResultadoBadge(elId, estado, texto){
+  const el = document.getElementById(elId);
+  const kind = estado === "ok" ? "success" : (estado === "fail" ? "error" : "info");
+  el.innerHTML = `<div class="message-bar ${kind}"><span style="font-weight:700;">${texto}</span></div>`;
+}
+
+function calcularSeparacionVarilla(asReq, varilla){
+  const av = REBAR_AREAS[varilla] || 0;
+  if(!(av > 0) || !(asReq > 0)) return { av, barrasPorM:0, separacion:0 };
+  const barrasPorM = Math.ceil(asReq / av);
+  const separacion = Math.floor(Math.min(100/barrasPorM, 40));
+  return { av, barrasPorM, separacion };
+}
+
+// 5.3.2.- Comparación con acero existente: dado el refuerzo real (varilla +
+// separación, ej. de calas en campo), calcula el momento resistente φMn con
+// la misma ecuación de equilibrio de §22.3.2.1 (no la aproximación del
+// Excel original) y lo compara contra Mu.
+function calcularAceroExistente(varilla, separacion, mu, cd){
+  const fc = state.materiales.fc, fy = state.materiales.fy, phi = state.diseno.phiFlexion;
+  const b = 100, dCm = cd.d * 100;
+  const av = REBAR_AREAS[varilla] || 0;
+  if(!(av > 0) || !(separacion > 0)) return { av, asReal:0, rhoReal:0, phiMn:0, effMomento:NaN, effAcero:NaN, asReq:0 };
+  const asReal = (av / separacion) * 100; // cm²/m
+  const rhoReal = asReal / (b * dCm);
+  const a = asReal * fy / (0.85 * fc * b);
+  const phiMn = phi * asReal * fy * (dCm - a/2) / 100000; // kg-cm -> Tn-m
+  const flexReq = calcularFlexion(mu, cd);
+  const effMomento = phiMn > 0 ? mu / phiMn : Infinity;
+  const effAcero = asReal > 0 ? flexReq.asReq / asReal : Infinity;
+  return { av, asReal, rhoReal, phiMn, effMomento, effAcero, asReq: flexReq.asReq };
+}
+
+// Cortante en una dirección SÍ se revisa por separado en X y Y (cada eje
+// tiene su propia sección crítica a distancia d de la cara del dado) — por
+// eso NO se combina en un solo máximo como en punzonamiento.
+function getVuCortantePorEje(){
+  let vux = 0, vuy = 0;
+  state.elementosMecanicos.forEach(row=>{
+    vux = Math.max(vux, Math.abs(row.sqx));
+    vuy = Math.max(vuy, Math.abs(row.sqy));
+  });
+  return { vux: vux*10, vuy: vuy*10 };
+}
+
+// Factor de efecto de tamaño λs — ACI 318-19 §22.5.5.1.3. d en cm; 0.04 es
+// la conversión de la constante 0.004 (d en mm) a d en cm (0.004×10=0.04).
+function getLambdaS(dCm){
+  return Math.min(Math.sqrt(2/(1+0.04*dCm)), 1);
+}
+
+// 5.4.- Cortante en una dirección — ACI 318-19 §22.5.5.1: vc=0.17λ√f'c en
+// MPa. Convertido a kg/cm² con el factor 0.53/2=0.265 por unidad psi (2λ√f'c
+// en psi = 0.53λ√f'c en kg/cm², de ahí sale el 0.53 ya usado en la app).
+// ɸVc no depende del eje (solo de d, f'c), así que es la misma capacidad
+// para X y Y — lo que cambia es la demanda Vu de cada dirección.
+function calcularCortante1D(cd){
+  const fc = state.materiales.fc, phi = state.diseno.phiCortante;
+  const { vux, vuy } = getVuCortantePorEje();
+  const lambdaS = getLambdaS(cd.d*100);
+  const lambda = 1; // concreto de peso normal, §19.2.4.2
+  const phiVc = phi * 0.53 * lambdaS * lambda * Math.sqrt(fc) * 10; // kg/cm² -> Tn/m²
+  const eficienciaX = phiVc > 0 ? vux/phiVc : Infinity;
+  const eficienciaY = phiVc > 0 ? vuy/phiVc : Infinity;
+  return { vux, vuy, lambdaS, lambda, phiVc, eficienciaX, eficienciaY };
+}
+
+// Fila completa de reacción (fx,fy,fz,...) de un dado, para un combo dado —
+// mismo mapeo cruzado YA VERIFICADO en computeGeotecnico (LEG_POSITION_MAP)
+// (antes vivía solo dentro de generarStaadModel()).
+function reaccionCompletaPorPosicion(comboTexto, posicion){
+  const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
+  const reacciones = getCurrentReacciones();
+  if(!cfgTorre || !reacciones) return null;
+  const idx = matchComboIndex(comboTexto, cfgTorre.combos);
+  if(idx < 0 || !reacciones[idx]) return null;
+  const POSICION_A_SUFIJO_RESULTADO = { "P1b":"1a", "P1a":"1b", "P1":"1" };
+  return reacciones[idx][POSICION_A_SUFIJO_RESULTADO[posicion]] || null;
+}
+
+function reaccionFyPorPosicion(comboTexto, posicion){
+  const row = reaccionCompletaPorPosicion(comboTexto, posicion);
+  return row ? row.fy : null;
+}
+
+// Vu de punzonamiento — ACI 318-19 §22.6.5.1: Vu = Pu del dado − presión de
+// suelo dentro del perímetro crítico (NO el esfuerzo local de una placa
+// suelta, que podía venir de cualquier parte de la malla sin relación con
+// el dado). Se revisa con los combos estructurales (1.2D+1.0W) en los 3
+// dados, y se toma el peor caso. La presión de suelo se toma como el
+// promedio neto (ΣPu de los 3 dados / área) para ese mismo combo — una
+// simplificación razonable frente a integrar Navier exacto, que hoy solo
+// está calculado para los combos 0.9D (volteo/geotécnico, sección 4.2),
+// no para los 1.2D que exige esta revisión de resistencia.
+function calcularVuPunzonamiento(cd, props){
+  const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
+  if(!cfgTorre || !props || !(props.area > 0)) return { vu:0, dado:null, combo:null, pu:null, qu:null };
+  const combosEstructurales = cfgTorre.combos.filter(c => /1\.2\s*d/i.test(c));
+  const posiciones = ["P1","P1a","P1b"];
+  const acrit = cd.c1 * cd.c2;
+  let peor = { vu:-Infinity, dado:null, combo:null, pu:null, qu:null };
+  combosEstructurales.forEach(combo=>{
+    const pus = posiciones.map(pos => reaccionFyPorPosicion(combo, pos));
+    if(pus.some(p => p==null)) return;
+    const quProm = pus.reduce((s,p)=>s+p, 0) / props.area; // Tn/m²
+    posiciones.forEach((pos, i)=>{
+      const vu = pus[i] - quProm*acrit; // Tn
+      if(vu > peor.vu) peor = { vu, dado:pos, combo, pu:pus[i], qu:quProm };
+    });
+  });
+  return isFinite(peor.vu) ? peor : { vu:0, dado:null, combo:null, pu:null, qu:null };
+}
+
+// 5.5.- Punzonamiento (cortante bidireccional) — ACI 318-19 §22.6.5.2, tres
+// expresiones, la menor gobierna. Coeficientes en kg/cm² derivados del
+// mismo factor 0.265 por unidad psi que el cortante en una dirección (no
+// los valores del Excel original: ahí el caso (a) usaba 1.1 en vez de 1.06,
+// y β se asumía siempre 1 con dado cuadrado). β usa c1,c2 reales (AD y LD
+// por separado, ver getCriteriosDiseno).
+function calcularPunzonamiento(cd, props){
+  const fc = state.materiales.fc, phi = state.diseno.phiCortante;
+  const demanda = calcularVuPunzonamiento(cd, props);
+  const vu = demanda.vu > 0 ? demanda.vu / (cd.b0 * cd.d) : 0; // Tn -> Tn/m²
+  const lambdaS = getLambdaS(cd.d*100);
+  const lambda = 1;
+  const beta = Math.max(cd.c1,cd.c2) / Math.min(cd.c1,cd.c2);
+  const alphaS = Number(state.diseno.alphaS);
+  const raiz = Math.sqrt(fc);
+  const phiVcA = phi * 1.06 * lambdaS * lambda * raiz * 10;
+  const phiVcB = phi * 0.53*(1+2/beta) * lambdaS * lambda * raiz * 10;
+  const phiVcC = phi * 0.265*(2 + alphaS*cd.d/cd.b0) * lambdaS * lambda * raiz * 10;
+  const phiVc = Math.min(phiVcA, phiVcB, phiVcC);
+  const eficiencia = phiVc > 0 ? vu/phiVc : Infinity;
+  return { vu, dado:demanda.dado, combo:demanda.combo, pu:demanda.pu, qu:demanda.qu,
+    lambdaS, lambda, beta, phiVcA, phiVcB, phiVcC, phiVc, eficiencia };
+}
+
+// 5.6.- Armado del dado: dos grupos de varillas longitudinales + estribos.
+// Ast = As del grupo 1 + As del grupo 2 (los "grupos" son solo dos entradas
+// de conteo/diámetro, no representan caras distintas — se suman igual).
+// Diámetro de una varilla a partir de su área ya definida en REBAR_AREAS
+// (una sola fuente de verdad, en vez de una segunda tabla de diámetros).
+function diametroVarillaCm(codigo){
+  const area = REBAR_AREAS[codigo] || 0;
+  return area > 0 ? Math.sqrt(4*area/Math.PI) : 0;
+}
+
+// Distribución física de las varillas del dado alrededor del perímetro:
+// grupo 1 ("Varillas en X") en las caras superior/inferior (a y=±h/2),
+// varían en X, INCLUYENDO las esquinas — grupo 2 ("Varillas en Y") en las
+// caras izquierda/derecha (a x=±b/2), varían en Y, equidistantes SIN tocar
+// las esquinas (ya ocupadas por el grupo 1, para no duplicar varilla ahí).
+// N1/N2 son el conteo TOTAL de cada grupo (no por cara), igual convención
+// que calcularArmadoDado().
+function generarBarrasDado(){
+  const b = state.geom.AD*100, h = state.geom.LD*100; // cm
+  const rec = state.diseno.dadoRecubrimiento;
+  const dEstribo = diametroVarillaCm(state.diseno.dadoEstriboVar);
+  const av1 = REBAR_AREAS[state.diseno.dadoVar1]||0, d1 = diametroVarillaCm(state.diseno.dadoVar1);
+  const av2 = REBAR_AREAS[state.diseno.dadoVar2]||0, d2 = diametroVarillaCm(state.diseno.dadoVar2);
+  const N1 = Math.max(0, Math.round(state.diseno.dadoN1)||0);
+  const N2 = Math.max(0, Math.round(state.diseno.dadoN2)||0);
+  const barras = [];
+
+  // Grupo 1 ("Varillas en X"): incluye las esquinas (extremos del rango).
+  const yEdge1 = h/2 - rec - dEstribo - d1/2;
+  const xMax1 = Math.max(0, b/2 - rec - dEstribo - d1/2);
+  const n1a = Math.ceil(N1/2), n1b = N1 - n1a;
+  [{y:yEdge1, n:n1a}, {y:-yEdge1, n:n1b}].forEach(({y,n})=>{
+    for(let i=0;i<n;i++){
+      const x = n===1 ? 0 : -xMax1 + (2*xMax1*i)/(n-1);
+      barras.push({x, y, area:av1, d:d1, grupo:1});
+    }
+  });
+
+  // Grupo 2 ("Varillas en Y"): equidistante, SIN incluir los extremos
+  // (esquinas ya cubiertas por el grupo 1) — divide el tramo en (n+1) segmentos.
+  const xEdge2 = b/2 - rec - dEstribo - d2/2;
+  const yMax2 = Math.max(0, h/2 - rec - dEstribo - d2/2);
+  const n2a = Math.ceil(N2/2), n2b = N2 - n2a;
+  [{x:xEdge2, n:n2a}, {x:-xEdge2, n:n2b}].forEach(({x,n})=>{
+    for(let i=0;i<n;i++){
+      const y = -yMax2 + (2*yMax2*(i+1))/(n+1);
+      barras.push({x, y, area:av2, d:d2, grupo:2});
+    }
+  });
+
+  return { barras, b, h, rec, dEstribo };
+}
+
+// Esquema 2D del dado en planta: contorno de concreto, estribo, varillas y
+// cotas (AD, LD, recubrimiento) — para verificar visualmente el armado que
+// alimenta al diagrama de interacción P-M-M.
+function renderEsquemaDado(){
+  const svg = document.getElementById("esquemaDadoSvg");
+  if(!svg) return;
+  const { barras, b, h, rec, dEstribo } = generarBarrasDado();
+  if(!(b>0) || !(h>0)){ svg.innerHTML = ""; return; }
+  const pad = Math.max(b,h)*0.32 + 6;
+  const xmin=-b/2-pad, xmax=b/2+pad*1.3, ymin=-h/2-pad*1.15, ymax=h/2+pad*1.5;
+  svg.setAttribute("viewBox", `${xmin} ${ymin} ${xmax-xmin} ${ymax-ymin}`);
+
+  const strokeW = Math.max(b,h)/180;
+  const fontSize = Math.max(b,h)/17;
+  const xE = b/2-rec-dEstribo/2, yE = h/2-rec-dEstribo/2;
+
+  const barrasSvg = barras.map(br=>
+    `<circle cx="${br.x}" cy="${-br.y}" r="${Math.max(br.d/2,0.3)}" fill="#c9822a" stroke="#000" stroke-width="${strokeW*0.5}"/>`
+  ).join("");
+
+  const cotaYAD = h/2 + pad*0.55;
+  const cotaXLD = b/2 + pad*0.75;
+
+  svg.innerHTML = `
+    <rect x="${-b/2}" y="${-h/2}" width="${b}" height="${h}" fill="var(--canvas)" stroke="var(--accent)" stroke-width="${strokeW*1.6}"/>
+    <rect x="${-xE}" y="${-yE}" width="${2*xE}" height="${2*yE}" fill="none" stroke="var(--muted)" stroke-width="${strokeW}" stroke-dasharray="${strokeW*2},${strokeW*1.5}"/>
+    ${barrasSvg}
+    <line x1="${-b/2}" y1="${cotaYAD}" x2="${b/2}" y2="${cotaYAD}" stroke="var(--text)" stroke-width="${strokeW*0.6}"/>
+    <line x1="${-b/2}" y1="${h/2}" x2="${-b/2}" y2="${cotaYAD}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
+    <line x1="${b/2}" y1="${h/2}" x2="${b/2}" y2="${cotaYAD}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
+    <text x="0" y="${cotaYAD+fontSize*1.2}" font-size="${fontSize}" text-anchor="middle" fill="var(--text)">AD = ${fmt(state.geom.AD,2)} m</text>
+    <line x1="${cotaXLD}" y1="${-h/2}" x2="${cotaXLD}" y2="${h/2}" stroke="var(--text)" stroke-width="${strokeW*0.6}"/>
+    <line x1="${b/2}" y1="${-h/2}" x2="${cotaXLD}" y2="${-h/2}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
+    <line x1="${b/2}" y1="${h/2}" x2="${cotaXLD}" y2="${h/2}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
+    <text x="${cotaXLD+fontSize*0.35}" y="0" font-size="${fontSize}" text-anchor="start" dominant-baseline="middle" fill="var(--text)">LD = ${fmt(state.geom.LD,2)} m</text>
+    <line x1="${-b/2}" y1="${-h/2-pad*0.15}" x2="${-xE-dEstribo/2}" y2="${-h/2-pad*0.15}" stroke="var(--danger-fg)" stroke-width="${strokeW*0.55}"/>
+    <text x="${-b/2}" y="${-h/2-pad*0.32}" font-size="${fontSize*0.8}" text-anchor="start" fill="var(--danger-fg)">r = ${fmt(rec,1)} cm</text>
+  `;
+}
+
+function calcularArmadoDado(){
+  const av1 = REBAR_AREAS[state.diseno.dadoVar1] || 0;
+  const av2 = REBAR_AREAS[state.diseno.dadoVar2] || 0;
+  const as1 = state.diseno.dadoN1 * av1;
+  const as2 = state.diseno.dadoN2 * av2;
+  const ast = as1 + as2;
+  // Ag con AD y LD reales (no se asume dado cuadrado, a diferencia del
+  // Excel original que usaba AD² para las dos dimensiones).
+  const ag = state.geom.AD * state.geom.LD * 10000; // m² -> cm²
+  const cuantia = ag > 0 ? ast/ag : 0;
+  // Cuantía mínima de TIA-222-H §9.4.1 (no de ACI 318 — ACI exige 1% para
+  // columnas en general, §10.6.1.1; TIA-222-H permite 0.5% para dados de
+  // torres, criterio distinto y aplicable acá).
+  const cuantiaMin = 0.005;
+  const cumpleCuantia = cuantia >= cuantiaMin;
+  return { av1, av2, as1, as2, ast, ag, cuantia, cuantiaMin, cumpleCuantia };
+}
+
+// Reacciones extremas (Pu de compresión, Tu de tensión/levantamiento) entre
+// los 3 dados y los 3 combos estructurales (1.2D+1.0W) — mismo criterio que
+// usa el Excel original (peor caso entre todas las patas y combos), pero
+// reutilizando reaccionFyPorPosicion() en vez de rangos de celdas fijos.
+function getReaccionesExtremasDado(){
+  const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
+  if(!cfgTorre) return { pu:0, tu:0 };
+  const combos = cfgTorre.combos.filter(c => /1\.2\s*d/i.test(c));
+  const posiciones = ["P1","P1a","P1b"];
+  let pu = -Infinity, tu = Infinity;
+  combos.forEach(combo=>{
+    posiciones.forEach(pos=>{
+      const fy = reaccionFyPorPosicion(combo, pos);
+      if(fy == null) return;
+      pu = Math.max(pu, fy);
+      tu = Math.min(tu, fy);
+    });
+  });
+  return { pu: isFinite(pu) ? pu : 0, tu: isFinite(tu) ? Math.abs(Math.min(tu,0)) : 0 };
+}
+
+// 5.6.1.- Compresión axial — ACI 318-19 §22.4.2.1 (miembro con estribos):
+// ɸPn,max = ɸ·0.80·[0.85f'c(Ag−Ast) + fy·Ast], con ɸ=0.65 para miembros
+// con estribos (Tabla 21.2.2, controlados por compresión, sin espiral).
+function calcularCompresionDado(armado){
+  const fc = state.materiales.fc, fy = state.materiales.fy;
+  const phi = 0.65; // §21.2.2
+  const phiPnMax = phi * 0.80 * (0.85*fc*(armado.ag-armado.ast) + fy*armado.ast) / 1000; // kg -> Tn
+  const { pu } = getReaccionesExtremasDado();
+  const eficiencia = phiPnMax > 0 ? pu/phiPnMax : Infinity;
+  return { phi, phiPnMax, pu, eficiencia };
+}
+
+// 5.6.2.- Tensión axial — resistida solo por el acero (el concreto se
+// agrieta), ɸ=0.90 por comportamiento controlado por tracción (mismo ɸ de
+// flexión, §21.2.2).
+function calcularTensionDado(armado){
+  const fy = state.materiales.fy;
+  const phi = state.diseno.phiFlexion; // 0.90
+  const phiTn = phi * armado.ast * fy / 1000; // kg -> Tn
+  const { tu } = getReaccionesExtremasDado();
+  const eficiencia = phiTn > 0 ? tu/phiTn : Infinity;
+  return { phi, phiTn, tu, eficiencia };
+}
+
 function sqrtHtml(radicand){
   return `<span class="sqrt"><span class="rad">&radic;</span><span class="radicand">${radicand}</span></span>`;
 }
 function fracHtml(num, den){
   return `<span class="frac"><span class="num">${num}</span><span class="den">${den}</span></span>`;
+}
+
+/* ============================================================
+   DIAGRAMA DE INTERACCIÓN P-M-M BIAXIAL DEL DADO (pestaña "Interacción 3D")
+   ACI 318-19 Cap. 22, compatibilidad de deformaciones. Todo el cálculo
+   interno en kg y cm (mismas unidades que fc/fy en el resto de la app);
+   Tn y Tn-m solo en la salida (superficie + demandas) — sin mezclar
+   sistemas de unidades distintos al resto de la app (kip/kN/MPa quedan
+   fuera, eran un error del prompt original).
+   ============================================================ */
+const PMM_KG_A_TN = 0.001;
+const PMM_KGCM_A_TNM = 0.001/100;
+
+// Recorta un polígono convexo contra el semiplano {p·(nx,ny) >= nivel}.
+function pmmRecortarSemiplano(poly, nx, ny, nivel){
+  if(!poly.length) return [];
+  const dentro = p => (p.x*nx + p.y*ny) >= nivel - 1e-7;
+  const out = [];
+  for(let i=0;i<poly.length;i++){
+    const cur = poly[i], prev = poly[(i-1+poly.length)%poly.length];
+    const curIn = dentro(cur), prevIn = dentro(prev);
+    if(curIn !== prevIn){
+      const da = prev.x*nx+prev.y*ny-nivel, db = cur.x*nx+cur.y*ny-nivel;
+      const t = da/(da-db);
+      out.push({ x: prev.x+t*(cur.x-prev.x), y: prev.y+t*(cur.y-prev.y) });
+    }
+    if(curIn) out.push(cur);
+  }
+  return out;
+}
+function pmmAreaCentroide(poly){
+  if(poly.length < 3) return { area:0, cx:0, cy:0 };
+  let a=0, cx=0, cy=0;
+  for(let i=0;i<poly.length;i++){
+    const p1=poly[i], p2=poly[(i+1)%poly.length];
+    const cr = p1.x*p2.y - p2.x*p1.y;
+    a += cr; cx += (p1.x+p2.x)*cr; cy += (p1.y+p2.y)*cr;
+  }
+  a/=2;
+  if(Math.abs(a) < 1e-6) return { area:0, cx:0, cy:0 };
+  return { area: Math.abs(a), cx: cx/(6*a), cy: cy/(6*a) };
+}
+
+// Superficie P-M-M nominal y de diseño (resistente), barrida en 72 ángulos
+// de eje neutro × 30 profundidades — ACI 318-19 §22.2.2.4.1 (bloque de
+// Whitney), §22.4.2.1 (tope φPn,max), §21.2.2 (φ por deformación, ε_cu del
+// concreto §22.2.2.1, ε_t límite de tracción controlada = 0.005).
+function calcularSuperficiePMM(){
+  const { barras, b, h } = generarBarrasDado();
+  if(!(b>0) || !(h>0) || !barras.length) return { nominal:[], resistente:[], phiPnMaxTn:0 };
+  const fc = state.materiales.fc, fy = state.materiales.fy;
+  const Es = 200000 * 10.1972; // 200,000 MPa -> kg/cm²
+  const epsCu = 0.003, epsSy = fy/Es, epsTLim = 0.005;
+  const beta1 = getCriteriosDiseno().beta1; // mismo β1 ya corregido en 5.2
+  const ast = barras.reduce((s,br)=>s+br.area, 0);
+  const ag = b*h;
+  const phiPnMaxKg = 0.65*0.80*(0.85*fc*(ag-ast) + fy*ast);
+
+  const rectangulo = [{x:-b/2,y:-h/2},{x:b/2,y:-h/2},{x:b/2,y:h/2},{x:-b/2,y:h/2}];
+  const diag = Math.sqrt(b*b+h*h);
+  const cMin = diag*0.006, cMax = (diag/beta1)*1.6;
+  const nAngulos = 72, nProf = 30;
+  const nominal = [], resistente = [];
+
+  for(let ia=0; ia<nAngulos; ia++){
+    const theta = ia*(2*Math.PI/nAngulos);
+    const nx = Math.cos(theta), ny = Math.sin(theta);
+    const pMax = Math.max(...rectangulo.map(p=>p.x*nx+p.y*ny));
+    const dists = barras.map(br=> pMax - (br.x*nx+br.y*ny));
+    const dt = Math.max(...dists);
+
+    for(let ic=0; ic<nProf; ic++){
+      const t = ic/(nProf-1);
+      const c = cMin*Math.pow(cMax/cMin, t);
+      const a = beta1*c;
+      const poligonoComp = pmmRecortarSemiplano(rectangulo, nx, ny, pMax-a);
+      const { area:areaComp, cx:xcc, cy:ycc } = pmmAreaCentroide(poligonoComp);
+      const Cc = 0.85*fc*areaComp;
+
+      let Pn = Cc, Mnx = Cc*ycc, Mny = Cc*xcc;
+      barras.forEach((br,i)=>{
+        const epsSi = epsCu*(c-dists[i])/c;
+        const fsi = Math.max(-fy, Math.min(fy, Es*epsSi));
+        const Fi = br.area*fsi;
+        Pn += Fi; Mnx += Fi*br.y; Mny += Fi*br.x;
+      });
+
+      const epsT = epsCu*(c-dt)/c;
+      let phi;
+      if(epsT >= epsTLim) phi = 0.90;
+      else if(epsT <= epsSy) phi = 0.65;
+      else phi = 0.65 + (0.90-0.65)*(epsT-epsSy)/(epsTLim-epsSy);
+
+      nominal.push({ Pn: Pn*PMM_KG_A_TN, Mnx: Mnx*PMM_KGCM_A_TNM, Mny: Mny*PMM_KGCM_A_TNM });
+      const phiPnCap = Math.min(phi*Pn, phiPnMaxKg);
+      resistente.push({ Pn: phiPnCap*PMM_KG_A_TN, Mnx: phi*Mnx*PMM_KGCM_A_TNM, Mny: phi*Mny*PMM_KGCM_A_TNM });
+    }
+  }
+  return { nominal, resistente, phiPnMaxTn: phiPnMaxKg*PMM_KG_A_TN };
+}
+
+// Puntos de demanda (Pu, Mux, Muy) por pata y combo estructural. Fz
+// corregido ×-1 (misma convención ya usada en la vista 3D/computeGeotecnico
+// para el eje de STAAD). Brazo de palanca = Hr+HD (todo el largo del dado,
+// voladizo libre sin apoyo lateral del suelo — supuesto conservador ya
+// confirmado con el usuario tras revisar la excentricidad real).
+function calcularDemandasPMM(){
+  const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
+  if(!cfgTorre) return [];
+  const combos = cfgTorre.combos.filter(c => /1\.2\s*d/i.test(c));
+  const posiciones = ["P1","P1a","P1b"];
+  const brazo = (state.geom.Pd - state.geom.PZ) + state.geom.HD; // m
+  const puntos = [];
+  posiciones.forEach(pos=>{
+    combos.forEach(combo=>{
+      const row = reaccionCompletaPorPosicion(combo, pos);
+      if(!row) return;
+      puntos.push({
+        pata: pos, combo,
+        Pu: row.fy,
+        Mux: (-row.fz) * brazo,
+        Muy: row.fx * brazo
+      });
+    });
+  });
+  return puntos;
+}
+
+// D/C vectorial: para cada punto de demanda, compara su magnitud contra la
+// de la superficie resistente en la MISMA dirección (Pn,Mnx,Mny), tomando
+// el punto de la superficie con el ángulo más cercano.
+function calcularDCPuntoPMM(punto, resistente){
+  const norm = Math.hypot(punto.Pu, punto.Mux, punto.Muy);
+  if(norm < 1e-9 || !resistente.length) return NaN;
+  const ux=punto.Pu/norm, uxm=punto.Mux/norm, uym=punto.Muy/norm;
+  let mejor = null, mejorCos = -Infinity;
+  resistente.forEach(r=>{
+    const rn = Math.hypot(r.Pn, r.Mnx, r.Mny);
+    if(rn < 1e-9) return;
+    const cosv = (r.Pn*ux + r.Mnx*uxm + r.Mny*uym)/rn;
+    if(cosv > mejorCos){ mejorCos = cosv; mejor = { r, rn }; }
+  });
+  if(!mejor) return NaN;
+  return norm / mejor.rn;
+}
+
+let lastPMM = null; // {sup, demandas, dc} del último cálculo, para exportar CSV
+let lastPMMSuperficie = null; // cache de calcularSuperficiePMM() (barrido de 2160 puntos,
+// lo caro de calcular) — independiente de los controles de vista (checkboxes,
+// opacidad, pata), que antes recalculaban TODO en cada evento (el slider de
+// opacidad dispara "input" muchas veces por segundo al arrastrar, así que
+// recalcular el barrido completo ahí volvía la app perceptiblemente lenta).
+
+// recalcularSuperficie=false reutiliza el barrido ya calculado (para
+// controles que solo cambian cómo se ve, no la superficie en sí).
+function calcularYRenderizarPMM(recalcularSuperficie){
+  const div = document.getElementById("interaccionPlot");
+  if(!div || typeof Plotly === "undefined") return;
+  if(recalcularSuperficie === false && lastPMMSuperficie){
+    // reutiliza
+  } else {
+    lastPMMSuperficie = calcularSuperficiePMM();
+  }
+  const sup = lastPMMSuperficie;
+  let demandas = calcularDemandasPMM();
+  const pataSel = document.getElementById("selPataPMM").value;
+  if(pataSel !== "todas") demandas = demandas.filter(d=>d.pata===pataSel);
+  const dc = demandas.map(d => calcularDCPuntoPMM({Pu:d.Pu, Mux:d.Mux, Muy:d.Muy}, sup.resistente));
+  lastPMM = { sup, demandas, dc };
+
+  const opacidad = (+document.getElementById("sliderOpacidad").value || 30) / 100;
+  const traces = [];
+
+  if(document.getElementById("chkSupResistente").checked && sup.resistente.length){
+    traces.push({
+      type:"mesh3d", alphahull:5,
+      x: sup.resistente.map(p=>p.Mnx), y: sup.resistente.map(p=>p.Mny), z: sup.resistente.map(p=>p.Pn),
+      color:"#1B3A6B", opacity: opacidad, flatshading:true, lighting:{ambient:0.8},
+      name:"Resistente ɸPn-ɸMnx-ɸMny", hoverinfo:"skip"
+    });
+  }
+  if(document.getElementById("chkSupNominal").checked && sup.nominal.length){
+    traces.push({
+      type:"mesh3d", alphahull:5,
+      x: sup.nominal.map(p=>p.Mnx), y: sup.nominal.map(p=>p.Mny), z: sup.nominal.map(p=>p.Pn),
+      color:"#4A90D9", opacity: Math.min(opacidad*0.4, 0.12), name:"Nominal Pn-Mnx-Mny", hoverinfo:"skip"
+    });
+  }
+  if(document.getElementById("chkPuntosDemanda").checked && demandas.length){
+    const colores = demandas.map((d,i)=> (dc[i]<=1 ? "#43A047" : "#E53935"));
+    traces.push({
+      type:"scatter3d", mode:"markers",
+      x: demandas.map(d=>d.Mux), y: demandas.map(d=>d.Muy), z: demandas.map(d=>d.Pu),
+      marker:{ size:6, color:colores, line:{color:"#000000", width:1}, symbol:"circle" },
+      customdata: demandas.map((d,i)=>[`${d.pata} — ${d.combo}`, isFinite(dc[i])?dc[i]:0]),
+      hovertemplate:"%{customdata[0]}<br>Pu=%{z:.2f} Tn<br>Mux=%{x:.2f} Tn-m<br>Muy=%{y:.2f} Tn-m<br>D/C=%{customdata[1]:.3f}<extra></extra>",
+      name:"Demanda por combinación"
+    });
+    if(document.getElementById("chkLineasOrigen").checked){
+      demandas.forEach((d,i)=>{
+        traces.push({
+          type:"scatter3d", mode:"lines",
+          x:[0,d.Mux], y:[0,d.Muy], z:[0,d.Pu],
+          line:{ color: dc[i]<=1 ? "#43A047" : "#E53935", width:3 },
+          opacity:0.5, showlegend:false, hoverinfo:"skip"
+        });
+      });
+    }
+  }
+
+  const layout = {
+    paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
+    scene:{
+      xaxis:{title:"Mx [Tn-m]"}, yaxis:{title:"My [Tn-m]"}, zaxis:{title:"P [Tn]"},
+      aspectmode:"auto"
+    },
+    legend:{x:0, y:1}, margin:{l:0, r:0, t:0, b:0}
+  };
+  Plotly.react(div, traces, layout, {responsive:true, displaylogo:false});
+
+  const dcMax = dc.length ? Math.max(...dc.filter(v=>isFinite(v)), 0) : NaN;
+  const resumenEl = document.getElementById("interaccionResumen");
+  if(isFinite(dcMax)){
+    const ok = dcMax <= 1;
+    resumenEl.style.background = ok ? "var(--success-bg)" : "var(--danger-bg)";
+    resumenEl.style.color = ok ? "var(--success-fg)" : "var(--danger-fg)";
+    resumenEl.textContent = (ok ? "✓ CUMPLE" : "✗ NO CUMPLE") + ` — D/C máx = ${fmt(dcMax,3)}`;
+  } else {
+    resumenEl.style.background = "var(--panel-2)";
+    resumenEl.style.color = "var(--muted)";
+    resumenEl.textContent = "Sin datos de demanda";
+  }
+}
+
+/* ============================================================
+   6.- ARMADURA — ACERO 3D (pestaña "Acero 3D")
+   Escena Three.js propia e independiente de la de "Cálculos"
+   (scene3d/camera3d/mesh3dGroup/controls3d no se tocan). concreteMat() y
+   solidMat() son funciones LOCALES dentro de update3D() — no se pueden
+   reusar desde acá, así que este módulo define sus propios materiales.
+   ============================================================ */
+
+// Longitudes de desarrollo — ACI 318-19 §25.4, derivadas DIRECTO en kg/cm²
+// (no vía psi) para no mezclar sistemas de unidades con el resto de la
+// app. Partiendo de ld[in] = (3/40)(fy_psi/(λ√fc_psi))·(ψ/factor)·db[in], y
+// fy_psi/√fc_psi = 3.7714·(fy_kgcm2/√fc_kgcm2) [1 kg/cm² = 14.2233 psi,
+// √14.2233 = 3.7714], se llega a ld[cm] = 0.7186·(fy/(λ√f'c))·(ψtψeψsψg
+// /factor_lim)·db[cm]. Misma derivación para ldh (gancho estándar, §25.4.3).
+function calcularLongitudDesarrolloACI(varilla, r_cm, topBar){
+  const fc = state.materiales.fc, fy = state.materiales.fy;
+  const db_cm = diametroVarillaCm(varilla);
+  if(!(db_cm > 0)) return { db_cm:0, ld_cm:0, ldh_cm:0, ls_cm:0, radio_cm:0, extension_cm:0 };
+  const lambda = 1; // concreto de peso normal, §19.2.4.2
+  const psiT = topBar ? 1.3 : 1.0; // §25.4.2.4 — refuerzo horizontal con ≥30cm de concreto debajo
+  const psiE = 1.0; // sin recubrimiento epóxico
+  const db_in = db_cm/2.54;
+  const psiS = db_in >= 0.875 ? 1.0 : 0.8; // #7+ vs #6 o menor
+  const fy_psi = fy*14.2233;
+  const psiG = fy_psi <= 60000 ? 1.0 : (fy_psi <= 80000 ? 1.15 : 1.3); // grado 60/80/100
+
+  const cb = r_cm + db_cm/2; // recubrimiento al centro de la varilla (conservador, Ktr=0)
+  const factorLim = Math.min(cb/db_cm, 2.5);
+  const ld_cm = Math.max(0.7186 * (fy/(lambda*Math.sqrt(fc))) * (psiT*psiE*psiS*psiG/factorLim) * db_cm, 30);
+  const ldh_cm = Math.max(0.1916 * psiE*psiG * (fy/(lambda*Math.sqrt(fc))) * db_cm, Math.max(8*db_cm, 15));
+  const ls_cm = Math.max(1.3*ld_cm, 30); // empalme clase B, §25.5.2
+
+  let radio_cm;
+  if(db_in <= 0.625) radio_cm = 3*db_cm;       // §25.3.2: #3-#5
+  else if(db_in <= 1.0) radio_cm = 4*db_cm;    // #6-#8
+  else if(db_in <= 1.41) radio_cm = 5*db_cm;   // #9-#11
+  else radio_cm = 6*db_cm;                     // #14+
+
+  return { db_cm, ld_cm, ldh_cm, ls_cm, radio_cm, extension_cm: 12*db_cm };
+}
+
+let sceneAcero=null, cameraAcero=null, rendererAcero=null, controlsAcero=null;
+let aceroGroup=null, animAceroRunning=false;
+const matAceroInf = () => new THREE.MeshStandardMaterial({ color:0x1565C0, roughness:0.4, metalness:0.7 });
+const matAceroSup = () => new THREE.MeshStandardMaterial({ color:0x43A047, roughness:0.4, metalness:0.7 });
+const matAceroDado = () => new THREE.MeshStandardMaterial({ color:0xE65100, roughness:0.4, metalness:0.7 });
+const matEstriboAcero = () => new THREE.MeshStandardMaterial({ color:0x6A1B9A, roughness:0.4, metalness:0.7 });
+const matConcretoFantasma = () => new THREE.MeshStandardMaterial({
+  color:0x8a95a5, roughness:0.8, metalness:0.0, transparent:true, opacity:0.15, side:THREE.DoubleSide
+});
+
+function addBarAcero(group, x1,y1,z1, x2,y2,z2, diam_m, mat, tipo, segments){
+  const len = Math.hypot(x2-x1, y2-y1, z2-z1);
+  if(len < 1e-6 || !(diam_m > 0)) return;
+  const geo = new THREE.CylinderGeometry(diam_m/2, diam_m/2, len, segments||8);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set((x1+x2)/2, (y1+y2)/2, (z1+z2)/2);
+  const dir = new THREE.Vector3(x2-x1,y2-y1,z2-z1).normalize();
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
+  mesh.userData.tipo = tipo;
+  group.add(mesh);
+}
+
+// Gancho estándar a 90° (arco + extensión recta) — ACI 318-19 §25.3.2/25.4.3.
+function addHook90Acero(group, pos, dirIn, dirHook, radio_cm, ext_cm, diam_m, mat, tipo){
+  const R = radio_cm/100 + diam_m/2;
+  const N = 8;
+  const pts = [];
+  for(let i=0;i<=N;i++){
+    const t = (Math.PI/2)*i/N;
+    pts.push(pos.clone().addScaledVector(dirIn, R*Math.sin(t)).addScaledVector(dirHook, R*(1-Math.cos(t))));
+  }
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tubeGeo = new THREE.TubeGeometry(curve, N*2, diam_m/2, 6, false);
+  const tubeMesh = new THREE.Mesh(tubeGeo, mat);
+  tubeMesh.userData.tipo = tipo;
+  group.add(tubeMesh);
+  const end = pts[pts.length-1];
+  addBarAcero(group, end.x,end.y,end.z,
+    end.x+dirHook.x*(ext_cm/100), end.y+dirHook.y*(ext_cm/100), end.z+dirHook.z*(ext_cm/100),
+    diam_m, mat, tipo);
+}
+
+function actualizarLeyendaAcero(lenInf, lenSup, lenDado1, lenDado2){
+  const el = document.getElementById("acero3dLeyenda");
+  if(!el) return;
+  const item = (color, texto) => `<div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;"><span style="width:10px; height:10px; border-radius:50%; background:${color}; display:inline-block; flex-shrink:0;"></span><span>${texto}</span></div>`;
+  el.innerHTML =
+    item("#1565C0", `Lecho inf: ${state.diseno.varInf} @ ${fmt(state.diseno.sepInfExist,0)} cm — ld=${fmt(lenInf.ld_cm,0)} cm, ldh=${fmt(lenInf.ldh_cm,0)} cm`) +
+    item("#43A047", `Lecho sup: ${state.diseno.varSup} @ ${fmt(state.diseno.sepSupExist,0)} cm — ld=${fmt(lenSup.ld_cm,0)} cm`) +
+    item("#E65100", `Long. dado: ${state.diseno.dadoN1}×${state.diseno.dadoVar1} + ${state.diseno.dadoN2}×${state.diseno.dadoVar2} — ldh=${fmt(lenDado1.ldh_cm,0)} cm`) +
+    item("#6A1B9A", `Estribos: ${state.diseno.dadoEstriboVar} @ ${fmt(state.diseno.dadoEstriboSep,0)} cm — ${state.diseno.dadoEstribosRamas} rama(s)`);
+}
+
+// Construye toda la geometría (losa + 3 dados) dentro de aceroGroup, ya
+// creado por initAcero3D()/updateAcero3D(). Reutiliza generarBarrasDado()
+// (5.6, mismo armado para los 3 dados) y lastPlanArgs (outerC/legs/dados,
+// exactamente lo mismo que usa update3D() de la pestaña "Cálculos") — así
+// la posición del acero queda garantizada consistente con esas otras vistas.
+function buildAcero3D(){
+  if(!aceroGroup) return;
+  const args = lastPlanArgs;
+  if(!args || !args.outerC || args.outerC.length < 3) return;
+  const { outerC, legs } = args;
+  const PZ = state.geom.PZ, Pd = state.geom.Pd, HD = state.geom.HD, AD = state.geom.AD, LD = state.geom.LD;
+  const Hr = Math.max(0, Pd - PZ);
+  const rLosa_m = state.diseno.r/100;
+
+  // Concreto fantasma — zapata (mismo shape/rotación que update3D()).
+  const shape = new THREE.Shape(outerC.map(p=>new THREE.Vector2(p.x, -p.y)));
+  const zapataGeo = new THREE.ExtrudeGeometry(shape, {depth:Math.max(PZ,0.01), bevelEnabled:false, curveSegments:24});
+  const zapataMesh = new THREE.Mesh(zapataGeo, matConcretoFantasma());
+  zapataMesh.rotation.x = -Math.PI/2;
+  zapataMesh.position.y = -Pd;
+  zapataMesh.userData.tipo = "concreto";
+  aceroGroup.add(zapataMesh);
+
+  // Acero de la losa: lecho inferior (con ganchos en ambos extremos, caso
+  // conservador y más frecuente en zapatas de torre) y lecho superior (sin
+  // gancho — se extiende recto, práctica usual para momento negativo).
+  const lenInf = calcularLongitudDesarrolloACI(state.diseno.varInf, state.diseno.r, false);
+  const lenSup = calcularLongitudDesarrolloACI(state.diseno.varSup, state.diseno.r, true);
+  const sepInf = Math.max(state.diseno.sepInfExist, 5)/100;
+  const sepSup = Math.max(state.diseno.sepSupExist, 5)/100;
+
+  const xs = outerC.map(p=>p.x), zs = outerC.map(p=>p.y);
+  const xMin = Math.min(...xs)+rLosa_m, xMax = Math.max(...xs)-rLosa_m;
+  const zMin = Math.min(...zs)+rLosa_m, zMax = Math.max(...zs)-rLosa_m;
+
+  const yInfX = -Pd + rLosa_m + lenInf.db_cm/200;
+  const yInfZ = yInfX + lenInf.db_cm/100;
+  const ySupX = -Pd + PZ - rLosa_m - lenSup.db_cm/200;
+  const ySupZ = ySupX - lenSup.db_cm/100;
+
+  function posicionesEnRango(min, max, sep, maxN){
+    if(!(max > min) || !(sep > 0)) return [];
+    const n = Math.min(maxN, Math.max(1, Math.floor((max-min)/sep)+1));
+    const out = [];
+    for(let i=0;i<n;i++) out.push(min+i*sep);
+    return out;
+  }
+
+  const matInf = matAceroInf(), matSup = matAceroSup();
+  posicionesEnRango(zMin, zMax, sepInf, 80).forEach(z=>{
+    addBarAcero(aceroGroup, xMin,yInfX,z, xMax,yInfX,z, lenInf.db_cm/100, matInf, "lechoInf");
+    addHook90Acero(aceroGroup, new THREE.Vector3(xMin,yInfX,z), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+    addHook90Acero(aceroGroup, new THREE.Vector3(xMax,yInfX,z), new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+  });
+  posicionesEnRango(xMin, xMax, sepInf, 80).forEach(x=>{
+    addBarAcero(aceroGroup, x,yInfZ,zMin, x,yInfZ,zMax, lenInf.db_cm/100, matInf, "lechoInf");
+    addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,zMin), new THREE.Vector3(0,0,-1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+    addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,zMax), new THREE.Vector3(0,0,1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+  });
+  posicionesEnRango(zMin, zMax, sepSup, 80).forEach(z=>{
+    addBarAcero(aceroGroup, xMin,ySupX,z, xMax,ySupX,z, lenSup.db_cm/100, matSup, "lechoSup");
+  });
+  posicionesEnRango(xMin, xMax, sepSup, 80).forEach(x=>{
+    addBarAcero(aceroGroup, x,ySupZ,zMin, x,ySupZ,zMax, lenSup.db_cm/100, matSup, "lechoSup");
+  });
+
+  // Acero de los dados: mismo armado (generarBarrasDado(), 5.6) para los 3,
+  // solo cambia la posición/rotación de cada uno.
+  const dadoAltura = Hr + HD;
+  const yBase = -Pd + PZ, yTop = yBase + dadoAltura;
+  const lenDado1 = calcularLongitudDesarrolloACI(state.diseno.dadoVar1, state.diseno.dadoRecubrimiento, false);
+  const lenDado2 = calcularLongitudDesarrolloACI(state.diseno.dadoVar2, state.diseno.dadoRecubrimiento, false);
+  const armado = generarBarrasDado(); // {barras[], b, h, rec, dEstribo} en cm
+  const matLong = matAceroDado(), matEstr = matEstriboAcero(), matConc = matConcretoFantasma();
+  const sepE = Math.max(state.diseno.dadoEstriboSep, 5)/100;
+  const dbE_cm = armado.dEstribo;
+  const rEstr = (armado.rec + dbE_cm/2)/100;
+  const xIzq = -AD/2 + rEstr, xDer = AD/2 - rEstr;
+  const zFre = -LD/2 + rEstr, zPos = LD/2 - rEstr;
+
+  ["P1b","P1a","P1"].forEach(key=>{
+    const center = legs[key];
+    const theta = -state.angles[key]*Math.PI/180;
+    const toWorld = (lx, lz) => ({
+      x: center.x + lx*Math.cos(theta) + lz*Math.sin(theta),
+      z: center.y - lx*Math.sin(theta) + lz*Math.cos(theta)
+    });
+
+    armado.barras.forEach(br=>{
+      const w = toWorld(br.x/100, br.y/100); // generarBarrasDado da cm; acá en m
+      const lenD = br.grupo===1 ? lenDado1 : lenDado2;
+      const embebido = Math.min(lenD.ldh_cm/100, PZ*0.9);
+      addBarAcero(aceroGroup, w.x, yBase-embebido, w.z, w.x, yTop, w.z, br.d/100, matLong, "longDado");
+    });
+
+    let yE = yTop - sepE/2, nEst = 0;
+    while(yE > yBase + armado.rec/100 && nEst < 40){
+      const c1 = toWorld(xIzq, zFre), c2 = toWorld(xDer, zFre), c3 = toWorld(xDer, zPos), c4 = toWorld(xIzq, zPos);
+      addBarAcero(aceroGroup, c1.x,yE,c1.z, c2.x,yE,c2.z, dbE_cm/100, matEstr, "estribo");
+      addBarAcero(aceroGroup, c2.x,yE,c2.z, c3.x,yE,c3.z, dbE_cm/100, matEstr, "estribo");
+      addBarAcero(aceroGroup, c3.x,yE,c3.z, c4.x,yE,c4.z, dbE_cm/100, matEstr, "estribo");
+      addBarAcero(aceroGroup, c4.x,yE,c4.z, c1.x,yE,c1.z, dbE_cm/100, matEstr, "estribo");
+      if(state.diseno.dadoEstribosRamas > 1){
+        const cc1 = toWorld(0, zFre), cc2 = toWorld(0, zPos);
+        addBarAcero(aceroGroup, cc1.x,yE,cc1.z, cc2.x,yE,cc2.z, dbE_cm/100, matEstr, "estribo");
+      }
+      yE -= sepE; nEst++;
+    }
+
+    const dadoGeo = new THREE.BoxGeometry(AD, dadoAltura, LD);
+    const dadoMesh = new THREE.Mesh(dadoGeo, matConc);
+    dadoMesh.position.set(center.x, yBase+dadoAltura/2, center.y);
+    dadoMesh.rotation.y = theta;
+    dadoMesh.userData.tipo = "concreto";
+    aceroGroup.add(dadoMesh);
+  });
+
+  actualizarLeyendaAcero(lenInf, lenSup, lenDado1, lenDado2);
+}
+
+function aplicarVisibilidadAcero(){
+  if(!aceroGroup) return;
+  const map = {
+    lechoInf: document.getElementById("chkAceroLechoInf").checked,
+    lechoSup: document.getElementById("chkAceroLechoSup").checked,
+    longDado: document.getElementById("chkAceroLongDado").checked,
+    estribo: document.getElementById("chkAceroEstribo").checked,
+    concreto: document.getElementById("chkAceroConcreto").checked
+  };
+  aceroGroup.traverse(obj=>{
+    if(obj.userData && obj.userData.tipo in map) obj.visible = map[obj.userData.tipo];
+  });
+}
+
+function resizeAcero3D(){
+  if(!rendererAcero || !cameraAcero) return;
+  const canvas = document.getElementById("canvasAcero3d");
+  if(!canvas) return;
+  const w = canvas.clientWidth||1, h = canvas.clientHeight||1;
+  rendererAcero.setSize(w, h, false);
+  cameraAcero.aspect = w/h;
+  cameraAcero.updateProjectionMatrix();
+}
+
+function startAcero3DLoop(){
+  animAceroRunning = true;
+  function loop(){
+    if(!animAceroRunning) return;
+    requestAnimationFrame(loop);
+    if(controlsAcero) controlsAcero.update();
+    if(rendererAcero && sceneAcero && cameraAcero) rendererAcero.render(sceneAcero, cameraAcero);
+  }
+  loop();
+}
+function stopAcero3DLoop(){ animAceroRunning = false; }
+
+function updateAcero3D(){
+  if(!sceneAcero || !aceroGroup) return;
+  sceneAcero.remove(aceroGroup);
+  aceroGroup.traverse(obj=>{
+    if(obj.geometry) obj.geometry.dispose();
+    if(obj.material) obj.material.dispose();
+  });
+  aceroGroup = new THREE.Group();
+  sceneAcero.add(aceroGroup);
+  buildAcero3D();
+  aplicarVisibilidadAcero();
+}
+
+function initAcero3D(){
+  const canvas = document.getElementById("canvasAcero3d");
+  if(!canvas) return;
+  if(sceneAcero){ updateAcero3D(); resizeAcero3D(); startAcero3DLoop(); return; }
+
+  let gl = null;
+  try{ gl = canvas.getContext("webgl2") || canvas.getContext("webgl"); }catch(e){ gl = null; }
+  if(!gl){
+    document.getElementById("acero3dNoWebgl").classList.remove("hidden");
+    return;
+  }
+
+  rendererAcero = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+  rendererAcero.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  const bgColor = getComputedStyle(document.documentElement).getPropertyValue("--canvas").trim() || "#e9edf1";
+  rendererAcero.setClearColor(bgColor, 1);
+
+  sceneAcero = new THREE.Scene();
+  cameraAcero = new THREE.PerspectiveCamera(45, 1, 0.05, 500);
+  const yMid = -state.geom.Pd/2;
+  cameraAcero.position.set(6, yMid+2, 6);
+
+  sceneAcero.add(new THREE.AmbientLight(0xffffff, 0.75));
+  const dl1 = new THREE.DirectionalLight(0xffffff, 0.6); dl1.position.set(5,10,5); sceneAcero.add(dl1);
+  const dl2 = new THREE.DirectionalLight(0xffffff, 0.35); dl2.position.set(-4,6,-6); sceneAcero.add(dl2);
+
+  controlsAcero = new THREE.OrbitControls(cameraAcero, canvas);
+  controlsAcero.target.set(0, yMid, 0);
+  controlsAcero.enableDamping = true;
+  controlsAcero.update();
+
+  aceroGroup = new THREE.Group();
+  sceneAcero.add(aceroGroup);
+  buildAcero3D();
+  aplicarVisibilidadAcero();
+
+  resizeAcero3D();
+  startAcero3DLoop();
 }
 
 function getKBalastoKgm3(){
@@ -5486,20 +6918,6 @@ function generarStaadModel(){
   // (empuje hacia abajo = -Y global en Staad), igual convención que ya usa
   // la vista 3D y computeGeotecnico.
   //
-  // La posición física (P1/P1a/P1b) de cada reacción (1/1a/1b) usa el mismo
-  // mapeo cruzado YA VERIFICADO en computeGeotecnico (LEG_POSITION_MAP) —
-  // es un dato real de cálculo, no la vista 3D (que el usuario pidió dejar
-  // en mapeo directo solo para esa visualización).
-  const POSICION_A_SUFIJO_RESULTADO = { "P1b":"1a", "P1a":"1b", "P1":"1" };
-  function reaccionFyPorPosicion(comboTexto, posicion){
-    const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
-    const reacciones = getCurrentReacciones();
-    if(!cfgTorre || !reacciones) return null;
-    const idx = matchComboIndex(comboTexto, cfgTorre.combos);
-    if(idx < 0 || !reacciones[idx]) return null;
-    const row = reacciones[idx][POSICION_A_SUFIJO_RESULTADO[posicion]];
-    return row ? row.fy : null;
-  }
   function bloqueJointLoadFy(numLoad, nombreLoad, comboTexto){
     const lineas = nombresDado.map(nombre=>{
       const fy = reaccionFyPorPosicion(comboTexto, nombre);
@@ -5764,6 +7182,216 @@ function renderAll(){
     `v = ${fracHtml("E<sub>c</sub>", "2G")} &minus; 1`);
   propRow(propsConcretoEl, "Módulo de Corte G", fmt(pc.G, 5), "Kg/cm²",
     `G = 0.4&middot;E<sub>c</sub>`);
+
+  setValueIfNotFocused("dis_r", state.diseno.r);
+  setValueIfNotFocused("dis_alphaS", state.diseno.alphaS);
+  const disenoParamsEl = document.getElementById("disenoParamsComputed");
+  disenoParamsEl.innerHTML = "";
+  const cd = getCriteriosDiseno();
+  propRow(disenoParamsEl, "Factor de reducción por flexión (ɸ)", fmt(state.diseno.phiFlexion, 2), "",
+    `<span style="font-size:11px; opacity:.75;">21.2.2 (Tabla 21.2.2) ACI 318-19</span>`);
+  propRow(disenoParamsEl, "Factor de reducción por cortante (ɸ)", fmt(state.diseno.phiCortante, 2), "",
+    `<span style="font-size:11px; opacity:.75;">21.2.1 (Tabla 21.2.1) ACI 318-19</span>`);
+  propRow(disenoParamsEl, "Factor del bloque equivalente (β1)", fmt(cd.beta1, 3), "",
+    `β<sub>1</sub> = 0.85 &minus; (f'c &minus; 280)&middot;(0.05/70)<br><span style="font-size:11px; opacity:.75;">22.2.2.4.3 ACI 318-19</span>`);
+  propRow(disenoParamsEl, "Peralte efectivo (d)", fmt(cd.d, 4), "m",
+    `d = P<sub>Z</sub> &minus; r`);
+  propRow(disenoParamsEl, "Ancho de sección crítica (c1)", fmt(cd.c1, 4), "m",
+    `c1 = AD + d`);
+  propRow(disenoParamsEl, "Largo de sección crítica (c2)", fmt(cd.c2, 4), "m",
+    `c2 = LD + d`);
+  propRow(disenoParamsEl, "Perímetro de sección crítica (b0)", fmt(cd.b0, 4), "m",
+    `b0 = 2&middot;(c1 + c2)`);
+
+  setValueIfNotFocused("dis_varInf", state.diseno.varInf);
+  setValueIfNotFocused("dis_varSup", state.diseno.varSup);
+  const momentos = getMomentosDisenoFlexion();
+
+  const flInf = calcularFlexion(momentos.muInferior, cd);
+  const flInfEl = document.getElementById("flexionInfComputed");
+  flInfEl.innerHTML = "";
+  propRow(flInfEl, "Mu", fmt(momentos.muInferior, 3), "Tn-m/m");
+  propRow(flInfEl, "Rn", fmt(flInf.Rn, 3), "kg/cm²",
+    `Rn = Mu / (ɸ&middot;b&middot;d²)<br><span style="font-size:11px; opacity:.75;">22.3.2.1 ACI 318-19</span>`);
+  propRow(flInfEl, "ρ", fmt(flInf.rho, 5), "",
+    `ρ = ${fracHtml("0.85 f'c","fy")}&middot;(1 &minus; ${sqrtHtml("1 &minus; 2Rn/0.85f'c")})<br><span style="font-size:11px; opacity:.75;">22.2.2.4.1 / 22.3.2.1 ACI 318-19</span>`);
+  propRow(flInfEl, "ρmin (acero por temperatura)", fmt(flInf.rhoMin, 4), "",
+    `<span style="font-size:11px; opacity:.75;">24.4.3.2 (Tabla 7.6.1.1) ACI 318-19</span>`);
+  propRow(flInfEl, "ρmax", fmt(flInf.rhoMax, 5), "",
+    `ρmax = ${fracHtml("ε<sub>cu</sub>","ε<sub>cu</sub>+ε<sub>t</sub>")}&middot;0.85β<sub>1</sub>&middot;(f'c/fy)<br><span style="font-size:11px; opacity:.75;">ε<sub>cu</sub>=0.003 (22.2.2.1), ε<sub>t</sub>=0.005 (21.2.2)</span>`);
+  propRow(flInfEl, "ρ usar", fmt(flInf.rhoUsar, 5), "", `ρ usar = MIN(MAX(ρ, ρmin), ρmax)`);
+  propRow(flInfEl, "As req", fmt(flInf.asReq, 2), "cm²/m", `As = ρ&middot;b&middot;d`);
+  const sepInf = calcularSeparacionVarilla(flInf.asReq, state.diseno.varInf);
+  const flInfBarraEl = document.getElementById("flexionInfBarra");
+  flInfBarraEl.innerHTML = "";
+  propRow(flInfBarraEl, "Av", fmt(sepInf.av, 2), "cm²");
+  propRow(flInfBarraEl, "Separación requerida", fmt(sepInf.separacion, 0), "cm",
+    `Sep = MIN(100 / CEIL(As req/Av), 40)`);
+  renderResultadoBadge("flexionInfResultado", "info",
+    sepInf.separacion > 0
+      ? `SE REQUIEREN VARILLAS DEL NÚMERO ${state.diseno.varInf} @ ${sepInf.separacion} cm, ambos sentidos`
+      : "—");
+
+  setValueIfNotFocused("dis_varInfExist", state.diseno.varInfExist);
+  setValueIfNotFocused("dis_sepInfExist", state.diseno.sepInfExist);
+  const existInf = calcularAceroExistente(state.diseno.varInfExist, state.diseno.sepInfExist, momentos.muInferior, cd);
+  const flInfExistEl = document.getElementById("flexionInfExistComputed");
+  flInfExistEl.innerHTML = "";
+  propRow(flInfExistEl, "Av", fmt(existInf.av, 2), "cm²");
+  propRow(flInfExistEl, "As real", fmt(existInf.asReal, 2), "cm²/m", `As = (Av/separación)&middot;100`);
+  propRow(flInfExistEl, "ρ real", fmt(existInf.rhoReal, 4), "");
+  propRow(flInfExistEl, "ɸMn", fmt(existInf.phiMn, 3), "Tn-m/m",
+    `ɸMn = ɸ&middot;As&middot;fy&middot;(d &minus; a/2)<br><span style="font-size:11px; opacity:.75;">22.3.2.1 ACI 318-19</span>`);
+  propRow(flInfExistEl, "% Acero", isFinite(existInf.effAcero) ? fmt(existInf.effAcero*100, 0)+"%" : "—", "", `As req / As real`);
+  propRow(flInfExistEl, "% Momento", isFinite(existInf.effMomento) ? fmt(existInf.effMomento*100, 0)+"%" : "—", "", `Mu / ɸMn`);
+  const cumpleInf = isFinite(existInf.effMomento) && isFinite(existInf.effAcero) && Math.max(existInf.effMomento, existInf.effAcero) < 1.05;
+  renderResultadoBadge("flexionInfExistResultado",
+    (isFinite(existInf.effMomento) && isFinite(existInf.effAcero)) ? (cumpleInf ? "ok" : "fail") : "none",
+    (isFinite(existInf.effMomento) && isFinite(existInf.effAcero))
+      ? (cumpleInf ? "CUMPLE MOMENTO RESISTENTE" : "NO CUMPLE MOMENTO RESISTENTE")
+      : "—");
+
+  const flSup = calcularFlexion(momentos.muSuperior, cd);
+  const flSupEl = document.getElementById("flexionSupComputed");
+  flSupEl.innerHTML = "";
+  propRow(flSupEl, "Mu", fmt(momentos.muSuperior, 3), "Tn-m/m");
+  propRow(flSupEl, "Rn", fmt(flSup.Rn, 3), "kg/cm²",
+    `Rn = Mu / (ɸ&middot;b&middot;d²)<br><span style="font-size:11px; opacity:.75;">22.3.2.1 ACI 318-19</span>`);
+  propRow(flSupEl, "ρ", fmt(flSup.rho, 5), "",
+    `ρ = ${fracHtml("0.85 f'c","fy")}&middot;(1 &minus; ${sqrtHtml("1 &minus; 2Rn/0.85f'c")})<br><span style="font-size:11px; opacity:.75;">22.2.2.4.1 / 22.3.2.1 ACI 318-19</span>`);
+  propRow(flSupEl, "ρmin (acero por temperatura)", fmt(flSup.rhoMin, 4), "",
+    `<span style="font-size:11px; opacity:.75;">24.4.3.2 (Tabla 7.6.1.1) ACI 318-19</span>`);
+  propRow(flSupEl, "ρmax", fmt(flSup.rhoMax, 5), "",
+    `ρmax = ${fracHtml("ε<sub>cu</sub>","ε<sub>cu</sub>+ε<sub>t</sub>")}&middot;0.85β<sub>1</sub>&middot;(f'c/fy)<br><span style="font-size:11px; opacity:.75;">ε<sub>cu</sub>=0.003 (22.2.2.1), ε<sub>t</sub>=0.005 (21.2.2)</span>`);
+  propRow(flSupEl, "ρ usar", fmt(flSup.rhoUsar, 5), "", `ρ usar = MIN(MAX(ρ, ρmin), ρmax)`);
+  propRow(flSupEl, "As req", fmt(flSup.asReq, 2), "cm²/m", `As = ρ&middot;b&middot;d`);
+  const sepSup = calcularSeparacionVarilla(flSup.asReq, state.diseno.varSup);
+  const flSupBarraEl = document.getElementById("flexionSupBarra");
+  flSupBarraEl.innerHTML = "";
+  propRow(flSupBarraEl, "Av", fmt(sepSup.av, 2), "cm²");
+  propRow(flSupBarraEl, "Separación requerida", fmt(sepSup.separacion, 0), "cm",
+    `Sep = MIN(100 / CEIL(As req/Av), 40)`);
+  renderResultadoBadge("flexionSupResultado", "info",
+    sepSup.separacion > 0
+      ? `SE REQUIEREN VARILLAS DEL NÚMERO ${state.diseno.varSup} @ ${sepSup.separacion} cm, ambos sentidos`
+      : "—");
+
+  setValueIfNotFocused("dis_varSupExist", state.diseno.varSupExist);
+  setValueIfNotFocused("dis_sepSupExist", state.diseno.sepSupExist);
+  const existSup = calcularAceroExistente(state.diseno.varSupExist, state.diseno.sepSupExist, momentos.muSuperior, cd);
+  const flSupExistEl = document.getElementById("flexionSupExistComputed");
+  flSupExistEl.innerHTML = "";
+  propRow(flSupExistEl, "Av", fmt(existSup.av, 2), "cm²");
+  propRow(flSupExistEl, "As real", fmt(existSup.asReal, 2), "cm²/m", `As = (Av/separación)&middot;100`);
+  propRow(flSupExistEl, "ρ real", fmt(existSup.rhoReal, 4), "");
+  propRow(flSupExistEl, "ɸMn", fmt(existSup.phiMn, 3), "Tn-m/m",
+    `ɸMn = ɸ&middot;As&middot;fy&middot;(d &minus; a/2)<br><span style="font-size:11px; opacity:.75;">22.3.2.1 ACI 318-19</span>`);
+  propRow(flSupExistEl, "% Acero", isFinite(existSup.effAcero) ? fmt(existSup.effAcero*100, 0)+"%" : "—", "", `As req / As real`);
+  propRow(flSupExistEl, "% Momento", isFinite(existSup.effMomento) ? fmt(existSup.effMomento*100, 0)+"%" : "—", "", `Mu / ɸMn`);
+  const cumpleSup = isFinite(existSup.effMomento) && isFinite(existSup.effAcero) && Math.max(existSup.effMomento, existSup.effAcero) < 1.05;
+  renderResultadoBadge("flexionSupExistResultado",
+    (isFinite(existSup.effMomento) && isFinite(existSup.effAcero)) ? (cumpleSup ? "ok" : "fail") : "none",
+    (isFinite(existSup.effMomento) && isFinite(existSup.effAcero))
+      ? (cumpleSup ? "CUMPLE MOMENTO RESISTENTE" : "NO CUMPLE MOMENTO RESISTENTE")
+      : "—");
+
+  // 5.4.- Cortante en una dirección — se revisa en X y Y por separado (cada
+  // eje tiene su propia sección crítica); ɸVc es la misma capacidad para
+  // ambos, solo cambia la demanda Vu de cada dirección.
+  const cort1D = calcularCortante1D(cd);
+  const cort1DEl = document.getElementById("cortante1DComputed");
+  cort1DEl.innerHTML = "";
+  propRow(cort1DEl, "Vux", fmt(cort1D.vux, 3), "Tn/m²",
+    `Vux = MAX(|SQX|) &middot; 10<br><span style="font-size:11px; opacity:.75;">peor fila de la tabla 5.1</span>`);
+  propRow(cort1DEl, "Vuy", fmt(cort1D.vuy, 3), "Tn/m²",
+    `Vuy = MAX(|SQY|) &middot; 10<br><span style="font-size:11px; opacity:.75;">peor fila de la tabla 5.1</span>`);
+  propRow(cort1DEl, "λs", fmt(cort1D.lambdaS, 4), "",
+    `λs = MIN(${sqrtHtml("2/(1+0.04d)")}, 1)<br><span style="font-size:11px; opacity:.75;">22.5.5.1.3 ACI 318-19</span>`);
+  propRow(cort1DEl, "λ", fmt(cort1D.lambda, 2), "",
+    `<span style="font-size:11px; opacity:.75;">19.2.4.2 ACI 318-19 (concreto de peso normal)</span>`);
+  propRow(cort1DEl, "ɸVc", fmt(cort1D.phiVc, 3), "Tn/m²",
+    `ɸVc = ɸ&middot;0.53&middot;λs&middot;λ&middot;${sqrtHtml("f'c")}<br><span style="font-size:11px; opacity:.75;">22.5.5.1 ACI 318-19 (misma capacidad en ambos ejes)</span>`);
+  propRow(cort1DEl, "Eficiencia X", isFinite(cort1D.eficienciaX) ? fmt(cort1D.eficienciaX*100,0)+"%" : "—", "", `Vux / ɸVc`);
+  propRow(cort1DEl, "Eficiencia Y", isFinite(cort1D.eficienciaY) ? fmt(cort1D.eficienciaY*100,0)+"%" : "—", "", `Vuy / ɸVc`);
+  const cumpleCortX = isFinite(cort1D.eficienciaX) && cort1D.eficienciaX <= 1;
+  const cumpleCortY = isFinite(cort1D.eficienciaY) && cort1D.eficienciaY <= 1;
+  const hayDatosCort = isFinite(cort1D.eficienciaX) && isFinite(cort1D.eficienciaY);
+  renderResultadoBadge("cortante1DResultado", hayDatosCort ? ((cumpleCortX && cumpleCortY) ? "ok":"fail") : "none",
+    hayDatosCort
+      ? ((cumpleCortX && cumpleCortY) ? "CUMPLE LA REVISIÓN POR CORTANTE (X y Y)" : "NO CUMPLE LA REVISIÓN POR CORTANTE" + (!cumpleCortX && !cumpleCortY ? " (X y Y)" : !cumpleCortX ? " (eje X)" : " (eje Y)"))
+      : "—");
+
+  // 5.5.- Punzonamiento
+  const punz = calcularPunzonamiento(cd, props);
+  const punzEl = document.getElementById("punzonamientoComputed");
+  punzEl.innerHTML = "";
+  propRow(punzEl, "Dado / combo crítico", punz.dado ? `${punz.dado} — ${punz.combo}` : "—", "");
+  propRow(punzEl, "Pu (reacción del dado)", punz.pu!=null ? fmt(punz.pu, 3) : "—", "Tn");
+  propRow(punzEl, "qu (presión de suelo prom.)", punz.qu!=null ? fmt(punz.qu, 3) : "—", "Tn/m²",
+    `qu = Σ Pu (3 dados) / Área`);
+  propRow(punzEl, "Vu", fmt(punz.vu, 3), "Tn/m²",
+    `Vu = (Pu &minus; qu&middot;c1&middot;c2) / (b0&middot;d)<br><span style="font-size:11px; opacity:.75;">22.6.5.1 ACI 318-19</span>`);
+  propRow(punzEl, "λs", fmt(punz.lambdaS, 4), "", `<span style="font-size:11px; opacity:.75;">22.5.5.1.3 ACI 318-19</span>`);
+  propRow(punzEl, "β (c1/c2)", fmt(punz.beta, 3), "", `β = MAX(c1,c2) / MIN(c1,c2)`);
+  propRow(punzEl, "ɸvc (a)", fmt(punz.phiVcA, 3), "Tn/m²",
+    `ɸvc = ɸ&middot;1.06&middot;λs&middot;λ&middot;${sqrtHtml("f'c")}<br><span style="font-size:11px; opacity:.75;">22.6.5.2(a) ACI 318-19</span>`);
+  propRow(punzEl, "ɸvc (b)", fmt(punz.phiVcB, 3), "Tn/m²",
+    `ɸvc = ɸ&middot;0.53(1+2/β)&middot;λs&middot;λ&middot;${sqrtHtml("f'c")}<br><span style="font-size:11px; opacity:.75;">22.6.5.2(b) ACI 318-19</span>`);
+  propRow(punzEl, "ɸvc (c)", fmt(punz.phiVcC, 3), "Tn/m²",
+    `ɸvc = ɸ&middot;0.265(2+αsd/b0)&middot;λs&middot;λ&middot;${sqrtHtml("f'c")}<br><span style="font-size:11px; opacity:.75;">22.6.5.2(c) ACI 318-19</span>`);
+  propRow(punzEl, "ɸVc (gobierna)", fmt(punz.phiVc, 3), "Tn/m²", `ɸVc = MIN(a, b, c)`);
+  propRow(punzEl, "Eficiencia", isFinite(punz.eficiencia) ? fmt(punz.eficiencia*100,0)+"%" : "—", "", `Vu / ɸVc`);
+  const cumplePunz = isFinite(punz.eficiencia) && punz.eficiencia <= 1;
+  renderResultadoBadge("punzonamientoResultado", isFinite(punz.eficiencia) ? (cumplePunz?"ok":"fail") : "none",
+    isFinite(punz.eficiencia) ? (cumplePunz ? "CUMPLE LA REVISIÓN POR PUNZONAMIENTO" : "NO CUMPLE LA REVISIÓN POR PUNZONAMIENTO") : "—");
+
+  // 5.6.- Revisión de dados de desplante
+  setValueIfNotFocused("dis_dadoN1", state.diseno.dadoN1);
+  setValueIfNotFocused("dis_dadoVar1", state.diseno.dadoVar1);
+  setValueIfNotFocused("dis_dadoN2", state.diseno.dadoN2);
+  setValueIfNotFocused("dis_dadoVar2", state.diseno.dadoVar2);
+  setValueIfNotFocused("dis_dadoEstribosRamas", state.diseno.dadoEstribosRamas);
+  setValueIfNotFocused("dis_dadoEstriboVar", state.diseno.dadoEstriboVar);
+  setValueIfNotFocused("dis_dadoEstriboSep", state.diseno.dadoEstriboSep);
+  setValueIfNotFocused("dis_dadoRecubrimiento", state.diseno.dadoRecubrimiento);
+  renderEsquemaDado();
+
+  const armadoDado = calcularArmadoDado();
+  const dadoArmadoEl = document.getElementById("dadoArmadoComputed");
+  dadoArmadoEl.innerHTML = "";
+  propRow(dadoArmadoEl, "As grupo 1", fmt(armadoDado.as1, 2), "cm²", `As = N&middot;Av`);
+  propRow(dadoArmadoEl, "As grupo 2", fmt(armadoDado.as2, 2), "cm²", `As = N&middot;Av`);
+  propRow(dadoArmadoEl, "Ast (total)", fmt(armadoDado.ast, 2), "cm²", `Ast = As grupo 1 + As grupo 2`);
+  propRow(dadoArmadoEl, "Ag", fmt(armadoDado.ag, 2), "cm²", `Ag = AD&middot;LD`);
+  propRow(dadoArmadoEl, "Cuantía (Ast/Ag)", fmt(armadoDado.cuantia, 4), "");
+  propRow(dadoArmadoEl, "Cuantía mínima", fmt(armadoDado.cuantiaMin, 4), "",
+    `<span style="font-size:11px; opacity:.75;">9.4.1 TIA-222-H</span>`);
+  renderResultadoBadge("dadoCuantiaResultado", armadoDado.cumpleCuantia ? "ok" : "fail",
+    armadoDado.cumpleCuantia ? "CUMPLE CUANTÍA MÍNIMA" : "NO CUMPLE CUANTÍA MÍNIMA");
+
+  const compDado = calcularCompresionDado(armadoDado);
+  const dadoCompEl = document.getElementById("dadoCompresionComputed");
+  dadoCompEl.innerHTML = "";
+  propRow(dadoCompEl, "ɸ", fmt(compDado.phi, 2), "", `<span style="font-size:11px; opacity:.75;">21.2.2 ACI 318-19 (miembro con estribos)</span>`);
+  propRow(dadoCompEl, "ɸPn,max", fmt(compDado.phiPnMax, 3), "Tn",
+    `ɸPn = ɸ&middot;0.80&middot;[0.85f'c(Ag&minus;Ast) + fy&middot;Ast]<br><span style="font-size:11px; opacity:.75;">22.4.2.1 ACI 318-19</span>`);
+  propRow(dadoCompEl, "Pu", fmt(compDado.pu, 3), "Tn", `MAX entre los 3 dados y combos 1.2D+1.0W`);
+  propRow(dadoCompEl, "Eficiencia", isFinite(compDado.eficiencia) ? fmt(compDado.eficiencia*100,0)+"%" : "—", "", `Pu / ɸPn,max`);
+  const cumpleComp = isFinite(compDado.eficiencia) && compDado.eficiencia <= 1;
+  renderResultadoBadge("dadoCompresionResultado", isFinite(compDado.eficiencia) ? (cumpleComp?"ok":"fail") : "none",
+    isFinite(compDado.eficiencia) ? (cumpleComp ? "CUMPLE LA REVISIÓN POR COMPRESIÓN AXIAL" : "NO CUMPLE LA REVISIÓN POR COMPRESIÓN AXIAL") : "—");
+
+  const tenDado = calcularTensionDado(armadoDado);
+  const dadoTenEl = document.getElementById("dadoTensionComputed");
+  dadoTenEl.innerHTML = "";
+  propRow(dadoTenEl, "ɸ", fmt(tenDado.phi, 2), "", `<span style="font-size:11px; opacity:.75;">21.2.2 ACI 318-19 (controlado por tracción)</span>`);
+  propRow(dadoTenEl, "ɸTn", fmt(tenDado.phiTn, 3), "Tn", `ɸTn = ɸ&middot;Ast&middot;fy`);
+  propRow(dadoTenEl, "Tu", fmt(tenDado.tu, 3), "Tn", `ABS(MIN) entre los 3 dados y combos 1.2D+1.0W`);
+  propRow(dadoTenEl, "Eficiencia", isFinite(tenDado.eficiencia) ? fmt(tenDado.eficiencia*100,0)+"%" : "—", "", `Tu / ɸTn`);
+  const cumpleTen = isFinite(tenDado.eficiencia) && tenDado.eficiencia <= 1;
+  renderResultadoBadge("dadoTensionResultado", isFinite(tenDado.eficiencia) ? (cumpleTen?"ok":"fail") : "none",
+    isFinite(tenDado.eficiencia) ? (cumpleTen ? "CUMPLE LA REVISIÓN POR TENSIÓN AXIAL" : "NO CUMPLE LA REVISIÓN POR TENSIÓN AXIAL") : "—");
+
   setValueIfNotFocused("ang_P1", state.angles.P1);
   setValueIfNotFocused("ang_P1a", state.angles.P1a);
   setValueIfNotFocused("ang_P1b", state.angles.P1b);
@@ -5803,6 +7431,60 @@ function renderAll(){
   const mallaMesh = generateMallaFEM(outerC, mallaHoleC, dados, mallaCellSizeM);
   lastMallaMesh = mallaMesh;
   renderMallaFEM(mallaMesh, outerC, mallaHoleC);
+
+  // 6.- Resumen de eficiencias: reutiliza los mismos valores ya calculados
+  // arriba en 5.3/5.4/5.5/5.6 (nada se recalcula) — el D/C de Interacción
+  // 3D (P-M-M) es la excepción: solo se conoce si esa pestaña ya se abrió
+  // al menos una vez (lastPMM), porque ese barrido es caro y no se dispara
+  // solo para esta tabla.
+  const efVolteo = (geo && geo.rows2 && geo.rows2.length)
+    ? Math.max(...geo.rows2.map(r=>r.eficienciaVolteo).filter(isFinite), 0) : NaN;
+  const efCapacidad = (cap && cap.rows && cap.rows.length)
+    ? Math.max(...cap.rows.map(r=>r.eficiencia).filter(isFinite), 0) : NaN;
+  const filasResumen = [
+    ["Volteo (peor combinación)", "4.2", efVolteo],
+    ["Capacidad portante / Navier (peor combinación)", "4.3", efCapacidad],
+    ["Flexión Lecho Inferior (% Momento)", "5.3.2", existInf.effMomento],
+    ["Flexión Lecho Inferior (% Acero)",   "5.3.2", existInf.effAcero],
+    ["Flexión Lecho Superior (% Momento)", "5.3.4", existSup.effMomento],
+    ["Flexión Lecho Superior (% Acero)",   "5.3.4", existSup.effAcero],
+    ["Cortante en una dirección (eje X)",  "5.4",   cort1D.eficienciaX],
+    ["Cortante en una dirección (eje Y)",  "5.4",   cort1D.eficienciaY],
+    ["Punzonamiento",                      "5.5",   punz.eficiencia],
+    ["Compresión axial del dado",          "5.6.1", compDado.eficiencia],
+    ["Tensión axial del dado",             "5.6.2", tenDado.eficiencia],
+    ["Interacción P-M-M del dado (D/C máx)", "Interacción 3D",
+      lastPMM && lastPMM.dc.length ? Math.max(...lastPMM.dc.filter(isFinite), 0) : NaN]
+  ];
+  const tbodyResumen = document.querySelector("#tblResumenEficiencias tbody");
+  if(tbodyResumen){
+    // Primero se ubica el peor caso global (una sola pasada), y RECIÉN
+    // después se arma el HTML — si se hiciera en la misma pasada de map(),
+    // varias filas quedarían marcadas como "peor" (cada una que fue la
+    // más alta HASTA ESE PUNTO del recorrido, no la máxima final).
+    const validas = filasResumen.filter(([,,ef])=>isFinite(ef));
+    const efPeor = validas.length ? Math.max(...validas.map(([,,ef])=>ef)) : null;
+    tbodyResumen.innerHTML = filasResumen.map(([nombre, seccion, ef])=>{
+      const valido = isFinite(ef);
+      const pct = valido ? fmt(ef*100, 0)+"%" : "—";
+      const cumple = valido ? ef <= 1 : null;
+      const badge = !valido
+        ? `<span style="color:var(--muted);">Sin datos</span>`
+        : `<span style="color:${cumple ? "var(--success-fg)" : "var(--danger-fg)"}; font-weight:700;">${cumple ? "CUMPLE" : "NO CUMPLE"}</span>`;
+      return `<tr><td style="text-align:left;">${nombre}</td><td>${seccion}</td><td class="${valido && ef===efPeor ? "cell-max-highlight" : ""}">${pct}</td><td>${badge}</td></tr>`;
+    }).join("");
+  }
+
+  // Si la pestaña "Interacción 3D" está visible, se refresca en vivo con
+  // cualquier cambio (geometría, materiales, armado del dado, reacciones)
+  // — evita recalcular la superficie P-M-M cuando esa pestaña ni se ve.
+  const panelPMM = document.querySelector('.tab-panel[data-tab="interaccion"]');
+  if(panelPMM && panelPMM.classList.contains("active")) calcularYRenderizarPMM();
+
+  // Igual criterio para "Acero 3D": solo reconstruye la geometría si esa
+  // pestaña está visible.
+  const panelAcero = document.querySelector('.tab-panel[data-tab="acero3d"]');
+  if(panelAcero && panelAcero.classList.contains("active") && sceneAcero) updateAcero3D();
 
   saveToStorage();
 }
@@ -5905,6 +7587,9 @@ function initTabs(){
     } else {
       stop3DLoop();
     }
+    if(name === "interaccion") calcularYRenderizarPMM();
+    if(name === "acero3d"){ initAcero3D(); resizeAcero3D(); }
+    else stopAcero3DLoop();
   }
   tabs.forEach(b=>b.addEventListener("click", ()=>setActive(b.dataset.tab)));
   setActive("revisiones");
@@ -6128,6 +7813,79 @@ function renderReaccionesBaseTable(cfg){
   });
 }
 
+// 5.1.- Elementos mecánicos de diseño: tabla editable con el resumen Max/Min
+// de la malla de placas exportada de STAAD (entrada manual, un valor por
+// celda) — nombrada "...Diseno" para no chocar con renderElementosMecanicos()
+// (esa es el resumen de solo lectura de Reacciones en la sección 1).
+const ELEM_MEC_FIELDS = ["plate","lc","sqx","sqy","sx","sy","sxy","mx","my","mxy"];
+
+// Pegado tipo Excel: si se pega un bloque con tabs/saltos de línea (varias
+// celdas copiadas de golpe, como la tabla que exporta STAAD), se reparte
+// entre filas/columnas a partir de la celda con foco, en vez de meter todo
+// el texto crudo en un solo input.
+function initElementosMecanicosPaste(){
+  const tbody = document.querySelector("#tblElementosMecanicos tbody");
+  if(!tbody) return;
+  tbody.addEventListener("paste", (e)=>{
+    const target = e.target;
+    if(!(target instanceof HTMLInputElement)) return;
+    const ri0 = +target.dataset.ri;
+    const fi0 = ELEM_MEC_FIELDS.indexOf(target.dataset.f);
+    if(isNaN(ri0) || fi0 < 0) return;
+    const texto = (e.clipboardData || window.clipboardData).getData("text");
+    if(!texto || !/[\t\n]/.test(texto)) return; // un solo valor: dejar el pegado normal del navegador
+    e.preventDefault();
+    texto.replace(/\r/g,"").split("\n").filter(l=>l.length>0).forEach((linea, dr)=>{
+      const ri = ri0 + dr;
+      if(ri >= state.elementosMecanicos.length) return;
+      linea.split("\t").forEach((valor, dc)=>{
+        const fi = fi0 + dc;
+        if(fi >= ELEM_MEC_FIELDS.length) return;
+        const campo = ELEM_MEC_FIELDS[fi];
+        if(campo === "plate" || campo === "lc"){
+          state.elementosMecanicos[ri][campo] = valor.trim();
+        } else {
+          const v = parseDecimal(valor.trim());
+          state.elementosMecanicos[ri][campo] = isNaN(v) ? 0 : v;
+        }
+      });
+    });
+    renderElementosMecanicosDiseno();
+    saveToStorage();
+  });
+}
+
+function renderElementosMecanicosDiseno(){
+  const tbody = document.querySelector("#tblElementosMecanicos tbody");
+  if(!tbody) return;
+  tbody.innerHTML = state.elementosMecanicos.map((row, ri) => `
+    <tr>
+      <td style="text-align:left; font-weight:600;">${row.label}</td>
+      <td><input type="text" data-ri="${ri}" data-f="plate" value="${row.plate}" style="width:70px;" aria-label="${row.label}, Plate"></td>
+      <td><input type="text" data-ri="${ri}" data-f="lc" value="${row.lc}" style="width:230px;" aria-label="${row.label}, L/C"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sqx" value="${row.sqx}" aria-label="${row.label}, SQX"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sqy" value="${row.sqy}" aria-label="${row.label}, SQY"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sx" value="${row.sx}" aria-label="${row.label}, SX"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sy" value="${row.sy}" aria-label="${row.label}, SY"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sxy" value="${row.sxy}" aria-label="${row.label}, SXY"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="mx" value="${row.mx}" aria-label="${row.label}, MX"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="my" value="${row.my}" aria-label="${row.label}, MY"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="mxy" value="${row.mxy}" aria-label="${row.label}, MXY"></td>
+    </tr>`).join("");
+  tbody.querySelectorAll("input").forEach(inp=>{
+    inp.addEventListener("input", ()=>{
+      const ri = +inp.dataset.ri, f = inp.dataset.f;
+      if(f === "plate" || f === "lc"){
+        state.elementosMecanicos[ri][f] = inp.value;
+      } else {
+        const v = parseDecimal(inp.value);
+        state.elementosMecanicos[ri][f] = isNaN(v) ? 0 : v;
+      }
+      saveToStorage();
+    });
+  });
+}
+
 /* ============================================================
    IMPORTAR REACCIONES DESDE PDF
    Usa PDF.js (embebido arriba en <script id="pdfjs-lib-src">/"pdfjs-worker-src">,
@@ -6321,6 +8079,9 @@ function showPdfImportStatus(kind, html){
 }
 
 function initBindings(){
+  ["dis_dadoVar1","dis_dadoVar2","dis_dadoEstriboVar"].forEach(id=>{
+    document.getElementById(id).innerHTML = rebarOptionsHtml();
+  });
   document.getElementById("btnImportOuterTxt").addEventListener("click", ()=>{
     document.getElementById("fileOuterTxt").click();
   });
@@ -6521,10 +8282,143 @@ function initBindings(){
     state.materiales.existeCiclopeo = e.target.value;
     renderAll();
   });
+  document.getElementById("dis_r").addEventListener("input", (e)=>{
+    const v = parseDecimal(e.target.value);
+    state.diseno.r = isNaN(v) ? 0 : v;
+    renderAll();
+  });
+  document.getElementById("dis_alphaS").addEventListener("change", (e)=>{
+    state.diseno.alphaS = e.target.value;
+    renderAll();
+  });
+  document.getElementById("dis_varInf").addEventListener("change", (e)=>{
+    state.diseno.varInf = e.target.value;
+    renderAll();
+  });
+  document.getElementById("dis_varSup").addEventListener("change", (e)=>{
+    state.diseno.varSup = e.target.value;
+    renderAll();
+  });
+  document.getElementById("dis_varInfExist").addEventListener("change", (e)=>{
+    state.diseno.varInfExist = e.target.value;
+    renderAll();
+  });
+  document.getElementById("dis_sepInfExist").addEventListener("input", (e)=>{
+    const v = parseDecimal(e.target.value);
+    state.diseno.sepInfExist = isNaN(v) ? 0 : v;
+    renderAll();
+  });
+  document.getElementById("dis_varSupExist").addEventListener("change", (e)=>{
+    state.diseno.varSupExist = e.target.value;
+    renderAll();
+  });
+  document.getElementById("dis_sepSupExist").addEventListener("input", (e)=>{
+    const v = parseDecimal(e.target.value);
+    state.diseno.sepSupExist = isNaN(v) ? 0 : v;
+    renderAll();
+  });
+  [["dis_dadoN1","dadoN1"],["dis_dadoN2","dadoN2"],["dis_dadoEstribosRamas","dadoEstribosRamas"],["dis_dadoEstriboSep","dadoEstriboSep"],["dis_dadoRecubrimiento","dadoRecubrimiento"]].forEach(([id,field])=>{
+    document.getElementById(id).addEventListener("input", (e)=>{
+      const v = parseDecimal(e.target.value);
+      state.diseno[field] = isNaN(v) ? 0 : v;
+      renderAll();
+    });
+  });
+  [["dis_dadoVar1","dadoVar1"],["dis_dadoVar2","dadoVar2"],["dis_dadoEstriboVar","dadoEstriboVar"]].forEach(([id,field])=>{
+    document.getElementById(id).addEventListener("change", (e)=>{
+      state.diseno[field] = e.target.value;
+      renderAll();
+    });
+  });
   document.getElementById("g_metodoBalasto").addEventListener("change", (e)=>{
     state.geom.metodoBalasto = e.target.value;
     renderAll();
   });
+
+  // Pestaña "Interacción 3D": controles propios de la visualización, no
+  // afectan el cálculo de la superficie — solo redibujan.
+  ["chkSupResistente","chkSupNominal","chkPuntosDemanda","chkLineasOrigen"].forEach(id=>{
+    document.getElementById(id).addEventListener("change", ()=> calcularYRenderizarPMM(false));
+  });
+  document.getElementById("sliderOpacidad").addEventListener("input", ()=> calcularYRenderizarPMM(false));
+  document.getElementById("selPataPMM").addEventListener("change", ()=> calcularYRenderizarPMM(false));
+
+  const vistasPMM = {
+    btnVistaIso:   {x:1.25, y:1.25, z:1.25},
+    btnVistaPMx:   {x:0,    y:2.5,  z:0.001},
+    btnVistaPMy:   {x:2.5,  y:0,    z:0.001},
+    btnVistaMxMy:  {x:0,    y:0.001, z:2.5}
+  };
+  Object.keys(vistasPMM).forEach(id=>{
+    document.getElementById(id).addEventListener("click", ()=>{
+      const div = document.getElementById("interaccionPlot");
+      if(div && typeof Plotly !== "undefined") Plotly.relayout(div, {"scene.camera.eye": vistasPMM[id]});
+    });
+  });
+  document.getElementById("btnExportPngPMM").addEventListener("click", ()=>{
+    const div = document.getElementById("interaccionPlot");
+    if(div && typeof Plotly !== "undefined"){
+      Plotly.downloadImage(div, {format:"png", width:1200, height:900, filename:"interaccion_dado"});
+    }
+  });
+  document.getElementById("btnExportCsvPMM").addEventListener("click", ()=>{
+    if(!lastPMM || !lastPMM.demandas.length) return;
+    const filas = ["Combinacion,Pata,Pu_Tn,Mux_Tnm,Muy_Tnm,DC"];
+    lastPMM.demandas.forEach((d,i)=>{
+      filas.push(`"${d.combo}",${d.pata},${d.Pu.toFixed(3)},${d.Mux.toFixed(3)},${d.Muy.toFixed(3)},${isFinite(lastPMM.dc[i])?lastPMM.dc[i].toFixed(3):""}`);
+    });
+    const blob = new Blob([filas.join("\n")], {type:"text/csv"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "interaccion_dado.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // Pestaña "Acero 3D": checkboxes de visibilidad, botones de vista y
+  // exportar PNG.
+  ["chkAceroLechoInf","chkAceroLechoSup","chkAceroLongDado","chkAceroEstribo","chkAceroConcreto"].forEach(id=>{
+    document.getElementById(id).addEventListener("change", aplicarVisibilidadAcero);
+  });
+  const vistasAcero = {
+    btnAceroVistaIso: ()=>{
+      const yMid = -state.geom.Pd/2;
+      cameraAcero.position.set(6, yMid+2, 6);
+      controlsAcero.target.set(0, yMid, 0);
+    },
+    btnAceroVistaPlanta: ()=>{
+      const yMid = -state.geom.Pd/2;
+      cameraAcero.position.set(0.001, yMid+8, 0.001);
+      controlsAcero.target.set(0, yMid, 0);
+    },
+    btnAceroVistaAlzadoX: ()=>{
+      const yMid = -state.geom.Pd/2;
+      cameraAcero.position.set(8, yMid, 0.001);
+      controlsAcero.target.set(0, yMid, 0);
+    },
+    btnAceroVistaAlzadoZ: ()=>{
+      const yMid = -state.geom.Pd/2;
+      cameraAcero.position.set(0.001, yMid, 8);
+      controlsAcero.target.set(0, yMid, 0);
+    }
+  };
+  Object.keys(vistasAcero).forEach(id=>{
+    document.getElementById(id).addEventListener("click", ()=>{
+      if(!cameraAcero || !controlsAcero) return;
+      vistasAcero[id]();
+      controlsAcero.update();
+    });
+  });
+  document.getElementById("btnAceroExportPng").addEventListener("click", ()=>{
+    if(!rendererAcero || !sceneAcero || !cameraAcero) return;
+    rendererAcero.render(sceneAcero, cameraAcero);
+    const canvas = document.getElementById("canvasAcero3d");
+    const link = document.createElement("a");
+    link.download = "acero_refuerzo.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
+  window.addEventListener("resize", resizeAcero3D);
 
   document.getElementById("btnZoomIn").addEventListener("click", ()=> setPlanZoom(planZoom*1.25));
   document.getElementById("btnZoomOut").addEventListener("click", ()=> setPlanZoom(planZoom/1.25));
@@ -6602,6 +8496,8 @@ function initBindings(){
 initBindings();
 renderAll();
 renderReaccionesTable();
+renderElementosMecanicosDiseno();
+initElementosMecanicosPaste();
 
 })();
 </script>
