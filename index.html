@@ -459,7 +459,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
 /* ---------- Layout de la pestaña Cálculos: nav lateral + contenido ---------- */
 .calc-layout{display:flex; align-items:flex-start; gap:14px; max-width:1374px; margin:0 auto;}
 .calc-sidenav{
-  flex:0 0 168px; position:sticky; top:calc(var(--stickytop-h, 106px) + 8px); align-self:flex-start;
+  flex:0 0 210px; position:sticky; top:calc(var(--stickytop-h, 106px) + 8px); align-self:flex-start;
   display:flex; flex-direction:column; gap:1px; max-height:calc(100vh - var(--stickytop-h, 106px) - 26px); overflow-y:auto;
   background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:6px;
 }
@@ -1132,9 +1132,13 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
         <div class="geoContenido">
           <p class="small" style="margin:0 0 10px; color:var(--muted);">Malla "Urdimbre": grilla regular sobre el interior + triangulación restringida en huecos/esquinas/dados, recombinada en cuadriláteros y reparada localmente (dados resaltados en naranja, con su propia malla perfecta). Es solo una previsualización visual — todavía no genera el archivo .STD para STAAD.</p>
           <label class="field" style="max-width:360px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="120" id="g_mallaTamElem" style="max-width:150px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">50 cm</span></label>
-          <label class="field" style="max-width:280px; margin-bottom:12px;"><span class="lbl">Mostrar números de placas</span><input type="checkbox" id="chkMallaNumeros"></label>
-          <label class="field" style="max-width:280px; margin-bottom:12px;"><span class="lbl">Mostrar nodos de la malla</span><input type="checkbox" id="chkMallaNodos"></label>
-          <div id="geoMallaDiagrama" class="navier-card" style="max-width:1180px; margin:0 auto;"></div>
+          <div style="position:relative; max-width:1180px; margin:0 auto;">
+            <div id="geoMallaDiagrama" class="navier-card"></div>
+            <div style="position:absolute; top:10px; left:10px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:6px 10px; font-size:11.5px; z-index:5;">
+              <label class="field" style="min-width:200px; margin-bottom:2px;"><span class="lbl">Mostrar números de placas</span><input type="checkbox" id="chkMallaNumeros"></label>
+              <label class="field" style="min-width:200px; margin-bottom:0;"><span class="lbl">Mostrar nodos de la malla</span><input type="checkbox" id="chkMallaNodos"></label>
+            </div>
+          </div>
           <p class="small" style="margin:8px 0 0; color:var(--muted);" id="geoMallaConteo"></p>
         </div>
       </div>
@@ -1656,7 +1660,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
             <div style="flex:1 1 560px; min-width:320px;">
               <div style="position:relative;">
                 <div id="interaccionPlot" style="width:100%; height:560px; min-height:400px;"></div>
-                <div id="interaccionResumen" style="position:absolute; top:8px; right:8px; z-index:5; padding:6px 10px; border-radius:var(--radius-md); font-weight:700; font-size:13px;"></div>
+                <div id="interaccionResumen" style="position:absolute; top:8px; left:8px; z-index:5; padding:6px 10px; border-radius:var(--radius-md); font-weight:700; font-size:13px;"></div>
               </div>
               <div class="row-actions" style="margin-top:10px; flex-wrap:wrap;">
                 <button class="btn subtle" id="btnVistaIso" type="button">Isométrica</button>
@@ -1710,6 +1714,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
                   <span>Tu navegador no soporta WebGL — no se puede mostrar esta vista.</span>
                 </div>
                 <div id="acero3dLeyenda" style="position:absolute; bottom:12px; left:12px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 12px; font-size:11.5px; z-index:5; max-width:320px;"></div>
+                <div id="acero3dResumen" style="position:absolute; top:12px; left:12px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 12px; font-size:11.5px; z-index:5; max-width:320px;"></div>
               </div>
               <div class="row-actions" style="margin-top:10px; flex-wrap:wrap;">
                 <button class="btn subtle" id="btnAceroVistaIso" type="button">Isométrica</button>
@@ -1725,6 +1730,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
               <label class="field" style="margin-bottom:8px;"><span class="lbl">Longitudinal dado</span><input type="checkbox" id="chkAceroLongDado" checked></label>
               <label class="field" style="margin-bottom:8px;"><span class="lbl">Estribos dado</span><input type="checkbox" id="chkAceroEstribo" checked></label>
               <label class="field" style="margin-bottom:8px;"><span class="lbl">Concreto (fantasma)</span><input type="checkbox" id="chkAceroConcreto" checked></label>
+              <label class="field" style="margin-bottom:8px;"><span class="lbl">Transparencia del concreto</span><input type="range" id="sliderConcretoOpacidad" min="0" max="1" step="0.05" value="0.15"></label>
             </div>
           </div>
         </div>
@@ -1739,18 +1745,6 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
         <div class="message-bar info" role="status" style="margin-bottom:16px;">
           <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
           <span><b>Sección en desarrollo.</b> El objetivo del Motor FEM es correr el análisis por elementos finitos de la cimentación directamente dentro de la app, usando la malla "Urdimbre Mesh" ya generada (sección 4.4), para dejar de depender de exportar el modelo a STAAD.Pro y analizarlo por fuera.</span>
-        </div>
-        <div class="doc-block">
-          <h3>Propiedades de sección del polígono</h3>
-          <p>Área, centroide, momentos de inercia (Ix, Iy, Ixy), ejes principales, módulos resistentes elásticos y propiedades plásticas (Zx, Zy) se calculan mediante el <b>método de Green / shoelace generalizado</b> sobre los vértices del polígono, con soporte para huecos por sustracción de área. Es el mismo algoritmo usado en <code>Shapebuilder</code> (herramienta propia del usuario) — portado a JavaScript y verificado numéricamente contra los valores ya validados en la hoja de cálculo original (área, Ix/Iy, Zx/Zy del polígono de ejemplo). Solo se muestran en pantalla los valores de uso habitual (Depth, Width, Área, Xc, Yc, Ix, Iy); el resto (Ixy, módulos resistentes, propiedades principales/plásticas) queda calculado internamente para las fases siguientes.</p>
-        </div>
-        <div class="doc-block">
-          <h3>Posición de dados (patas de la torre)</h3>
-          <p>Los tres centros de pata (P1, P1a, P1b) se ubican en los vértices de un triángulo equilátero de lado <code>Lo</code> centrado en el centroide de la zapata, corregido por <code>CX</code>/<code>CY</code>. Cada dado es un cuadrado de lado <code>AD</code> que rota sobre su propio centro según su ángulo de orientación — réplica de las fórmulas <code>Cálculo!X4:Z6</code> y <code>Cálculo!X11:AC33</code> de la hoja original.</p>
-        </div>
-        <div class="doc-block">
-          <h3>Alcance de esta fase</h3>
-          <p>Esta primera entrega cubre geometría y propiedades de sección. Las fases siguientes (reacciones/cargas, revisión geotécnica por volteo y capacidad portante según <b>TIA-222-H</b>, generación de modelo <code>.STD</code> para STAAD.Pro, y diseño estructural por <b>ACI 318-19</b>) se construyen y validan en conversaciones posteriores.</p>
         </div>
       </div>
     </section>
@@ -3644,6 +3638,12 @@ let last3dArgs = null;
 let viewMode3d = "3d";
 let selectedVolteoCombo = null; // combinación elegida en el selector "Combinación" del header de Vista 3D
 let lastGeoData = null; // {geo, cap, props, outerC, holeC} del último renderAll() — usado por los modales de animación del Brazo y del Área efectiva
+// Resultados de las animaciones de Brazo/Área efectiva, por combinación —
+// viven fuera de lastGeoData (que se reconstruye entero en cada renderAll())
+// para que NO se pierdan con un renderAll() disparado por un cambio ajeno
+// (otra pestaña, otra tabla); solo se reemplazan al volver a pulsar el botón.
+const brazoCache = {};
+const areaEfectivaCache = {};
 let forceLabelSprites = []; // etiquetas Fx/Fy/Fz activas — se reescalan cada frame en start3DLoop para compensar la perspectiva (ver registerLabel dentro de update3D)
 
 function init3D(){
@@ -4725,6 +4725,7 @@ function pmmAreaCentroide(poly){
 // de eje neutro × 30 profundidades — ACI 318-19 §22.2.2.4.1 (bloque de
 // Whitney), §22.4.2.1 (tope φPn,max), §21.2.2 (φ por deformación, ε_cu del
 // concreto §22.2.2.1, ε_t límite de tracción controlada = 0.005).
+const PMM_N_ANGULOS = 72, PMM_N_PROF = 30;
 function calcularSuperficiePMM(){
   const { barras, b, h } = generarBarrasDado();
   if(!(b>0) || !(h>0) || !barras.length) return { nominal:[], resistente:[], phiPnMaxTn:0 };
@@ -4739,7 +4740,7 @@ function calcularSuperficiePMM(){
   const rectangulo = [{x:-b/2,y:-h/2},{x:b/2,y:-h/2},{x:b/2,y:h/2},{x:-b/2,y:h/2}];
   const diag = Math.sqrt(b*b+h*h);
   const cMin = diag*0.006, cMax = (diag/beta1)*1.6;
-  const nAngulos = 72, nProf = 30;
+  const nAngulos = PMM_N_ANGULOS, nProf = PMM_N_PROF;
   const nominal = [], resistente = [];
 
   for(let ia=0; ia<nAngulos; ia++){
@@ -4777,6 +4778,30 @@ function calcularSuperficiePMM(){
     }
   }
   return { nominal, resistente, phiPnMaxTn: phiPnMaxKg*PMM_KG_A_TN };
+}
+
+// Caras (i,j,k) del grid ia×ic de calcularSuperficiePMM(), para pasárselas
+// directas a Plotly mesh3d en vez de "alphahull": alphahull triangula el
+// point-cloud a ciegas y para ~2160 puntos tarda varios segundos (ahí
+// estaba la lentitud al abrir la pestaña o tocar cualquier checkbox/
+// slider de vista, que solo redibuja con la MISMA superficie ya
+// calculada) — como ya se conoce la conectividad exacta del barrido
+// (ia envuelve 0..nAngulos-1, ic va de 0..nProf-1 sin envolver), arma el
+// mismo tubo cerrado en ángulo con dos triángulos por celda, sin
+// triangulación: prácticamente instantáneo.
+let pmmCarasCache = null; // {nAngulos,nProf,i,j,k} — misma malla siempre (constantes fijas)
+function carasGridPMM(nAngulos, nProf){
+  if(pmmCarasCache && pmmCarasCache.nAngulos===nAngulos && pmmCarasCache.nProf===nProf) return pmmCarasCache;
+  const i=[], j=[], k=[];
+  for(let ia=0; ia<nAngulos; ia++){
+    const ia2 = (ia+1)%nAngulos;
+    for(let ic=0; ic<nProf-1; ic++){
+      const p00=ia*nProf+ic, p01=ia*nProf+ic+1, p10=ia2*nProf+ic, p11=ia2*nProf+ic+1;
+      i.push(p00,p00); j.push(p10,p11); k.push(p11,p01);
+    }
+  }
+  pmmCarasCache = { nAngulos, nProf, i, j, k };
+  return pmmCarasCache;
 }
 
 // Puntos de demanda (Pu, Mux, Muy) por pata y combo estructural. Fz
@@ -4831,11 +4856,15 @@ let lastPMMSuperficie = null; // cache de calcularSuperficiePMM() (barrido de 21
 // opacidad dispara "input" muchas veces por segundo al arrastrar, así que
 // recalcular el barrido completo ahí volvía la app perceptiblemente lenta).
 
+// Parte NUMÉRICA (barata: un barrido de 2160 puntos con un puñado de
+// operaciones cada uno) separada de la parte que dibuja Plotly — así
+// renderAll() puede mantener lastPMM al día para el Resumen de eficiencias
+// (6) SIEMPRE, sin importar si la pestaña "Interacción 3D" se abrió
+// alguna vez (antes, si nunca se abría, esa fila del resumen se quedaba
+// en "Sin datos" para siempre porque nada disparaba este cálculo).
 // recalcularSuperficie=false reutiliza el barrido ya calculado (para
 // controles que solo cambian cómo se ve, no la superficie en sí).
-function calcularYRenderizarPMM(recalcularSuperficie){
-  const div = document.getElementById("interaccionPlot");
-  if(!div || typeof Plotly === "undefined") return;
+function calcularDatosPMM(recalcularSuperficie){
   if(recalcularSuperficie === false && lastPMMSuperficie){
     // reutiliza
   } else {
@@ -4843,17 +4872,29 @@ function calcularYRenderizarPMM(recalcularSuperficie){
   }
   const sup = lastPMMSuperficie;
   let demandas = calcularDemandasPMM();
-  const pataSel = document.getElementById("selPataPMM").value;
+  const selPata = document.getElementById("selPataPMM");
+  const pataSel = selPata ? selPata.value : "todas";
   if(pataSel !== "todas") demandas = demandas.filter(d=>d.pata===pataSel);
   const dc = demandas.map(d => calcularDCPuntoPMM({Pu:d.Pu, Mux:d.Mux, Muy:d.Muy}, sup.resistente));
   lastPMM = { sup, demandas, dc };
+}
+
+// Parte de DIBUJO (Plotly) — usa lastPMM/lastPMMSuperficie ya calculados
+// por calcularDatosPMM(); solo tiene sentido correrla con la pestaña
+// visible (el div existe siempre en el DOM, oculto por CSS, pero no hay
+// razón para tocar Plotly si nadie la está viendo).
+function renderizarPMM(){
+  const div = document.getElementById("interaccionPlot");
+  if(!div || typeof Plotly === "undefined" || !lastPMM) return;
+  const { sup, demandas, dc } = lastPMM;
 
   const opacidad = (+document.getElementById("sliderOpacidad").value || 30) / 100;
   const traces = [];
+  const caras = carasGridPMM(PMM_N_ANGULOS, PMM_N_PROF);
 
   if(document.getElementById("chkSupResistente").checked && sup.resistente.length){
     traces.push({
-      type:"mesh3d", alphahull:5,
+      type:"mesh3d", i:caras.i, j:caras.j, k:caras.k,
       x: sup.resistente.map(p=>p.Mnx), y: sup.resistente.map(p=>p.Mny), z: sup.resistente.map(p=>p.Pn),
       color:"#1B3A6B", opacity: opacidad, flatshading:true, lighting:{ambient:0.8},
       name:"Resistente ɸPn-ɸMnx-ɸMny", hoverinfo:"skip"
@@ -4861,7 +4902,7 @@ function calcularYRenderizarPMM(recalcularSuperficie){
   }
   if(document.getElementById("chkSupNominal").checked && sup.nominal.length){
     traces.push({
-      type:"mesh3d", alphahull:5,
+      type:"mesh3d", i:caras.i, j:caras.j, k:caras.k,
       x: sup.nominal.map(p=>p.Mnx), y: sup.nominal.map(p=>p.Mny), z: sup.nominal.map(p=>p.Pn),
       color:"#4A90D9", opacity: Math.min(opacidad*0.4, 0.12), name:"Nominal Pn-Mnx-Mny", hoverinfo:"skip"
     });
@@ -4912,6 +4953,26 @@ function calcularYRenderizarPMM(recalcularSuperficie){
   }
 }
 
+// Envoltorio delgado para los llamadores existentes (cambio de pestaña,
+// checkboxes/slider/selector de vista) que esperan calcular Y dibujar de
+// una — internamente solo encadena las dos partes ya separadas arriba.
+function calcularYRenderizarPMM(recalcularSuperficie){
+  calcularDatosPMM(recalcularSuperficie);
+  renderizarPMM();
+}
+
+// Debounce del refresco "en vivo" de Interacción 3D disparado desde
+// renderAll() — redibujar Plotly en CADA evento (cada tecla en cualquier
+// input de la app) trababa el navegador; acá se posterga hasta que el
+// usuario deja de generar eventos por un momento. Los datos (lastPMM) ya
+// se recalculan aparte, sin debounce, en renderAll() — esto solo difiere
+// el dibujo.
+let pmmRenderPendiente = null;
+function solicitarRenderPMM(){
+  if(pmmRenderPendiente) clearTimeout(pmmRenderPendiente);
+  pmmRenderPendiente = setTimeout(()=>{ pmmRenderPendiente = null; renderizarPMM(); }, 400);
+}
+
 /* ============================================================
    6.- ARMADURA — ACERO 3D (pestaña "Acero 3D")
    Escena Three.js propia e independiente de la de "Cálculos"
@@ -4955,13 +5016,24 @@ function calcularLongitudDesarrolloACI(varilla, r_cm, topBar){
 
 let sceneAcero=null, cameraAcero=null, rendererAcero=null, controlsAcero=null;
 let aceroGroup=null, animAceroRunning=false;
+// El acero siempre sólido/opaco (transparent:true en TODOS los materiales,
+// incluso con opacity 1, metía los cilindros en la cola de render
+// transparente de Three.js —ordenada por objeto, no por profundidad— y
+// eso hacía que las barras aparecieran/desaparecieran según el ángulo de
+// cámara). Solo el concreto fantasma es transparente, con opacidad
+// controlada por el slider "Transparencia del concreto" de la pestaña.
+let concretoOpacidad=0.15;
 const matAceroInf = () => new THREE.MeshStandardMaterial({ color:0x1565C0, roughness:0.4, metalness:0.7 });
 const matAceroSup = () => new THREE.MeshStandardMaterial({ color:0x43A047, roughness:0.4, metalness:0.7 });
 const matAceroDado = () => new THREE.MeshStandardMaterial({ color:0xE65100, roughness:0.4, metalness:0.7 });
 const matEstriboAcero = () => new THREE.MeshStandardMaterial({ color:0x6A1B9A, roughness:0.4, metalness:0.7 });
 const matConcretoFantasma = () => new THREE.MeshStandardMaterial({
-  color:0x8a95a5, roughness:0.8, metalness:0.0, transparent:true, opacity:0.15, side:THREE.DoubleSide
+  color:0x8a95a5, roughness:0.8, metalness:0.0, transparent:true, opacity:concretoOpacidad, side:THREE.DoubleSide
 });
+
+// Densidad del acero de refuerzo (constante física estándar, 7850 kg/m³) —
+// usada solo para estimar el peso total mostrado en la leyenda de esta vista.
+const DENSIDAD_ACERO_KGM3 = 7850;
 
 function addBarAcero(group, x1,y1,z1, x2,y2,z2, diam_m, mat, tipo, segments){
   const len = Math.hypot(x2-x1, y2-y1, z2-z1);
@@ -4972,6 +5044,7 @@ function addBarAcero(group, x1,y1,z1, x2,y2,z2, diam_m, mat, tipo, segments){
   const dir = new THREE.Vector3(x2-x1,y2-y1,z2-z1).normalize();
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
   mesh.userData.tipo = tipo;
+  mesh.userData.pesoKg = len * Math.PI*(diam_m/2)*(diam_m/2) * DENSIDAD_ACERO_KGM3;
   group.add(mesh);
 }
 
@@ -4988,11 +5061,54 @@ function addHook90Acero(group, pos, dirIn, dirHook, radio_cm, ext_cm, diam_m, ma
   const tubeGeo = new THREE.TubeGeometry(curve, N*2, diam_m/2, 6, false);
   const tubeMesh = new THREE.Mesh(tubeGeo, mat);
   tubeMesh.userData.tipo = tipo;
+  tubeMesh.userData.pesoKg = curve.getLength() * Math.PI*(diam_m/2)*(diam_m/2) * DENSIDAD_ACERO_KGM3;
   group.add(tubeMesh);
   const end = pts[pts.length-1];
   addBarAcero(group, end.x,end.y,end.z,
     end.x+dirHook.x*(ext_cm/100), end.y+dirHook.y*(ext_cm/100), end.z+dirHook.z*(ext_cm/100),
     diam_m, mat, tipo);
+}
+
+// Recorta el acero de la losa a la FORMA REAL de la zapata (no a su caja
+// envolvente rectangular): dada una recta fija en una coordenada (z=cte
+// con x variable, ó x=cte con z variable), devuelve los tramos [ini,fin]
+// de la coordenada variable que caen DENTRO del polígono (regla par-impar
+// sobre sus lados — válida para cualquier polígono simple, convexo o no).
+function tramosDentroDePoligono(poly, fijaEnZ, fijo){
+  const cruces = [];
+  const n = poly.length;
+  for(let i=0;i<n;i++){
+    const a = poly[i], b = poly[(i+1)%n];
+    const a1 = fijaEnZ ? a.y : a.x, b1 = fijaEnZ ? b.y : b.x;
+    const a2 = fijaEnZ ? a.x : a.y, b2 = fijaEnZ ? b.x : b.y;
+    if((a1 <= fijo && b1 > fijo) || (b1 <= fijo && a1 > fijo)){
+      cruces.push(a2 + (fijo-a1)/(b1-a1)*(b2-a2));
+    }
+  }
+  cruces.sort((p,q)=>p-q);
+  const tramos = [];
+  for(let i=0;i+1<cruces.length;i+=2) tramos.push([cruces[i], cruces[i+1]]);
+  return tramos;
+}
+
+// Resta del contorno exterior los tramos que caen sobre el hueco (si lo
+// hay) — el acero rodea el hueco en vez de atravesarlo.
+function restarTramos(base, aRestar){
+  let out = base;
+  aRestar.forEach(([hi,hf])=>{
+    out = out.flatMap(([a,b])=>{
+      if(hf<=a || hi>=b) return [[a,b]];
+      const partes = [];
+      if(hi>a) partes.push([a,hi]);
+      if(hf<b) partes.push([hf,b]);
+      return partes;
+    });
+  });
+  return out;
+}
+
+function encogerTramos(tramos, r){
+  return tramos.map(([a,b])=>[a+r,b-r]).filter(([a,b])=>b-a>1e-6);
 }
 
 function actualizarLeyendaAcero(lenInf, lenSup, lenDado1, lenDado2){
@@ -5006,6 +5122,18 @@ function actualizarLeyendaAcero(lenInf, lenSup, lenDado1, lenDado2){
     item("#6A1B9A", `Estribos: ${state.diseno.dadoEstriboVar} @ ${fmt(state.diseno.dadoEstriboSep,0)} cm — ${state.diseno.dadoEstribosRamas} rama(s)`);
 }
 
+// Volumen de concreto y peso de acero, en un recuadro aparte (arriba a la
+// izquierda) — separado de la leyenda de acero (abajo a la izquierda) para
+// no mezclar el detalle de armado con estos totales.
+function actualizarResumenAcero(volConcretoM3, pesoAceroKg){
+  const el = document.getElementById("acero3dResumen");
+  if(!el) return;
+  const item = (color, texto) => `<div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;"><span style="width:10px; height:10px; border-radius:50%; background:${color}; display:inline-block; flex-shrink:0;"></span><span>${texto}</span></div>`;
+  el.innerHTML =
+    item("#8a95a5", `Volumen de concreto (zapata + dados): ${fmt(volConcretoM3,3)} m³`) +
+    item("#455a64", `Peso de acero (estimado, γ=${DENSIDAD_ACERO_KGM3} kg/m³): ${fmt(pesoAceroKg/1000,3)} Tn`);
+}
+
 // Construye toda la geometría (losa + 3 dados) dentro de aceroGroup, ya
 // creado por initAcero3D()/updateAcero3D(). Reutiliza generarBarrasDado()
 // (5.6, mismo armado para los 3 dados) y lastPlanArgs (outerC/legs/dados,
@@ -5015,13 +5143,17 @@ function buildAcero3D(){
   if(!aceroGroup) return;
   const args = lastPlanArgs;
   if(!args || !args.outerC || args.outerC.length < 3) return;
-  const { outerC, legs } = args;
+  const { outerC, legs, holeC } = args;
+  const huecoActivo = state.holeEnabled && holeC && holeC.length >= 3 ? holeC : null;
   const PZ = state.geom.PZ, Pd = state.geom.Pd, HD = state.geom.HD, AD = state.geom.AD, LD = state.geom.LD;
   const Hr = Math.max(0, Pd - PZ);
   const rLosa_m = state.diseno.r/100;
 
-  // Concreto fantasma — zapata (mismo shape/rotación que update3D()).
+  // Concreto fantasma — zapata (mismo shape/rotación que update3D(), hueco incluido).
   const shape = new THREE.Shape(outerC.map(p=>new THREE.Vector2(p.x, -p.y)));
+  if(huecoActivo){
+    shape.holes.push(new THREE.Path(huecoActivo.map(p=>new THREE.Vector2(p.x, -p.y))));
+  }
   const zapataGeo = new THREE.ExtrudeGeometry(shape, {depth:Math.max(PZ,0.01), bevelEnabled:false, curveSegments:24});
   const zapataMesh = new THREE.Mesh(zapataGeo, matConcretoFantasma());
   zapataMesh.rotation.x = -Math.PI/2;
@@ -5029,9 +5161,10 @@ function buildAcero3D(){
   zapataMesh.userData.tipo = "concreto";
   aceroGroup.add(zapataMesh);
 
-  // Acero de la losa: lecho inferior (con ganchos en ambos extremos, caso
-  // conservador y más frecuente en zapatas de torre) y lecho superior (sin
-  // gancho — se extiende recto, práctica usual para momento negativo).
+  // Acero de la losa: lecho inferior y superior, ambos con ganchos a 90° en
+  // los dos extremos (caso conservador y más frecuente en zapatas de
+  // torre) — el inferior dobla hacia arriba, el superior hacia abajo (cada
+  // uno hacia el lado con recubrimiento libre disponible para el doblez).
   const lenInf = calcularLongitudDesarrolloACI(state.diseno.varInf, state.diseno.r, false);
   const lenSup = calcularLongitudDesarrolloACI(state.diseno.varSup, state.diseno.r, true);
   const sepInf = Math.max(state.diseno.sepInfExist, 5)/100;
@@ -5054,22 +5187,57 @@ function buildAcero3D(){
     return out;
   }
 
+  // Tramos [ini,fin] de una recta (fija en x ó z) recortados a la forma
+  // real de la zapata Y al hueco (si lo hay), retrocedidos "holgura" desde
+  // CUALQUIER pared (exterior o del hueco) — ambas paredes llevan gancho,
+  // así que ambos extremos siempre quedan disponibles para uno.
+  function tramosDeAceroLosa(fijaEnZ, fijo, holgura){
+    const outer = tramosDentroDePoligono(outerC, fijaEnZ, fijo);
+    const solidos = huecoActivo
+      ? restarTramos(outer, tramosDentroDePoligono(huecoActivo, fijaEnZ, fijo))
+      : outer;
+    return encogerTramos(solidos, holgura);
+  }
+
+  // Recubrimiento LATERAL (a la pared, sea exterior o del hueco): fijo en
+  // 5 cm, independiente del recubrimiento general "r" (que es al fondo/
+  // techo de la losa) — el gancho completo (radio + media varilla) debe
+  // quedar despegado de la pared, nunca tocarla.
+  const recLateral_m = 0.05;
+  const holguraInf = recLateral_m + lenInf.radio_cm/100 + lenInf.db_cm/200;
+  const holguraSup = recLateral_m + lenSup.radio_cm/100 + lenSup.db_cm/200;
+
   const matInf = matAceroInf(), matSup = matAceroSup();
   posicionesEnRango(zMin, zMax, sepInf, 80).forEach(z=>{
-    addBarAcero(aceroGroup, xMin,yInfX,z, xMax,yInfX,z, lenInf.db_cm/100, matInf, "lechoInf");
-    addHook90Acero(aceroGroup, new THREE.Vector3(xMin,yInfX,z), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
-    addHook90Acero(aceroGroup, new THREE.Vector3(xMax,yInfX,z), new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+    tramosDeAceroLosa(true, z, holguraInf).forEach(([ini,fin])=>{
+      addBarAcero(aceroGroup, ini,yInfX,z, fin,yInfX,z, lenInf.db_cm/100, matInf, "lechoInf");
+      addHook90Acero(aceroGroup, new THREE.Vector3(ini,yInfX,z), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+      addHook90Acero(aceroGroup, new THREE.Vector3(fin,yInfX,z), new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+    });
   });
   posicionesEnRango(xMin, xMax, sepInf, 80).forEach(x=>{
-    addBarAcero(aceroGroup, x,yInfZ,zMin, x,yInfZ,zMax, lenInf.db_cm/100, matInf, "lechoInf");
-    addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,zMin), new THREE.Vector3(0,0,-1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
-    addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,zMax), new THREE.Vector3(0,0,1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+    tramosDeAceroLosa(false, x, holguraInf).forEach(([ini,fin])=>{
+      addBarAcero(aceroGroup, x,yInfZ,ini, x,yInfZ,fin, lenInf.db_cm/100, matInf, "lechoInf");
+      addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,ini), new THREE.Vector3(0,0,-1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+      addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,fin), new THREE.Vector3(0,0,1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+    });
   });
   posicionesEnRango(zMin, zMax, sepSup, 80).forEach(z=>{
-    addBarAcero(aceroGroup, xMin,ySupX,z, xMax,ySupX,z, lenSup.db_cm/100, matSup, "lechoSup");
+    tramosDeAceroLosa(true, z, holguraSup).forEach(([ini,fin])=>{
+      addBarAcero(aceroGroup, ini,ySupX,z, fin,ySupX,z, lenSup.db_cm/100, matSup, "lechoSup");
+      // Gancho a 90° doblado hacia ABAJO (no hacia arriba como el lecho
+      // inferior): el lecho superior corre pegado a la cara superior de la
+      // losa, sin recubrimiento libre por encima para alojar el doblez.
+      addHook90Acero(aceroGroup, new THREE.Vector3(ini,ySupX,z), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup");
+      addHook90Acero(aceroGroup, new THREE.Vector3(fin,ySupX,z), new THREE.Vector3(1,0,0), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup");
+    });
   });
   posicionesEnRango(xMin, xMax, sepSup, 80).forEach(x=>{
-    addBarAcero(aceroGroup, x,ySupZ,zMin, x,ySupZ,zMax, lenSup.db_cm/100, matSup, "lechoSup");
+    tramosDeAceroLosa(false, x, holguraSup).forEach(([ini,fin])=>{
+      addBarAcero(aceroGroup, x,ySupZ,ini, x,ySupZ,fin, lenSup.db_cm/100, matSup, "lechoSup");
+      addHook90Acero(aceroGroup, new THREE.Vector3(x,ySupZ,ini), new THREE.Vector3(0,0,-1), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup");
+      addHook90Acero(aceroGroup, new THREE.Vector3(x,ySupZ,fin), new THREE.Vector3(0,0,1), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup");
+    });
   });
 
   // Acero de los dados: mismo armado (generarBarrasDado(), 5.6) para los 3,
@@ -5098,7 +5266,16 @@ function buildAcero3D(){
       const w = toWorld(br.x/100, br.y/100); // generarBarrasDado da cm; acá en m
       const lenD = br.grupo===1 ? lenDado1 : lenDado2;
       const embebido = Math.min(lenD.ldh_cm/100, PZ*0.9);
-      addBarAcero(aceroGroup, w.x, yBase-embebido, w.z, w.x, yTop, w.z, br.d/100, matLong, "longDado");
+      const yGancho = yBase - embebido;
+      addBarAcero(aceroGroup, w.x, yGancho, w.z, w.x, yTop, w.z, br.d/100, matLong, "longDado");
+      // Gancho estándar a 90° en la base (§25.3.2/25.4.3 ACI 318-19), doblado
+      // radialmente hacia afuera del dado (en planta) para anclar en la zapata.
+      let dlx = br.x, dlz = br.y;
+      const dmag = Math.hypot(dlx, dlz);
+      if(dmag < 1e-6){ dlx = 1; dlz = 0; } else { dlx /= dmag; dlz /= dmag; }
+      const dirHookX = dlx*Math.cos(theta) + dlz*Math.sin(theta);
+      const dirHookZ = -dlx*Math.sin(theta) + dlz*Math.cos(theta);
+      addHook90Acero(aceroGroup, new THREE.Vector3(w.x,yGancho,w.z), new THREE.Vector3(0,-1,0), new THREE.Vector3(dirHookX,0,dirHookZ), lenD.radio_cm, lenD.extension_cm, br.d/100, matLong, "longDado");
     });
 
     let yE = yTop - sepE/2, nEst = 0;
@@ -5123,7 +5300,17 @@ function buildAcero3D(){
     aceroGroup.add(dadoMesh);
   });
 
+  // Volumen de concreto (zapata neta, sin el hueco, + los 3 dados) y peso
+  // de acero (suma del peso de cada barra/gancho ya construido, tageado en
+  // addBarAcero()/addHook90Acero() vía userData.pesoKg) — solo para mostrar
+  // en la leyenda de esta vista, no alimenta ningún otro cálculo de la app.
+  const areaZapataNeta = polygonArea(outerC) - (huecoActivo ? polygonArea(huecoActivo) : 0);
+  const volConcretoM3 = areaZapataNeta*PZ + 3*AD*LD*dadoAltura;
+  let pesoAceroKg = 0;
+  aceroGroup.traverse(obj=>{ if(obj.userData && typeof obj.userData.pesoKg === "number") pesoAceroKg += obj.userData.pesoKg; });
+
   actualizarLeyendaAcero(lenInf, lenSup, lenDado1, lenDado2);
+  actualizarResumenAcero(volConcretoM3, pesoAceroKg);
 }
 
 function aplicarVisibilidadAcero(){
@@ -5137,6 +5324,18 @@ function aplicarVisibilidadAcero(){
   };
   aceroGroup.traverse(obj=>{
     if(obj.userData && obj.userData.tipo in map) obj.visible = map[obj.userData.tipo];
+  });
+}
+
+// Aplica concretoOpacidad (slider "Transparencia del concreto") al concreto
+// fantasma ya construido, sin reconstruir geometría — el acero no se toca,
+// siempre queda sólido/opaco.
+function aplicarOpacidadConcreto(){
+  if(!aceroGroup) return;
+  aceroGroup.traverse(obj=>{
+    if(obj.material && obj.userData && obj.userData.tipo === "concreto"){
+      obj.material.opacity = concretoOpacidad;
+    }
   });
 }
 
@@ -5407,6 +5606,13 @@ function computeGeotecnico(props, legs){
     return { combo:row.combo, MxTotal, MzTotal, RFYTotal, exT, eyT, angulo, Mact };
   });
 
+  // Reaplica el Brazo ya animado (si lo hay) para esta combinación — así
+  // sobrevive a un renderAll() disparado por algo ajeno a esta sección.
+  rows2.forEach(row=>{
+    const brazo = brazoCache[row.combo];
+    if(brazo!=null) aplicarBrazoARow(row, brazo);
+  });
+
   return { supported:true, PhiCarga, PhiDeslizamiento, Wzapata, Wrelleno, Wdados, Wciclopeo, Wadicional, pesoTotal, rows1, rows2 };
 }
 
@@ -5442,7 +5648,12 @@ function computeCapacidadPortante(props, outerC, rows2, PhiCarga){
     // areaEfectiva/qProm quedan pendientes hasta correr la animación (clic
     // en "Área efectiva" de la fila) — mientras tanto la eficiencia usa
     // solo el esfuerzo máximo del perímetro (ver recalcularEficiencia()).
-    return { combo:r.combo, MxTotal:r.MxTotal, MzTotal:r.MzTotal, RFYTotal:r.RFYTotal, exT:r.exT, eyT:r.eyT, stresses, maxTau, eficiencia, areaEfectiva:null, qProm:null };
+    const row = { combo:r.combo, MxTotal:r.MxTotal, MzTotal:r.MzTotal, RFYTotal:r.RFYTotal, exT:r.exT, eyT:r.eyT, stresses, maxTau, eficiencia, areaEfectiva:null, qProm:null };
+    // Reaplica el Área efectiva ya animada (si la hay) para esta combinación
+    // — así sobrevive a un renderAll() disparado por algo ajeno a esta sección.
+    const areaEfectivaCacheada = areaEfectivaCache[r.combo];
+    if(areaEfectivaCacheada!=null) aplicarAreaEfectivaARow(row, areaEfectivaCacheada, QultDesign);
+    return row;
   });
   return { QultDesign, rows };
 }
@@ -5629,17 +5840,21 @@ async function openBrazoModal(){
   finalizeBrazo(resultados);
 }
 
+function aplicarBrazoARow(row, brazo){
+  row.brazo = brazo;
+  row.MR = brazo * row.RFYTotal;
+  row.FSV = row.Mact > 0 ? row.MR/row.Mact : NaN;
+  row.eficienciaVolteo = row.FSV > 0 ? 1/row.FSV : NaN;
+}
+
 function finalizeBrazo(resultados){
   if(!lastGeoData || !lastGeoData.geo) return;
   const byCombo = {};
-  resultados.forEach(r=>{ byCombo[r.combo] = r.brazo; });
+  resultados.forEach(r=>{ byCombo[r.combo] = r.brazo; brazoCache[r.combo] = r.brazo; });
   lastGeoData.geo.rows2.forEach(row=>{
     const brazo = byCombo[row.combo];
     if(brazo==null) return;
-    row.brazo = brazo;
-    row.MR = brazo * row.RFYTotal;
-    row.FSV = row.Mact > 0 ? row.MR/row.Mact : NaN;
-    row.eficienciaVolteo = row.FSV > 0 ? 1/row.FSV : NaN;
+    aplicarBrazoARow(row, brazo);
   });
   renderGeotecnico(lastGeoData.geo);
 }
@@ -5790,14 +6005,19 @@ async function openAreaEfectivaModal(combo){
   finalizeAreaEfectiva(combo, areaEfectiva);
 }
 
+function aplicarAreaEfectivaARow(row, areaEfectiva, QultDesign){
+  row.areaEfectiva = areaEfectiva;
+  row.qProm = areaEfectiva>0 ? row.RFYTotal/areaEfectiva : NaN;
+  const efectivoMax = isFinite(row.qProm) ? Math.max(row.qProm, row.maxTau) : row.maxTau;
+  row.eficiencia = QultDesign>0 ? efectivoMax/QultDesign : NaN;
+}
+
 function finalizeAreaEfectiva(combo, areaEfectiva){
   if(!lastGeoData || !lastGeoData.cap) return;
   const row = lastGeoData.cap.rows.find(r=>r.combo===combo);
   if(!row) return;
-  row.areaEfectiva = areaEfectiva;
-  row.qProm = areaEfectiva>0 ? row.RFYTotal/areaEfectiva : NaN;
-  const efectivoMax = isFinite(row.qProm) ? Math.max(row.qProm, row.maxTau) : row.maxTau;
-  row.eficiencia = lastGeoData.cap.QultDesign>0 ? efectivoMax/lastGeoData.cap.QultDesign : NaN;
+  areaEfectivaCache[combo] = areaEfectiva;
+  aplicarAreaEfectivaARow(row, areaEfectiva, lastGeoData.cap.QultDesign);
   renderCapacidadPortante(lastGeoData.cap, lastGeoData.props, lastGeoData.outerC, lastGeoData.holeC);
 }
 
@@ -6713,7 +6933,7 @@ function fmtStaadNum(v){
   return s === "-0" ? "0" : s;
 }
 
-// Relación de ejes FEM (app) -> STAAD: Staad(X,Y,Z) = FEM(X,-Z,Y). La malla
+// Relación de ejes FEM (app) -> STAAD: Staad(X,Y,Z) = FEM(X,-Z,-Y). La malla
 // "Urdimbre" hoy solo trae (x,y) por nodo (sin z, es una sola placa plana
 // sin variación de elevación), así que FEM Z = 0 y por lo tanto Staad Y = 0.
 
@@ -6729,12 +6949,25 @@ function polygonSignedArea2D(poly){
 // STAAD define la normal de cada Shell con la regla de la mano derecha según
 // el orden de nodos en ELEMENT INCIDENCES — para que la normal quede
 // consistente en TODAS las placas, deben tener el mismo sentido de giro.
-// Por la relación de ejes de arriba (Staad Y = -FEM Z = 0), la normal
-// resultante apunta hacia +Y de Staad (hacia arriba) cuando el polígono
-// está en sentido HORARIO en el plano (x,y) de la app — si algún elemento
-// viene antihorario (área con signo positivo) se invierte su orden aquí.
+// Staad Z = -FEM Y invierte la quiralidad del plano (x,y) de la app al
+// mapearlo al plano (X,Z) de Staad, así que ahora la normal resultante
+// apunta hacia +Y de Staad (hacia arriba) cuando el polígono está en
+// sentido ANTIHORARIO en el plano (x,y) de la app — si algún elemento
+// viene horario (área con signo negativo) se invierte su orden aquí.
 function orientarNormalArribaStaad(poly){
-  return polygonSignedArea2D(poly) > 0 ? poly.slice().reverse() : poly;
+  return polygonSignedArea2D(poly) < 0 ? poly.slice().reverse() : poly;
+}
+
+// Rota el ciclo de nodos (sin cambiar su sentido de giro) para que el
+// primero en ELEMENT INCIDENCES sea siempre el vértice más a la izquierda
+// del elemento y, en caso de empate en x, el más abajo de ese lado.
+function rotarInicioAbajoIzquierdaStaad(poly){
+  let iMin = 0;
+  for(let i=1; i<poly.length; i++){
+    const p = poly[i], best = poly[iMin];
+    if(p.x < best.x - 1e-9 || (Math.abs(p.x-best.x) < 1e-9 && p.y < best.y)) iMin = i;
+  }
+  return poly.slice(iMin).concat(poly.slice(0, iMin));
 }
 
 // Comprime una lista de IDs (nodos, elementos, etc.) en tokens "A TO B"
@@ -6789,7 +7022,7 @@ function generarStaadModel(){
 
   const puntos = (lastMallaMesh && lastMallaMesh.points) ? lastMallaMesh.points : [];
   const gruposNodos = puntos.map((pt, idx) =>
-    `${idx+1} ${fmtStaadNum(pt.x)} ${fmtStaadNum(-(pt.z||0))} ${fmtStaadNum(pt.y)}`
+    `${idx+1} ${fmtStaadNum(pt.x)} ${fmtStaadNum(-(pt.z||0))} ${fmtStaadNum(-pt.y)}`
   );
   const nodos = gruposNodos.length ? staadWrapGroups(gruposNodos, 79, "; ", ";").trimEnd() : "";
 
@@ -6801,7 +7034,7 @@ function generarStaadModel(){
   puntos.forEach((pt, idx) => nodeIdMap.set(pt, idx+1));
   const elementosNumerados = lastMallaMesh ? renumerarElementosMalla(lastMallaMesh.elements) : [];
   const gruposElementos = elementosNumerados.map(e => {
-    const polyOrientado = orientarNormalArribaStaad(e.poly);
+    const polyOrientado = rotarInicioAbajoIzquierdaStaad(orientarNormalArribaStaad(e.poly));
     return `${e.id} ${polyOrientado.map(pt => nodeIdMap.get(pt)).join(" ")}`;
   });
   const incidenciasHeader = [
@@ -7434,9 +7667,10 @@ function renderAll(){
 
   // 6.- Resumen de eficiencias: reutiliza los mismos valores ya calculados
   // arriba en 5.3/5.4/5.5/5.6 (nada se recalcula) — el D/C de Interacción
-  // 3D (P-M-M) es la excepción: solo se conoce si esa pestaña ya se abrió
-  // al menos una vez (lastPMM), porque ese barrido es caro y no se dispara
-  // solo para esta tabla.
+  // 3D (P-M-M) se recalcula acá mismo (barato, sin tocar Plotly/DOM) para
+  // que esta fila tenga dato real aunque esa pestaña nunca se haya abierto
+  // (antes dependía de lastPMM, que solo se llenaba al visitar la pestaña).
+  calcularDatosPMM();
   const efVolteo = (geo && geo.rows2 && geo.rows2.length)
     ? Math.max(...geo.rows2.map(r=>r.eficienciaVolteo).filter(isFinite), 0) : NaN;
   const efCapacidad = (cap && cap.rows && cap.rows.length)
@@ -7478,8 +7712,15 @@ function renderAll(){
   // Si la pestaña "Interacción 3D" está visible, se refresca en vivo con
   // cualquier cambio (geometría, materiales, armado del dado, reacciones)
   // — evita recalcular la superficie P-M-M cuando esa pestaña ni se ve.
+  // OJO: renderAll() se dispara en CADA tecla/arrastre de CUALQUIER campo de
+  // toda la app (no solo los que afectan esta superficie), y el barrido de
+  // 2160 puntos + el redibujado de Plotly (alphahull) es caro — llamarlo
+  // directo acá trababa el navegador con solo escribir en cualquier input
+  // mientras esta pestaña quedaba abierta. Se difiere con debounce: el
+  // recálculo real corre recién cuando el usuario deja de interactuar un
+  // momento, no en cada evento individual.
   const panelPMM = document.querySelector('.tab-panel[data-tab="interaccion"]');
-  if(panelPMM && panelPMM.classList.contains("active")) calcularYRenderizarPMM();
+  if(panelPMM && panelPMM.classList.contains("active")) solicitarRenderPMM();
 
   // Igual criterio para "Acero 3D": solo reconstruye la geometría si esa
   // pestaña está visible.
@@ -7838,7 +8079,15 @@ function initElementosMecanicosPaste(){
     texto.replace(/\r/g,"").split("\n").filter(l=>l.length>0).forEach((linea, dr)=>{
       const ri = ri0 + dr;
       if(ri >= state.elementosMecanicos.length) return;
-      linea.split("\t").forEach((valor, dc)=>{
+      let celdas = linea.split("\t");
+      // La grilla de resultados de STAAD tiene una primera columna fija
+      // (etiqueta de fila, p.ej. "Max Qx"/"Min Qy") que no se puede excluir
+      // de la selección al copiar — si el pegado arranca en "plate" y esa
+      // primera celda no es el ID numérico esperado, se descarta.
+      if(fi0 === 0 && celdas.length > 1 && isNaN(parseDecimal(celdas[0]))){
+        celdas = celdas.slice(1);
+      }
+      celdas.forEach((valor, dc)=>{
         const fi = fi0 + dc;
         if(fi >= ELEM_MEC_FIELDS.length) return;
         const campo = ELEM_MEC_FIELDS[fi];
@@ -7851,7 +8100,7 @@ function initElementosMecanicosPaste(){
       });
     });
     renderElementosMecanicosDiseno();
-    saveToStorage();
+    renderAll();
   });
 }
 
@@ -7881,7 +8130,7 @@ function renderElementosMecanicosDiseno(){
         const v = parseDecimal(inp.value);
         state.elementosMecanicos[ri][f] = isNaN(v) ? 0 : v;
       }
-      saveToStorage();
+      renderAll();
     });
   });
 }
@@ -8379,6 +8628,10 @@ function initBindings(){
   // exportar PNG.
   ["chkAceroLechoInf","chkAceroLechoSup","chkAceroLongDado","chkAceroEstribo","chkAceroConcreto"].forEach(id=>{
     document.getElementById(id).addEventListener("change", aplicarVisibilidadAcero);
+  });
+  document.getElementById("sliderConcretoOpacidad").addEventListener("input", (e)=>{
+    concretoOpacidad = +e.target.value;
+    aplicarOpacidadConcreto();
   });
   const vistasAcero = {
     btnAceroVistaIso: ()=>{
