@@ -80,7 +80,42 @@ git push
 
 ---
 
-## 3. Si algo no anda
+## 3. Conectarte a la VM desde Oracle Cloud Shell (alternativa rápida)
+
+No requiere VS Code ni instalar nada local — sirve desde cualquier máquina con navegador.
+
+1. Entrá a [cloud.oracle.com](https://cloud.oracle.com) → **Cloud Shell**.
+2. Conectate a la VM haciendo túnel del puerto 8080 (ver nota abajo):
+   ```
+   ssh -L 8080:localhost:8080 -i ssh-key-2026-07-08.key ubuntu@163.192.148.93
+   ```
+3. Si necesitás Python (hay un venv ya creado en la VM):
+   ```
+   source ~/entorno/bin/activate
+   ```
+4. Entrá a la carpeta del proyecto — **ojo:** en esta VM el clon local se llama `Hoja-FEM`, no
+   `Cimentaciones_FEM` (ese es solo el nombre del repo en GitHub):
+   ```
+   cd ~/Hoja-FEM
+   ```
+5. `git pull` (traer cambios de la otra máquina).
+6. `claude` (trabajar con ayuda de Claude Code).
+7. Al terminar:
+   ```
+   git add .
+   git commit -m "descripción"
+   git push
+   ```
+
+**Sobre el túnel del puerto 8080:** la VM suele tener corriendo `browser-sync` (`npx browser-sync
+start --server --files '*.html, *.css, *.js' --port 8080 --no-open`), que sirve `index.html` con
+recarga automática al guardar. El túnel `-L 8080:localhost:8080` + el "Web Preview" de Cloud Shell
+permiten ver la app en el navegador mientras se edita, sin tener que abrir el archivo manualmente
+cada vez.
+
+---
+
+## 4. Si algo no anda
 
 - **"Permission denied (publickey)"** al conectar: la llave SSH que estás usando no está autorizada en la VM. Hay que agregar su clave pública a `~/.ssh/authorized_keys` en la VM (usando otra sesión que sí tenga acceso).
 - **git pull dice "conflict" o "diverging branches":** significa que ambos lados (casa y VM) tienen cambios sin sincronizar. Avisá antes de forzar nada — normalmente se resuelve viendo qué archivo cambió en cada lado.
