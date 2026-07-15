@@ -982,6 +982,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
             <label class="field"><span class="lbl">Ángulo de P1</span><input type="text" inputmode="decimal" step="any" id="ang_P1"><span class="unit">°</span></label>
             <label class="field"><span class="lbl">Ángulo de P1a</span><input type="text" inputmode="decimal" step="any" id="ang_P1a"><span class="unit">°</span></label>
             <label class="field"><span class="lbl">Ángulo de P1b</span><input type="text" inputmode="decimal" step="any" id="ang_P1b"><span class="unit">°</span></label>
+            <label class="field"><span class="lbl">Ángulo de P1c</span><input type="text" inputmode="decimal" step="any" id="ang_P1c"><span class="unit">°</span></label>
           </div>
         </section>
       </div>
@@ -1031,13 +1032,12 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <section class="card" id="sec-geo-41" aria-labelledby="h-geo-41">
       <div class="head"><span id="h-geo-41">4.1.- Criterios de resistencia</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <div class="props-grid" id="geoCriterios"></div>
-        </div>
+        <!-- No depende de la geometría de patas (Φcarga solo mira si la
+             estructura es arriostrada, Φdeslizamiento es fijo) -> se calcula
+             y se muestra igual para 3P y 4P, sin el gate de "no soportado"
+             que sí aplica a 4.2 en adelante (volteo, que sí depende del
+             triángulo de 3 patas). -->
+        <div class="props-grid" id="geoCriterios"></div>
       </div>
     </section>
 
@@ -1125,63 +1125,55 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <section class="card" id="sec-geo-44" aria-labelledby="h-geo-44">
       <div class="head"><span id="h-geo-44">4.4.- Mallado FEM</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <p class="small" style="margin:0 0 10px; color:var(--muted);">Malla "Urdimbre": grilla regular sobre el interior + triangulación restringida en huecos/esquinas/dados, recombinada en cuadriláteros y reparada localmente (dados resaltados en naranja, con su propia malla perfecta). Es solo una previsualización visual — todavía no genera el archivo .STD para STAAD.</p>
-          <label class="field" style="max-width:360px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="120" id="g_mallaTamElem" style="max-width:150px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">50 cm</span></label>
-          <div style="position:relative; max-width:1180px; margin:0 auto;">
-            <div id="geoMallaDiagrama" class="navier-card"></div>
-            <div style="position:absolute; top:10px; left:10px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:6px 10px; font-size:11.5px; z-index:5;">
-              <label class="field" style="min-width:200px; margin-bottom:2px;"><span class="lbl">Mostrar números de placas</span><input type="checkbox" id="chkMallaNumeros"></label>
-              <label class="field" style="min-width:200px; margin-bottom:0;"><span class="lbl">Mostrar nodos de la malla</span><input type="checkbox" id="chkMallaNodos"></label>
-            </div>
+        <!-- No depende de la geometría de patas: generateMallaFEM() ya toma
+             "dados" de forma genérica (Object.values), igual que la vista 3D. -->
+        <p class="small" style="margin:0 0 10px; color:var(--muted);">Malla "Urdimbre": grilla regular sobre el interior + triangulación restringida en huecos/esquinas/dados, recombinada en cuadriláteros y reparada localmente (dados resaltados en naranja, con su propia malla perfecta). Es solo una previsualización visual — todavía no genera el archivo .STD para STAAD.</p>
+        <label class="field" style="max-width:360px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="120" id="g_mallaTamElem" style="max-width:150px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">50 cm</span></label>
+        <div style="position:relative; max-width:1180px; margin:0 auto;">
+          <div id="geoMallaDiagrama" class="navier-card"></div>
+          <div style="position:absolute; top:10px; left:10px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:6px 10px; font-size:11.5px; z-index:5;">
+            <label class="field" style="min-width:200px; margin-bottom:2px;"><span class="lbl">Mostrar números de placas</span><input type="checkbox" id="chkMallaNumeros"></label>
+            <label class="field" style="min-width:200px; margin-bottom:0;"><span class="lbl">Mostrar nodos de la malla</span><input type="checkbox" id="chkMallaNodos"></label>
           </div>
-          <p class="small" style="margin:8px 0 0; color:var(--muted);" id="geoMallaConteo"></p>
         </div>
+        <p class="small" style="margin:8px 0 0; color:var(--muted);" id="geoMallaConteo"></p>
       </div>
     </section>
 
     <section class="card" id="sec-geo-45" aria-labelledby="h-geo-45">
       <div class="head"><span id="h-geo-45">4.5.- Coeficiente de Balasto</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
+        <!-- No depende de la geometría de patas: solo usa QADM/asentamiento/
+             módulo K de suelo, sin relación con el número de dados. -->
+        <label class="field" style="max-width:420px; margin-bottom:12px;">
+          <span class="lbl">Cálculo del Coeficiente de Balasto</span>
+          <select id="g_metodoBalasto">
+            <option value="" disabled selected hidden>Selecciona un método…</option>
+            <option value="desplazamientos">Desplazamientos</option>
+            <option value="mecanicaSuelos">Mecánica de suelos</option>
+          </select>
+        </label>
+
+        <div id="balastoDesplazamientos" class="hidden">
           <label class="field" style="max-width:420px; margin-bottom:12px;">
-            <span class="lbl">Cálculo del Coeficiente de Balasto</span>
-            <select id="g_metodoBalasto">
-              <option value="" disabled selected hidden>Selecciona un método…</option>
-              <option value="desplazamientos">Desplazamientos</option>
-              <option value="mecanicaSuelos">Mecánica de suelos</option>
+            <span class="lbl">Análisis de asentamientos</span>
+            <input type="text" inputmode="decimal" step="any" id="g_asentamiento">
+            <span class="unit">cm</span>
+          </label>
+          <div class="props-grid" id="balastoKManual"></div>
+        </div>
+
+        <div id="balastoMecanicaSuelos" class="hidden">
+          <label class="field" style="max-width:420px; margin-bottom:12px;">
+            <span class="lbl">Módulo K de Mecánica de suelos</span>
+            <input type="text" inputmode="decimal" step="any" id="g_moduloK" style="max-width:110px;">
+            <select id="g_moduloKUnidad" style="max-width:110px; flex-shrink:0;">
+              <option value="kg/cm3">kg/cm³</option>
+              <option value="kg/m3">kg/m³</option>
+              <option value="Tn/m3">Tn/m³</option>
             </select>
           </label>
-
-          <div id="balastoDesplazamientos" class="hidden">
-            <label class="field" style="max-width:420px; margin-bottom:12px;">
-              <span class="lbl">Análisis de asentamientos</span>
-              <input type="text" inputmode="decimal" step="any" id="g_asentamiento">
-              <span class="unit">cm</span>
-            </label>
-            <div class="props-grid" id="balastoKManual"></div>
-          </div>
-
-          <div id="balastoMecanicaSuelos" class="hidden">
-            <label class="field" style="max-width:420px; margin-bottom:12px;">
-              <span class="lbl">Módulo K de Mecánica de suelos</span>
-              <input type="text" inputmode="decimal" step="any" id="g_moduloK" style="max-width:110px;">
-              <select id="g_moduloKUnidad" style="max-width:110px; flex-shrink:0;">
-                <option value="kg/cm3">kg/cm³</option>
-                <option value="kg/m3">kg/m³</option>
-                <option value="Tn/m3">Tn/m³</option>
-              </select>
-            </label>
-            <div class="props-grid" id="balastoKInterno"></div>
-          </div>
+          <div class="props-grid" id="balastoKInterno"></div>
         </div>
       </div>
     </section>
@@ -1189,27 +1181,20 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <section class="card" id="sec-geo-46" aria-labelledby="h-geo-46">
       <div class="head"><span id="h-geo-46">4.6.- Propiedades Concreto</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Estos datos solo se muestran, se calculan de manera automática a partir de f'c.</p>
-          <div class="props-grid" id="propsConcreto"></div>
-        </div>
+        <!-- No depende de la geometría de patas: se calcula solo a partir
+             de f'c (materiales), sin relación con el número de dados. -->
+        <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Estos datos solo se muestran, se calculan de manera automática a partir de f'c.</p>
+        <div class="props-grid" id="propsConcreto"></div>
       </div>
     </section>
 
     <section class="card" id="sec-geo-47" aria-labelledby="h-geo-47">
       <div class="head"><span id="h-geo-47">4.7.- Exportación de modelo</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <button type="button" class="btn primary" id="btnExportStaad">Exportar modelo a Staad.pro</button>
-        </div>
+        <!-- generarStaadModel() ya arma los LOAD de viento a partir de
+             TOWER_TYPES[tipo].combos en vez de nombres literales de 3P, así
+             que funciona igual para 3P (90/60/Normal) y 4P (45/Normal). -->
+        <button type="button" class="btn primary" id="btnExportStaad">Exportar modelo a Staad.pro</button>
       </div>
     </section>
 
@@ -1218,37 +1203,31 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <section class="card" id="sec-diseno-51" aria-labelledby="h-diseno-51">
       <div class="head"><span id="h-diseno-51">5.1.- Elementos mecánicos de diseño</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <p class="small" style="margin:0 0 10px; color:var(--muted);">Resumen de la malla de placas exportada de STAAD (máximos/mínimos por franja) — datos de entrada para el diseño estructural por ACI 318 (flexión, cortante, punzonamiento).</p>
-          <div style="overflow-x:auto;">
-          <table id="tblElementosMecanicos">
-            <thead>
-              <tr>
-                <th rowspan="2" scope="col" style="text-align:left">&nbsp;</th>
-                <th rowspan="2" scope="col">Plate</th>
-                <th rowspan="2" scope="col">L/C</th>
-                <th colspan="2" scope="colgroup">Shear (Local)</th>
-                <th colspan="3" scope="colgroup">Membrane (Local)</th>
-                <th colspan="3" scope="colgroup">Bending Moment (Local)</th>
-              </tr>
-              <tr>
-                <th scope="col">SQX kg/cm²</th>
-                <th scope="col">SQY kg/cm²</th>
-                <th scope="col">SX kg/cm²</th>
-                <th scope="col">SY kg/cm²</th>
-                <th scope="col">SXY kg/cm²</th>
-                <th scope="col">MX MTon-m/m</th>
-                <th scope="col">MY MTon-m/m</th>
-                <th scope="col">MXY MTon-m/m</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-          </div>
+        <p class="small" style="margin:0 0 10px; color:var(--muted);">Resumen de la malla de placas exportada de STAAD (máximos/mínimos por franja) — datos de entrada para el diseño estructural por ACI 318 (flexión, cortante, punzonamiento).</p>
+        <div style="overflow-x:auto;">
+        <table id="tblElementosMecanicos">
+          <thead>
+            <tr>
+              <th rowspan="2" scope="col" style="text-align:left">&nbsp;</th>
+              <th rowspan="2" scope="col">Plate</th>
+              <th rowspan="2" scope="col">L/C</th>
+              <th colspan="2" scope="colgroup">Shear (Local)</th>
+              <th colspan="3" scope="colgroup">Membrane (Local)</th>
+              <th colspan="3" scope="colgroup">Bending Moment (Local)</th>
+            </tr>
+            <tr>
+              <th scope="col">SQX kg/cm²</th>
+              <th scope="col">SQY kg/cm²</th>
+              <th scope="col">SX kg/cm²</th>
+              <th scope="col">SY kg/cm²</th>
+              <th scope="col">SXY kg/cm²</th>
+              <th scope="col">MX MTon-m/m</th>
+              <th scope="col">MY MTon-m/m</th>
+              <th scope="col">MXY MTon-m/m</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
         </div>
       </div>
     </section>
@@ -1256,11 +1235,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <section class="card" id="sec-diseno-52" aria-labelledby="h-diseno-52">
       <div class="head"><span id="h-diseno-52">5.2.- Criterios y parámetros de diseño</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido" style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap;">
+        <div style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap;">
           <div style="flex:0 0 340px;">
             <label class="field" style="max-width:340px; margin-bottom:12px;">
               <span class="lbl">Recubrimiento (r)</span>
@@ -1284,12 +1259,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <section class="card" id="sec-diseno-53" aria-labelledby="h-diseno-53">
       <div class="head"><span id="h-diseno-53">5.3.- Revisión por flexión</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <p class="small" style="margin:0 0 16px; color:var(--muted);">Momento de diseño combinado con Wood-Armer (Mx, My y Mxy de la misma fila de la tabla 5.1) — se toma la fila que gobierna, entre las 16, para cada lecho.</p>
+        <p class="small" style="margin:0 0 16px; color:var(--muted);">Momento de diseño combinado con Wood-Armer (Mx, My y Mxy de la misma fila de la tabla 5.1) — se toma la fila que gobierna, entre las 16, para cada lecho.</p>
 
           <div class="calc-subsection">
           <p class="calc-subsection-title">5.3.1.- Revisión a flexión en Lecho Inferior</p>
@@ -1454,22 +1424,15 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           <div class="props-grid" id="flexionSupExistComputed"></div>
           <div id="flexionSupExistResultado"></div>
           </div>
-        </div>
       </div>
     </section>
 
     <section class="card" id="sec-diseno-54" aria-labelledby="h-diseno-54">
       <div class="head"><span id="h-diseno-54">5.4.- Revisión por cortante en una dirección</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <div class="calc-subsection">
-          <div class="props-grid" id="cortante1DComputed"></div>
-          <div id="cortante1DResultado"></div>
-          </div>
+        <div class="calc-subsection">
+        <div class="props-grid" id="cortante1DComputed"></div>
+        <div id="cortante1DResultado"></div>
         </div>
       </div>
     </section>
@@ -1477,15 +1440,9 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <section class="card" id="sec-diseno-55" aria-labelledby="h-diseno-55">
       <div class="head"><span id="h-diseno-55">5.5.- Revisión por punzonamiento</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <div class="calc-subsection">
-          <div class="props-grid" id="punzonamientoComputed"></div>
-          <div id="punzonamientoResultado"></div>
-          </div>
+        <div class="calc-subsection">
+        <div class="props-grid" id="punzonamientoComputed"></div>
+        <div id="punzonamientoResultado"></div>
         </div>
       </div>
     </section>
@@ -1493,12 +1450,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <section class="card" id="sec-diseno-56" aria-labelledby="h-diseno-56">
       <div class="head"><span id="h-diseno-56">5.6.- Revisión de dados de desplante</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <p class="small" style="margin:0 0 16px; color:var(--muted);">Configuración del armado longitudinal y transversal del dado (los datos abajo son los que edita el usuario).</p>
+        <p class="small" style="margin:0 0 16px; color:var(--muted);">Configuración del armado longitudinal y transversal del dado (los datos abajo son los que edita el usuario).</p>
 
           <div class="calc-subsection">
           <p class="calc-subsection-title">Armado del dado</p>
@@ -1561,19 +1513,13 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           <div class="props-grid" id="dadoTensionComputed"></div>
           <div id="dadoTensionResultado"></div>
           </div>
-        </div>
       </div>
     </section>
 
     <section class="card" id="sec-resumen-eficiencias" aria-labelledby="h-resumen-eficiencias">
       <div class="head"><span id="h-resumen-eficiencias">6.- Resumen de eficiencias</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <p class="small" style="margin:0 0 12px; color:var(--muted);">Todas las revisiones de la hoja, con su eficiencia (demanda/capacidad) y estado — la fila con mayor eficiencia es la que gobierna el diseño.</p>
+        <p class="small" style="margin:0 0 12px; color:var(--muted);">Todas las revisiones de la hoja, con su eficiencia (demanda/capacidad) y estado — la fila con mayor eficiencia es la que gobierna el diseño.</p>
           <div style="overflow-x:auto;">
           <table id="tblResumenEficiencias">
             <thead>
@@ -1587,7 +1533,6 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
             <tbody></tbody>
           </table>
           </div>
-        </div>
       </div>
     </section>
 
@@ -1639,7 +1584,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           <thead><tr><th scope="col">Pata</th><th scope="col">Xc (m)</th><th scope="col">Yc (m)</th><th scope="col">Ángulo (°)</th></tr></thead>
           <tbody></tbody>
         </table>
-        <p class="small" style="margin-top:12px;">Los dados se ubican en los vértices de un triángulo equilátero de lado <b>Lo</b> centrado en el centroide de la zapata (con corrección CX/CY), y cada dado gira sobre su propio centro según su ángulo de orientación.</p>
+        <p class="small" style="margin-top:12px;">Los dados se ubican en los vértices de un triángulo equilátero (Autosoportada 3P) o un cuadrado (Autosoportada 4P) de lado <b>Lo</b> centrado en el centroide de la zapata (con corrección CX/CY), y cada dado gira sobre su propio centro según su ángulo de orientación.</p>
       </div>
     </section>
       </div>
@@ -1650,12 +1595,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <section class="card" id="sec-interaccion" aria-labelledby="h-interaccion">
       <div class="head"><span id="h-interaccion">Diagrama de interacción P-M-M del dado</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <p class="small" style="margin:0 0 14px; color:var(--muted);">Superficie de interacción biaxial del dado (ACI 318-19, Cap. 22), con los puntos de demanda (Pu, Mux, Muy) de cada combinación estructural en las 3 patas. Unidades Tn y Tn-m, consistentes con el resto de la app.</p>
+        <p class="small" style="margin:0 0 14px; color:var(--muted);">Superficie de interacción biaxial del dado (ACI 318-19, Cap. 22), con los puntos de demanda (Pu, Mux, Muy) de cada combinación estructural en las patas (3 en Autosoportada 3P, 4 en 4P). Unidades Tn y Tn-m, consistentes con el resto de la app.</p>
           <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start;">
             <div style="flex:1 1 560px; min-width:320px;">
               <div style="position:relative;">
@@ -1691,7 +1631,6 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
               </label>
             </div>
           </div>
-        </div>
       </div>
     </section>
     </div>
@@ -1700,13 +1639,8 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <section class="card" id="sec-acero3d" aria-labelledby="h-acero3d">
       <div class="head"><span id="h-acero3d">6.- Armadura — vista 3D del acero de refuerzo</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <p class="small" style="margin:0 0 12px; color:var(--muted);">Acero de refuerzo de la losa (lechos inferior/superior) y de los 3 dados (longitudinal + estribos), con longitudes de desarrollo y ganchos según ACI 318-19 — a partir del armado ya definido en 5.3 y 5.6.</p>
-          <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start;">
+        <p class="small" style="margin:0 0 12px; color:var(--muted);">Acero de refuerzo de la losa (lechos inferior/superior) y de los dados (longitudinal + estribos; 3 en Autosoportada 3P, 4 en 4P), con longitudes de desarrollo y ganchos según ACI 318-19 — a partir del armado ya definido en 5.3 y 5.6.</p>
+        <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start;">
             <div style="flex:1 1 560px; min-width:320px; position:relative; width:100%; max-width:100%;">
               <div style="position:relative; width:100%; height:620px; background:var(--canvas); border-radius:var(--radius-lg); overflow:hidden; border:1px solid var(--border);">
                 <canvas id="canvasAcero3d" style="width:100%; height:100%; display:block;"></canvas>
@@ -1733,7 +1667,6 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
               <label class="field" style="margin-bottom:8px;"><span class="lbl">Transparencia del concreto</span><input type="range" id="sliderConcretoOpacidad" min="0" max="1" step="0.05" value="0.15"></label>
             </div>
           </div>
-        </div>
       </div>
     </section>
     </div>
@@ -3200,7 +3133,7 @@ function defaultState(){
     hole: [],
     elementosMecanicos: defaultElementosMecanicos(),
     geom: { PZ:0.65, Pd:3, Lo:4, AD:0.6, LD:0.6, HD:0.25, CX:0, CY:0, QADM:8, FS:3, mallaTamElem:50, metodoBalasto:"", asentamiento:0, moduloK:0, moduloKUnidad:"kg/cm3" },
-    angles: { P1:45, P1a:-30, P1b:30 },
+    angles: { P1:45, P1a:-30, P1b:30, P1c:0 },
     reaccionesPorTipo: {
       "Autosoportada 3P": defaultReacciones("Autosoportada 3P"),
       "Autosoportada 4P": defaultReacciones("Autosoportada 4P")
@@ -3493,8 +3426,28 @@ function rotatePoint(x, y, cx, cy, angleDeg){
   return { x: dx*ct - dy*st + cx, y: dx*st + dy*ct + cy };
 }
 
+// Claves de dado según tipo de estructura, en el mismo orden que
+// TOWER_TYPES[tipo].legs (de "más lejano" a "1") — usarla en vez de
+// hardcodear ["P1b","P1a","P1"] para que un mismo bucle sirva para 3P y 4P.
+function legKeysFor(tipo){
+  return reactionTypeKey(tipo) === "Autosoportada 4P"
+    ? ["P1c","P1b","P1a","P1"]
+    : ["P1b","P1a","P1"];
+}
+
 function computeLegCenters(cxPoly, cyPoly){
   const {Lo,CX,CY} = state.geom;
+  if(reactionTypeKey(state.tipoEstructura) === "Autosoportada 4P"){
+    // 4 dados en los vértices de un cuadrado de lado Lo centrado en el
+    // centroide de la zapata (con corrección CX/CY) — P1a/P1b forman la
+    // fila inferior (igual convención que en 3P) y P1/P1c la fila superior.
+    const h = Lo/2;
+    const P1b = { x: cxPoly - h + CX, y: cyPoly - h + CY };
+    const P1a = { x: cxPoly + h + CX, y: P1b.y };
+    const P1c = { x: P1b.x,           y: cyPoly + h + CY };
+    const P1  = { x: P1a.x,           y: P1c.y };
+    return { P1b, P1a, P1c, P1 };
+  }
   const P1b = { x: cxPoly - Lo/2 + CX, y: cyPoly - Math.tan(30*Math.PI/180)*(Lo/2) + CY };
   const P1a = { x: cxPoly + Lo/2 + CX, y: P1b.y };
   const P1  = { x: cxPoly + CX,        y: P1b.y + Math.tan(60*Math.PI/180)*(Lo/2) };
@@ -3834,7 +3787,7 @@ function update3D(props, legs, dados, outerC, holeC){
   const dadoAltura = Hr + HD;
   const dadoMat = concreteMat(0x8a95a5);
   const dadoEdgeMat = new THREE.LineBasicMaterial({color:0x3a4250});
-  ["P1b","P1a","P1"].forEach(key=>{
+  legKeysFor(state.tipoEstructura).forEach(key=>{
     const center = legs[key];
     const angleDeg = state.angles[key];
     const geo = new THREE.BoxGeometry(AD, Math.max(dadoAltura,0.01), LD);
@@ -3894,9 +3847,8 @@ function update3D(props, legs, dados, outerC, holeC){
         // Excel). Visualmente, el usuario confirmó que la flecha de cada
         // dado debe mostrar la reacción de SU PROPIA posición (mapeo
         // directo), no la de la posición espejo.
-        const POSITION_TO_REACTION = { "P1b":"1b", "P1a":"1a", "P1":"1" };
-        ["P1b","P1a","P1"].forEach(key=>{
-          const suffix = POSITION_TO_REACTION[key];
+        legKeysFor(state.tipoEstructura).forEach(key=>{
+          const suffix = key.slice(1); // "P1b"->"1b", "P1"->"1", etc. (mapeo directo, no cruzado)
           const row = comboRow[suffix];
           if(!row) return;
           const cx0 = legs[key].x, cz0 = legs[key].y;
@@ -4448,16 +4400,22 @@ function calcularCortante1D(cd){
 }
 
 // Fila completa de reacción (fx,fy,fz,...) de un dado, para un combo dado —
-// mismo mapeo cruzado YA VERIFICADO en computeGeotecnico (LEG_POSITION_MAP)
-// (antes vivía solo dentro de generarStaadModel()).
+// para 3P usa el mapeo cruzado YA VERIFICADO en computeGeotecnico
+// (LEG_POSITION_MAP), específico del triángulo equilátero de 3 patas. Para
+// 4P (y cualquier otro tipo) no hay Excel de referencia que justifique ese
+// cruce, así que se usa el mapeo directo — mismo criterio ya confirmado
+// para las flechas de reacción de la vista 3D (ver legKeysFor/update3D).
 function reaccionCompletaPorPosicion(comboTexto, posicion){
   const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
   const reacciones = getCurrentReacciones();
   if(!cfgTorre || !reacciones) return null;
   const idx = matchComboIndex(comboTexto, cfgTorre.combos);
   if(idx < 0 || !reacciones[idx]) return null;
-  const POSICION_A_SUFIJO_RESULTADO = { "P1b":"1a", "P1a":"1b", "P1":"1" };
-  return reacciones[idx][POSICION_A_SUFIJO_RESULTADO[posicion]] || null;
+  const POSICION_A_SUFIJO_RESULTADO_3P = { "P1b":"1a", "P1a":"1b", "P1":"1" };
+  const suffix = reactionTypeKey(state.tipoEstructura) === "Autosoportada 3P"
+    ? POSICION_A_SUFIJO_RESULTADO_3P[posicion]
+    : posicion.slice(1);
+  return reacciones[idx][suffix] || null;
 }
 
 function reaccionFyPorPosicion(comboTexto, posicion){
@@ -4478,7 +4436,7 @@ function calcularVuPunzonamiento(cd, props){
   const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
   if(!cfgTorre || !props || !(props.area > 0)) return { vu:0, dado:null, combo:null, pu:null, qu:null };
   const combosEstructurales = cfgTorre.combos.filter(c => /1\.2\s*d/i.test(c));
-  const posiciones = ["P1","P1a","P1b"];
+  const posiciones = legKeysFor(state.tipoEstructura);
   const acrit = cd.c1 * cd.c2;
   let peor = { vu:-Infinity, dado:null, combo:null, pu:null, qu:null };
   combosEstructurales.forEach(combo=>{
@@ -4636,7 +4594,7 @@ function getReaccionesExtremasDado(){
   const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
   if(!cfgTorre) return { pu:0, tu:0 };
   const combos = cfgTorre.combos.filter(c => /1\.2\s*d/i.test(c));
-  const posiciones = ["P1","P1a","P1b"];
+  const posiciones = legKeysFor(state.tipoEstructura);
   let pu = -Infinity, tu = Infinity;
   combos.forEach(combo=>{
     posiciones.forEach(pos=>{
@@ -4813,7 +4771,7 @@ function calcularDemandasPMM(){
   const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
   if(!cfgTorre) return [];
   const combos = cfgTorre.combos.filter(c => /1\.2\s*d/i.test(c));
-  const posiciones = ["P1","P1a","P1b"];
+  const posiciones = legKeysFor(state.tipoEstructura);
   const brazo = (state.geom.Pd - state.geom.PZ) + state.geom.HD; // m
   const puntos = [];
   posiciones.forEach(pos=>{
@@ -4961,6 +4919,20 @@ function calcularYRenderizarPMM(recalcularSuperficie){
   renderizarPMM();
 }
 
+// Opciones del selector "Pata" (3 patas en 3P, 4 en 4P) — se reconstruye acá
+// en vez de quedar hardcodeado en el HTML, preservando la selección actual
+// si sigue siendo válida para el tipo de estructura vigente.
+function populatePataPMMSelector(){
+  const sel = document.getElementById("selPataPMM");
+  if(!sel) return;
+  const prev = sel.value;
+  const legs = legKeysFor(state.tipoEstructura);
+  sel.innerHTML = ['<option value="todas">Todas</option>']
+    .concat(legs.map(k=>`<option value="${k}">${k}</option>`))
+    .join("");
+  sel.value = legs.includes(prev) ? prev : "todas";
+}
+
 // Debounce del refresco "en vivo" de Interacción 3D disparado desde
 // renderAll() — redibujar Plotly en CADA evento (cada tecla en cualquier
 // input de la app) trababa el navegador; acá se posterga hasta que el
@@ -5035,7 +5007,7 @@ const matConcretoFantasma = () => new THREE.MeshStandardMaterial({
 // usada solo para estimar el peso total mostrado en la leyenda de esta vista.
 const DENSIDAD_ACERO_KGM3 = 7850;
 
-function addBarAcero(group, x1,y1,z1, x2,y2,z2, diam_m, mat, tipo, segments){
+function addBarAcero(group, x1,y1,z1, x2,y2,z2, diam_m, mat, tipo, codigo, segments){
   const len = Math.hypot(x2-x1, y2-y1, z2-z1);
   if(len < 1e-6 || !(diam_m > 0)) return;
   const geo = new THREE.CylinderGeometry(diam_m/2, diam_m/2, len, segments||8);
@@ -5044,12 +5016,14 @@ function addBarAcero(group, x1,y1,z1, x2,y2,z2, diam_m, mat, tipo, segments){
   const dir = new THREE.Vector3(x2-x1,y2-y1,z2-z1).normalize();
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
   mesh.userData.tipo = tipo;
+  mesh.userData.codigo = codigo;
+  mesh.userData.longitud_m = len;
   mesh.userData.pesoKg = len * Math.PI*(diam_m/2)*(diam_m/2) * DENSIDAD_ACERO_KGM3;
   group.add(mesh);
 }
 
 // Gancho estándar a 90° (arco + extensión recta) — ACI 318-19 §25.3.2/25.4.3.
-function addHook90Acero(group, pos, dirIn, dirHook, radio_cm, ext_cm, diam_m, mat, tipo){
+function addHook90Acero(group, pos, dirIn, dirHook, radio_cm, ext_cm, diam_m, mat, tipo, codigo){
   const R = radio_cm/100 + diam_m/2;
   const N = 8;
   const pts = [];
@@ -5061,12 +5035,14 @@ function addHook90Acero(group, pos, dirIn, dirHook, radio_cm, ext_cm, diam_m, ma
   const tubeGeo = new THREE.TubeGeometry(curve, N*2, diam_m/2, 6, false);
   const tubeMesh = new THREE.Mesh(tubeGeo, mat);
   tubeMesh.userData.tipo = tipo;
+  tubeMesh.userData.codigo = codigo;
+  tubeMesh.userData.longitud_m = curve.getLength();
   tubeMesh.userData.pesoKg = curve.getLength() * Math.PI*(diam_m/2)*(diam_m/2) * DENSIDAD_ACERO_KGM3;
   group.add(tubeMesh);
   const end = pts[pts.length-1];
   addBarAcero(group, end.x,end.y,end.z,
     end.x+dirHook.x*(ext_cm/100), end.y+dirHook.y*(ext_cm/100), end.z+dirHook.z*(ext_cm/100),
-    diam_m, mat, tipo);
+    diam_m, mat, tipo, codigo);
 }
 
 // Recorta el acero de la losa a la FORMA REAL de la zapata (no a su caja
@@ -5122,16 +5098,39 @@ function actualizarLeyendaAcero(lenInf, lenSup, lenDado1, lenDado2){
     item("#6A1B9A", `Estribos: ${state.diseno.dadoEstriboVar} @ ${fmt(state.diseno.dadoEstriboSep,0)} cm — ${state.diseno.dadoEstribosRamas} rama(s)`);
 }
 
-// Volumen de concreto y peso de acero, en un recuadro aparte (arriba a la
-// izquierda) — separado de la leyenda de acero (abajo a la izquierda) para
-// no mezclar el detalle de armado con estos totales.
-function actualizarResumenAcero(volConcretoM3, pesoAceroKg){
+// Volumen de concreto y peso de acero POR DIÁMETRO, en un recuadro aparte
+// (arriba a la izquierda) — separado de la leyenda de acero (abajo a la
+// izquierda) para no mezclar el detalle de armado con estos totales.
+// resumenPorDiametro: Map codigo -> {longitud_m, pesoKg}, ya acumulado en
+// buildAcero3D() sumando userData de cada barra/gancho construido.
+function actualizarResumenAcero(volConcretoM3, resumenPorDiametro){
   const el = document.getElementById("acero3dResumen");
   if(!el) return;
   const item = (color, texto) => `<div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;"><span style="width:10px; height:10px; border-radius:50%; background:${color}; display:inline-block; flex-shrink:0;"></span><span>${texto}</span></div>`;
+
+  const td = (txt, alignLeft) => `<td style="padding:2px 5px; text-align:${alignLeft?"left":"center"};">${txt}</td>`;
+  const filas = Array.from(resumenPorDiametro.entries())
+    .map(([codigo, { longitud_m, pesoKg }]) => ({
+      codigo, longitud_m, pesoKg,
+      pesoUnitKgM: DENSIDAD_ACERO_KGM3 * (REBAR_AREAS[codigo] || 0) / 10000 // cm² -> m²
+    }))
+    .sort((a, b) => b.pesoUnitKgM - a.pesoUnitKgM); // diámetro más grueso primero
+  const pesoTotalKg = filas.reduce((s, f) => s + f.pesoKg, 0);
+
+  const filasHtml = filas.map(f =>
+    `<tr>${td(f.codigo, true)}${td(fmt(f.longitud_m,1))}${td(fmt(f.pesoUnitKgM,3))}${td(fmt(f.pesoKg,1))}</tr>`
+  ).join("");
+  const th = (txt, alignLeft) => `<th style="padding:2px 5px; text-align:${alignLeft?"left":"center"}; border-bottom:1px solid var(--border); font-weight:700;">${txt}</th>`;
+
   el.innerHTML =
     item("#8a95a5", `Volumen de concreto (zapata + dados): ${fmt(volConcretoM3,3)} m³`) +
-    item("#455a64", `Peso de acero (estimado, γ=${DENSIDAD_ACERO_KGM3} kg/m³): ${fmt(pesoAceroKg/1000,3)} Tn`);
+    `<table style="width:100%; border-collapse:collapse; margin-top:6px;">
+      <thead><tr>${th("Ø",true)}${th("L (m)")}${th("kg/m")}${th("Peso (kg)")}</tr></thead>
+      <tbody>${filasHtml}</tbody>
+      <tfoot><tr style="font-weight:700;">
+        ${td("Total", true)}${td("")}${td("")}${td(fmt(pesoTotalKg,1))}
+      </tr></tfoot>
+    </table>`;
 }
 
 // Construye toda la geometría (losa + 3 dados) dentro de aceroGroup, ya
@@ -5210,38 +5209,38 @@ function buildAcero3D(){
   const matInf = matAceroInf(), matSup = matAceroSup();
   posicionesEnRango(zMin, zMax, sepInf, 80).forEach(z=>{
     tramosDeAceroLosa(true, z, holguraInf).forEach(([ini,fin])=>{
-      addBarAcero(aceroGroup, ini,yInfX,z, fin,yInfX,z, lenInf.db_cm/100, matInf, "lechoInf");
-      addHook90Acero(aceroGroup, new THREE.Vector3(ini,yInfX,z), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
-      addHook90Acero(aceroGroup, new THREE.Vector3(fin,yInfX,z), new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+      addBarAcero(aceroGroup, ini,yInfX,z, fin,yInfX,z, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
+      addHook90Acero(aceroGroup, new THREE.Vector3(ini,yInfX,z), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
+      addHook90Acero(aceroGroup, new THREE.Vector3(fin,yInfX,z), new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
     });
   });
   posicionesEnRango(xMin, xMax, sepInf, 80).forEach(x=>{
     tramosDeAceroLosa(false, x, holguraInf).forEach(([ini,fin])=>{
-      addBarAcero(aceroGroup, x,yInfZ,ini, x,yInfZ,fin, lenInf.db_cm/100, matInf, "lechoInf");
-      addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,ini), new THREE.Vector3(0,0,-1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
-      addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,fin), new THREE.Vector3(0,0,1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf");
+      addBarAcero(aceroGroup, x,yInfZ,ini, x,yInfZ,fin, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
+      addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,ini), new THREE.Vector3(0,0,-1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
+      addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,fin), new THREE.Vector3(0,0,1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
     });
   });
   posicionesEnRango(zMin, zMax, sepSup, 80).forEach(z=>{
     tramosDeAceroLosa(true, z, holguraSup).forEach(([ini,fin])=>{
-      addBarAcero(aceroGroup, ini,ySupX,z, fin,ySupX,z, lenSup.db_cm/100, matSup, "lechoSup");
+      addBarAcero(aceroGroup, ini,ySupX,z, fin,ySupX,z, lenSup.db_cm/100, matSup, "lechoSup", state.diseno.varSup);
       // Gancho a 90° doblado hacia ABAJO (no hacia arriba como el lecho
       // inferior): el lecho superior corre pegado a la cara superior de la
       // losa, sin recubrimiento libre por encima para alojar el doblez.
-      addHook90Acero(aceroGroup, new THREE.Vector3(ini,ySupX,z), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup");
-      addHook90Acero(aceroGroup, new THREE.Vector3(fin,ySupX,z), new THREE.Vector3(1,0,0), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup");
+      addHook90Acero(aceroGroup, new THREE.Vector3(ini,ySupX,z), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup", state.diseno.varSup);
+      addHook90Acero(aceroGroup, new THREE.Vector3(fin,ySupX,z), new THREE.Vector3(1,0,0), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup", state.diseno.varSup);
     });
   });
   posicionesEnRango(xMin, xMax, sepSup, 80).forEach(x=>{
     tramosDeAceroLosa(false, x, holguraSup).forEach(([ini,fin])=>{
-      addBarAcero(aceroGroup, x,ySupZ,ini, x,ySupZ,fin, lenSup.db_cm/100, matSup, "lechoSup");
-      addHook90Acero(aceroGroup, new THREE.Vector3(x,ySupZ,ini), new THREE.Vector3(0,0,-1), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup");
-      addHook90Acero(aceroGroup, new THREE.Vector3(x,ySupZ,fin), new THREE.Vector3(0,0,1), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup");
+      addBarAcero(aceroGroup, x,ySupZ,ini, x,ySupZ,fin, lenSup.db_cm/100, matSup, "lechoSup", state.diseno.varSup);
+      addHook90Acero(aceroGroup, new THREE.Vector3(x,ySupZ,ini), new THREE.Vector3(0,0,-1), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup", state.diseno.varSup);
+      addHook90Acero(aceroGroup, new THREE.Vector3(x,ySupZ,fin), new THREE.Vector3(0,0,1), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup", state.diseno.varSup);
     });
   });
 
-  // Acero de los dados: mismo armado (generarBarrasDado(), 5.6) para los 3,
-  // solo cambia la posición/rotación de cada uno.
+  // Acero de los dados: mismo armado (generarBarrasDado(), 5.6) para todos,
+  // solo cambia la posición/rotación de cada uno (3 en 3P, 4 en 4P).
   const dadoAltura = Hr + HD;
   const yBase = -Pd + PZ, yTop = yBase + dadoAltura;
   const lenDado1 = calcularLongitudDesarrolloACI(state.diseno.dadoVar1, state.diseno.dadoRecubrimiento, false);
@@ -5254,7 +5253,7 @@ function buildAcero3D(){
   const xIzq = -AD/2 + rEstr, xDer = AD/2 - rEstr;
   const zFre = -LD/2 + rEstr, zPos = LD/2 - rEstr;
 
-  ["P1b","P1a","P1"].forEach(key=>{
+  legKeysFor(state.tipoEstructura).forEach(key=>{
     const center = legs[key];
     const theta = -state.angles[key]*Math.PI/180;
     const toWorld = (lx, lz) => ({
@@ -5265,9 +5264,10 @@ function buildAcero3D(){
     armado.barras.forEach(br=>{
       const w = toWorld(br.x/100, br.y/100); // generarBarrasDado da cm; acá en m
       const lenD = br.grupo===1 ? lenDado1 : lenDado2;
+      const codigoDado = br.grupo===1 ? state.diseno.dadoVar1 : state.diseno.dadoVar2;
       const embebido = Math.min(lenD.ldh_cm/100, PZ*0.9);
       const yGancho = yBase - embebido;
-      addBarAcero(aceroGroup, w.x, yGancho, w.z, w.x, yTop, w.z, br.d/100, matLong, "longDado");
+      addBarAcero(aceroGroup, w.x, yGancho, w.z, w.x, yTop, w.z, br.d/100, matLong, "longDado", codigoDado);
       // Gancho estándar a 90° en la base (§25.3.2/25.4.3 ACI 318-19), doblado
       // radialmente hacia afuera del dado (en planta) para anclar en la zapata.
       let dlx = br.x, dlz = br.y;
@@ -5275,19 +5275,19 @@ function buildAcero3D(){
       if(dmag < 1e-6){ dlx = 1; dlz = 0; } else { dlx /= dmag; dlz /= dmag; }
       const dirHookX = dlx*Math.cos(theta) + dlz*Math.sin(theta);
       const dirHookZ = -dlx*Math.sin(theta) + dlz*Math.cos(theta);
-      addHook90Acero(aceroGroup, new THREE.Vector3(w.x,yGancho,w.z), new THREE.Vector3(0,-1,0), new THREE.Vector3(dirHookX,0,dirHookZ), lenD.radio_cm, lenD.extension_cm, br.d/100, matLong, "longDado");
+      addHook90Acero(aceroGroup, new THREE.Vector3(w.x,yGancho,w.z), new THREE.Vector3(0,-1,0), new THREE.Vector3(dirHookX,0,dirHookZ), lenD.radio_cm, lenD.extension_cm, br.d/100, matLong, "longDado", codigoDado);
     });
 
     let yE = yTop - sepE/2, nEst = 0;
     while(yE > yBase + armado.rec/100 && nEst < 40){
       const c1 = toWorld(xIzq, zFre), c2 = toWorld(xDer, zFre), c3 = toWorld(xDer, zPos), c4 = toWorld(xIzq, zPos);
-      addBarAcero(aceroGroup, c1.x,yE,c1.z, c2.x,yE,c2.z, dbE_cm/100, matEstr, "estribo");
-      addBarAcero(aceroGroup, c2.x,yE,c2.z, c3.x,yE,c3.z, dbE_cm/100, matEstr, "estribo");
-      addBarAcero(aceroGroup, c3.x,yE,c3.z, c4.x,yE,c4.z, dbE_cm/100, matEstr, "estribo");
-      addBarAcero(aceroGroup, c4.x,yE,c4.z, c1.x,yE,c1.z, dbE_cm/100, matEstr, "estribo");
+      addBarAcero(aceroGroup, c1.x,yE,c1.z, c2.x,yE,c2.z, dbE_cm/100, matEstr, "estribo", state.diseno.dadoEstriboVar);
+      addBarAcero(aceroGroup, c2.x,yE,c2.z, c3.x,yE,c3.z, dbE_cm/100, matEstr, "estribo", state.diseno.dadoEstriboVar);
+      addBarAcero(aceroGroup, c3.x,yE,c3.z, c4.x,yE,c4.z, dbE_cm/100, matEstr, "estribo", state.diseno.dadoEstriboVar);
+      addBarAcero(aceroGroup, c4.x,yE,c4.z, c1.x,yE,c1.z, dbE_cm/100, matEstr, "estribo", state.diseno.dadoEstriboVar);
       if(state.diseno.dadoEstribosRamas > 1){
         const cc1 = toWorld(0, zFre), cc2 = toWorld(0, zPos);
-        addBarAcero(aceroGroup, cc1.x,yE,cc1.z, cc2.x,yE,cc2.z, dbE_cm/100, matEstr, "estribo");
+        addBarAcero(aceroGroup, cc1.x,yE,cc1.z, cc2.x,yE,cc2.z, dbE_cm/100, matEstr, "estribo", state.diseno.dadoEstriboVar);
       }
       yE -= sepE; nEst++;
     }
@@ -5300,17 +5300,25 @@ function buildAcero3D(){
     aceroGroup.add(dadoMesh);
   });
 
-  // Volumen de concreto (zapata neta, sin el hueco, + los 3 dados) y peso
-  // de acero (suma del peso de cada barra/gancho ya construido, tageado en
-  // addBarAcero()/addHook90Acero() vía userData.pesoKg) — solo para mostrar
-  // en la leyenda de esta vista, no alimenta ningún otro cálculo de la app.
+  // Volumen de concreto (zapata neta, sin el hueco, + los dados: 3 en 3P, 4
+  // en 4P) y peso de acero por diámetro (cada barra/gancho ya construido
+  // queda tageado en addBarAcero()/addHook90Acero() vía userData.codigo/
+  // longitud_m/pesoKg) — solo para mostrar en la leyenda de esta vista, no
+  // alimenta ningún otro cálculo de la app.
   const areaZapataNeta = polygonArea(outerC) - (huecoActivo ? polygonArea(huecoActivo) : 0);
-  const volConcretoM3 = areaZapataNeta*PZ + 3*AD*LD*dadoAltura;
-  let pesoAceroKg = 0;
-  aceroGroup.traverse(obj=>{ if(obj.userData && typeof obj.userData.pesoKg === "number") pesoAceroKg += obj.userData.pesoKg; });
+  const nDados = legKeysFor(state.tipoEstructura).length;
+  const volConcretoM3 = areaZapataNeta*PZ + nDados*AD*LD*dadoAltura;
+  const resumenPorDiametro = new Map(); // codigo -> {longitud_m, pesoKg}
+  aceroGroup.traverse(obj=>{
+    if(!obj.userData || typeof obj.userData.pesoKg !== "number" || !obj.userData.codigo) return;
+    const acc = resumenPorDiametro.get(obj.userData.codigo) || { longitud_m:0, pesoKg:0 };
+    acc.longitud_m += obj.userData.longitud_m || 0;
+    acc.pesoKg += obj.userData.pesoKg;
+    resumenPorDiametro.set(obj.userData.codigo, acc);
+  });
 
   actualizarLeyendaAcero(lenInf, lenSup, lenDado1, lenDado2);
-  actualizarResumenAcero(volConcretoM3, pesoAceroKg);
+  actualizarResumenAcero(volConcretoM3, resumenPorDiametro);
 }
 
 function aplicarVisibilidadAcero(){
@@ -5394,7 +5402,10 @@ function initAcero3D(){
   sceneAcero = new THREE.Scene();
   cameraAcero = new THREE.PerspectiveCamera(45, 1, 0.05, 500);
   const yMid = -state.geom.Pd/2;
-  cameraAcero.position.set(6, yMid+2, 6);
+  // Misma orientación (ángulo azimutal/elevación) que el isométrico del
+  // Visor 3D de la cimentación — ver fit3DCamera(), dirección de cámara
+  // proporcional a (0.95, 0.68, -0.75) respecto al objetivo.
+  cameraAcero.position.set(8*0.95, yMid + 8*0.68, -8*0.75);
 
   sceneAcero.add(new THREE.AmbientLight(0xffffff, 0.75));
   const dl1 = new THREE.DirectionalLight(0xffffff, 0.6); dl1.position.set(5,10,5); sceneAcero.add(dl1);
@@ -5455,11 +5466,7 @@ function renderProperties(props){
 function renderDadosTable(legs){
   const tbody = document.querySelector("#tblDados tbody");
   tbody.innerHTML = "";
-  const rows = [
-    ["P1b", legs.P1b, state.angles.P1b],
-    ["P1a", legs.P1a, state.angles.P1a],
-    ["P1",  legs.P1,  state.angles.P1],
-  ];
+  const rows = legKeysFor(state.tipoEstructura).map(key=>[key, legs[key], state.angles[key]]);
   rows.forEach(([name,c,ang])=>{
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${name}</td><td>${fmt(c.x,4)}</td><td>${fmt(c.y,4)}</td><td>${fmt(ang,2)}</td>`;
@@ -7169,55 +7176,63 @@ function generarStaadModel(){
     ].join("\n");
   }
 
-  const load3 = bloqueJointLoadFy(3, "1.2D + 1.0W 90", "1.2D + 1.0W 90°");
-  const load4 = bloqueJointLoadFy(4, "1.2D + 1.0W 60", "1.2D + 1.0W 60°");
-  const load5 = bloqueJointLoadFy(5, "1.2D + 1.0W Normal", "1.2D + 1.0W Normal");
-  const load6 = bloqueJointLoadFy(6, "1.0D + 1.0W 90", "1.0D + 1.0W Service 90°");
-  const load7 = bloqueJointLoadFy(7, "1.0D + 1.0W 60", "1.0D + 1.0W Service 60°");
-  const load8 = bloqueJointLoadFy(8, "1.0D + 1.0W Normal", "1.0D + 1.0W Service Normal");
+  // Combos de viento a exportar, tomados de TOWER_TYPES[tipo].combos en vez
+  // de nombres literales — antes esto asumía los 3 ángulos fijos de 3P
+  // ("90°/60°/Normal"); generalizado así sirve igual para los 2 ángulos de
+  // 4P ("45°/Normal") o cualquier otro set futuro. Los combos "0.9D + 1.0W"
+  // quedan afuera a propósito (solo se usan en la revisión de volteo, sección
+  // 4.2, no en el análisis de placas de STAAD).
+  const cfg = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
+  const combosFactorados = cfg ? cfg.combos.filter(c => /^1\.2D/i.test(c)) : [];
+  const combosServicio   = cfg ? cfg.combos.filter(c => /Service/i.test(c)) : [];
 
-  // LOAD 9..14: combinaciones (REPEAT LOAD) — literal, solo combinan los
-  // casos anteriores por número, no requieren datos adicionales.
+  function nombreLoadStaad(combo){
+    return combo.replace(/°/g, "").replace(/\s*Service\s*/i, " ").replace(/\s+/g, " ").trim();
+  }
+  function anguloStaad(combo){
+    const m = combo.match(/(\d+(?:\.\d+)?°|Normal)\s*$/i);
+    return m ? m[1].replace("°", "") : combo;
+  }
+
+  // Numeración de LOAD: primero los de viento (uno por combo factorado,
+  // después uno por combo de servicio), y a continuación los REPEAT LOAD que
+  // los combinan con peso propio/relleno (mismo orden: factorados primero).
+  const numBaseFactorado = 3;
+  const numBaseServicio  = numBaseFactorado + combosFactorados.length;
+  const numBaseCombFact  = numBaseServicio + combosServicio.length;
+  const numBaseCombServ  = numBaseCombFact + combosFactorados.length;
+
+  const load3 = [
+    ...combosFactorados.map((combo,i)=> bloqueJointLoadFy(numBaseFactorado+i, nombreLoadStaad(combo), combo)),
+    ...combosServicio.map((combo,i)=> bloqueJointLoadFy(numBaseServicio+i, nombreLoadStaad(combo), combo)),
+  ].filter(Boolean).join("\n");
+
+  // LOAD .. combinaciones (REPEAT LOAD): combinan cada caso de viento de
+  // arriba con peso propio (LOAD 1) y relleno (LOAD 2).
   const combinaciones = totalShell ? [
     `***** COMBINACIONES ESTRUCTURALES *****`,
-    `*******************************************`,
-    `*//////////////////////////////////////////////////////////////`,
-    `LOAD 9 VIENTO A 90 + RELLENO`,
-    `REPEAT LOAD`,
-    `1 1.2 2 1.2 3 1.0`,
-    `*******************************************`,
-    `*//////////////////////////////////////////////////////////////`,
-    `LOAD 10 VIENTO A 60 + RELLENO`,
-    `REPEAT LOAD`,
-    `1 1.2 2 1.2 4 1.0`,
-    `*******************************************`,
-    `*//////////////////////////////////////////////////////////////`,
-    `LOAD 11 VIENTO A NORMAL + RELLENO`,
-    `REPEAT LOAD`,
-    `1 1.2 2 1.2 5 1.0`,
+    ...combosFactorados.flatMap((combo,i)=> [
+      `*******************************************`,
+      `*//////////////////////////////////////////////////////////////`,
+      `LOAD ${numBaseCombFact+i} VIENTO A ${anguloStaad(combo)} + RELLENO`,
+      `REPEAT LOAD`,
+      `1 1.2 2 1.2 ${numBaseFactorado+i} 1.0`,
+    ]),
     `*******************************************`,
     `***** COMBINACIONES DESPLAZAMIENTOS *****`,
-    `*******************************************`,
-    `*//////////////////////////////////////////////////////////////`,
-    `LOAD 12 VIENTO SERVICIO A 90 + RELLENO`,
-    `REPEAT LOAD`,
-    `1 1.0 2 1.0 6 1.0`,
-    `*******************************************`,
-    `*//////////////////////////////////////////////////////////////`,
-    `LOAD 13 VIENTO SERVICIO A 60 + RELLENO`,
-    `REPEAT LOAD`,
-    `1 1.0 2 1.0 7 1.0`,
-    `*******************************************`,
-    `*//////////////////////////////////////////////////////////////`,
-    `LOAD 14 VIENTO SERVICIO NORMAL + RELLENO`,
-    `REPEAT LOAD`,
-    `1 1.0 2 1.0 8 1.0`,
+    ...combosServicio.flatMap((combo,i)=> [
+      `*******************************************`,
+      `*//////////////////////////////////////////////////////////////`,
+      `LOAD ${numBaseCombServ+i} VIENTO SERVICIO A ${anguloStaad(combo)} + RELLENO`,
+      `REPEAT LOAD`,
+      `1 1.0 2 1.0 ${numBaseServicio+i} 1.0`,
+    ]),
     `*//////////////////////////////////////////////////////////////`,
     `PERFORM ANALYSIS PRINT ALL`,
     `FINISH`
   ].join("\n") : "";
 
-  return aplicarAnchoStaad79([header, nodos, elementos, grupos, propiedades, materiales, constantes, apoyos, cargas, load3, load4, load5, load6, load7, load8, combinaciones].filter(Boolean).join("\n")).toUpperCase();
+  return aplicarAnchoStaad79([header, nodos, elementos, grupos, propiedades, materiales, constantes, apoyos, cargas, load3, combinaciones].filter(Boolean).join("\n")).toUpperCase();
 }
 
 function renderCapacidadPortante(cap, props, outerC, holeC){
@@ -7628,6 +7643,7 @@ function renderAll(){
   setValueIfNotFocused("ang_P1", state.angles.P1);
   setValueIfNotFocused("ang_P1a", state.angles.P1a);
   setValueIfNotFocused("ang_P1b", state.angles.P1b);
+  setValueIfNotFocused("ang_P1c", state.angles.P1c);
   Object.keys(GEOM_RANGES).forEach(k=>validateGeomField(k, state.geom[k]));
 
   const geomComputedEl = document.getElementById("geomComputed");
@@ -7643,11 +7659,10 @@ function renderAll(){
   const cxPoly = props ? props.cx : 0;
   const cyPoly = props ? props.cy : 0;
   const legs = computeLegCenters(cxPoly, cyPoly);
-  const dados = {
-    P1b: dadoRect(legs.P1b, state.geom.AD, state.geom.LD, state.angles.P1b),
-    P1a: dadoRect(legs.P1a, state.geom.AD, state.geom.LD, state.angles.P1a),
-    P1:  dadoRect(legs.P1,  state.geom.AD, state.geom.LD, state.angles.P1),
-  };
+  const dados = {};
+  legKeysFor(state.tipoEstructura).forEach(key=>{
+    dados[key] = dadoRect(legs[key], state.geom.AD, state.geom.LD, state.angles[key]);
+  });
   renderDadosTable(legs);
   lastPlanArgs = {props, legs, dados, outerC, holeC};
   renderPlan(props, legs, dados, outerC, holeC);
@@ -7720,6 +7735,7 @@ function renderAll(){
   // recálculo real corre recién cuando el usuario deja de interactuar un
   // momento, no en cada evento individual.
   const panelPMM = document.querySelector('.tab-panel[data-tab="interaccion"]');
+  populatePataPMMSelector();
   if(panelPMM && panelPMM.classList.contains("active")) solicitarRenderPMM();
 
   // Igual criterio para "Acero 3D": solo reconstruye la geometría si esa
@@ -8636,7 +8652,9 @@ function initBindings(){
   const vistasAcero = {
     btnAceroVistaIso: ()=>{
       const yMid = -state.geom.Pd/2;
-      cameraAcero.position.set(6, yMid+2, 6);
+      // Misma orientación que el isométrico del Visor 3D de la cimentación
+      // (ver fit3DCamera y el setup inicial de cameraAcero más arriba).
+      cameraAcero.position.set(8*0.95, yMid + 8*0.68, -8*0.75);
       controlsAcero.target.set(0, yMid, 0);
     },
     btnAceroVistaPlanta: ()=>{
@@ -8700,6 +8718,7 @@ function initBindings(){
   bindGeomInput("ang_P1","angles","P1");
   bindGeomInput("ang_P1a","angles","P1a");
   bindGeomInput("ang_P1b","angles","P1b");
+  bindGeomInput("ang_P1c","angles","P1c");
 
   document.getElementById("btnExport").addEventListener("click", ()=>{
     const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/octet-stream"});
