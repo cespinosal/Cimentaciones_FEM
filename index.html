@@ -1044,12 +1044,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <section class="card" id="sec-geo-42" aria-labelledby="h-geo-42">
       <div class="head"><span id="h-geo-42">4.2.- Revisión por volteo</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <p class="small" style="margin:0 0 10px; color:var(--muted); font-weight:700;">4.2.1.- Cálculo de momento</p>
+        <p class="small" style="margin:0 0 10px; color:var(--muted); font-weight:700;">4.2.1.- Cálculo de momento</p>
           <div class="table-scroll">
             <table id="tblVolteoMomento1">
               <thead><tr>
@@ -1085,19 +1080,13 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
               <tbody></tbody>
             </table>
           </div>
-        </div>
       </div>
     </section>
 
     <section class="card" id="sec-geo-43" aria-labelledby="h-geo-43">
       <div class="head"><span id="h-geo-43">4.3.- Revisión por capacidad de carga</span></div>
       <div class="body">
-        <div class="geoNoSoportado message-bar warning hidden" role="status">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span>El diseño geotécnico todavía solo está implementado para "Autosoportada 3P" (y su alias M4/4P aún no tiene la geometría de patas de esta sección).</span>
-        </div>
-        <div class="geoContenido">
-          <p class="small" style="margin:0 0 6px; color:var(--muted);">Ley de Navier — evaluada en los vértices de la zapata y en cualquier punto al pasar el cursor sobre el diagrama. El color va de azul (menor esfuerzo) a rojo (mayor esfuerzo) de cada combinación.</p>
+        <p class="small" style="margin:0 0 6px; color:var(--muted);">Ley de Navier — evaluada en los vértices de la zapata y en cualquier punto al pasar el cursor sobre el diagrama. El color va de azul (menor esfuerzo) a rojo (mayor esfuerzo) de cada combinación.</p>
           <div class="formula-box" role="img" aria-label="Tau evaluado en el punto xi, yi, igual a R sub FY Total sobre Área, más M sub x Total por y sobre I sub x, más M sub y Total por x sobre I sub y">
             <span class="var">τ<sub class="pt-sub"><span class="var">x</span>ᵢ,<span class="var">y</span>ᵢ</sub></span>
             <span class="op">=</span>
@@ -1118,7 +1107,6 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           </div>
           <p class="small" style="margin:8px 0 0; color:var(--muted);">Clic en "Área efectiva" para ver la animación y calcularla para esa combinación.</p>
           <div id="geoMensajesCapacidad" style="margin-top:10px;"></div>
-        </div>
       </div>
     </section>
 
@@ -5516,9 +5504,9 @@ function computeGeotecnico(props, legs){
   const PhiDeslizamiento = 0.75;
   const tipoKey = reactionTypeKey(state.tipoEstructura);
   const cfg = TOWER_TYPES[tipoKey];
-  // La geometría de patas (computeLegCenters) solo está implementada para
-  // el triángulo de 3 patas — 4P/M4/Monopolo quedan pendientes aquí.
-  const supported = tipoKey === "Autosoportada 3P" && !!props && !!cfg;
+  // computeLegCenters ya cubre 3P (triángulo) y 4P (cuadrado) — Monopolo
+  // (kind:"base", sin patas) queda pendiente aquí.
+  const supported = (tipoKey === "Autosoportada 3P" || tipoKey === "Autosoportada 4P") && !!props && !!cfg;
   if(!supported){
     return { supported:false, PhiCarga, PhiDeslizamiento };
   }
@@ -5536,29 +5524,37 @@ function computeGeotecnico(props, legs){
   // altura completa Hr, al material que corresponda.
   const holeArea = (state.holeEnabled && state.hole && state.hole.length>=3) ? polygonArea(state.hole) : 0;
 
+  const legOrder = cfg.legs; // ["1b","1a","1"] en 3P, ["1c","1b","1a","1"] en 4P
+  const nDados = legOrder.length;
+
   const Wzapata = (g.PZ * props.area * m.gc) / 1000;
   let Wrelleno, Wciclopeo = 0;
   if(m.existeCiclopeo === "Sí"){
-    Wrelleno = (((Hr*props.area) - (areaDado*(Hr - m.espesorCiclopeo)*3)) - (m.espesorCiclopeo*props.area)) * m.gr/1000;
-    Wciclopeo = (((m.espesorCiclopeo*props.area) - (areaDado*m.espesorCiclopeo*3)) + (holeArea*Hr)) * m.gcc/1000;
+    Wrelleno = (((Hr*props.area) - (areaDado*(Hr - m.espesorCiclopeo)*nDados)) - (m.espesorCiclopeo*props.area)) * m.gr/1000;
+    Wciclopeo = (((m.espesorCiclopeo*props.area) - (areaDado*m.espesorCiclopeo*nDados)) + (holeArea*Hr)) * m.gcc/1000;
   } else {
-    Wrelleno = (((Hr*props.area) - (areaDado*Hr*3)) + (holeArea*Hr)) * m.gr/1000;
+    Wrelleno = (((Hr*props.area) - (areaDado*Hr*nDados)) + (holeArea*Hr)) * m.gr/1000;
   }
-  const Wdados = (areaDado * dadoVert * m.gc * 3)/1000;
+  const Wdados = (areaDado * dadoVert * m.gc * nDados)/1000;
   const Wadicional = (m.pesoAdicional||0)/1000;
   const pesoTotal = Wzapata + Wrelleno + Wdados + Wciclopeo + Wadicional;
 
-  const legOrder = cfg.legs; // ["1b","1a","1"]
   const combosVolteo = cfg.combos.filter(c=>c.indexOf("0.9D")===0);
 
-  // El Excel fuente empareja cada reacción con la posición de pata por
-  // ORDEN DE FILA/COLUMNA, no por nombre: la reacción "1a" usa la posición
-  // de "P1b", "1b" usa la de "P1a", y "1" usa la de "P1" (confirmado: con
-  // el emparejamiento por nombre, MZ·FY salía con el signo exactamente
-  // contrario al del Excel real — para esta geometría, P1a/P1b son un par
-  // espejo en X con la misma Y, así que cruzar el emparejamiento invierte
-  // el signo de MZ·FY exactamente, que es justo lo que reportó el usuario).
-  const LEG_POSITION_MAP = { "1a":"P1b", "1b":"P1a", "1":"P1" };
+  // El Excel fuente (solo existe para 3P) empareja cada reacción con la
+  // posición de pata por ORDEN DE FILA/COLUMNA, no por nombre: la reacción
+  // "1a" usa la posición de "P1b", "1b" usa la de "P1a", y "1" usa la de "P1"
+  // (confirmado: con el emparejamiento por nombre, MZ·FY salía con el signo
+  // exactamente contrario al del Excel real — para esa geometría, P1a/P1b son
+  // un par espejo en X con la misma Y, así que cruzar el emparejamiento
+  // invierte el signo de MZ·FY exactamente, que es justo lo que reportó el
+  // usuario). Para 4P no hay Excel de referencia que justifique un cruce
+  // (y el cuadrado tiene DOS pares espejo, no uno solo) — se usa mapeo
+  // directo hasta que aparezca un caso real que diga lo contrario, mismo
+  // criterio ya usado en el resto de la app (vista 3D, STAAD, punzonamiento).
+  const LEG_POSITION_MAP = tipoKey === "Autosoportada 3P"
+    ? { "1a":"P1b", "1b":"P1a", "1":"P1" }
+    : Object.fromEntries(legOrder.map(leg => [leg, "P"+leg]));
 
   const rows1 = combosVolteo.map(combo=>{
     const idx = cfg.combos.indexOf(combo);
@@ -6744,9 +6740,6 @@ function renderMallaFEM(mesh, outerC, holeC){
 }
 
 function renderGeotecnico(geo){
-  document.querySelectorAll(".geoNoSoportado").forEach(el=> el.classList.toggle("hidden", geo.supported));
-  document.querySelectorAll(".geoContenido").forEach(el=> el.classList.toggle("hidden", !geo.supported));
-
   const gCriterios = document.getElementById("geoCriterios");
   gCriterios.innerHTML = "";
   propRow(gCriterios, "Factor de reducción por capacidad de carga (Ф)", fmt(geo.PhiCarga,2), "");
