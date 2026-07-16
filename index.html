@@ -954,11 +954,11 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
               <div class="field-warn" id="w_Lo" role="status"></div>
             </div>
             <div class="field-wrap">
-              <label class="field"><span class="lbl">Ancho de dados (A<sub>D</sub>)</span><input type="text" inputmode="decimal" step="any" id="g_AD" aria-describedby="w_AD"><span class="unit">m</span></label>
+              <label class="field"><span class="lbl">Ancho del dado</span><input type="text" inputmode="decimal" step="any" id="g_AD" aria-describedby="w_AD"><span class="unit">m</span></label>
               <div class="field-warn" id="w_AD" role="status"></div>
             </div>
             <div class="field-wrap">
-              <label class="field"><span class="lbl">Largo de dados (L<sub>D</sub>)</span><input type="text" inputmode="decimal" step="any" id="g_LD" aria-describedby="w_LD"><span class="unit">m</span></label>
+              <label class="field"><span class="lbl">Largo del dado</span><input type="text" inputmode="decimal" step="any" id="g_LD" aria-describedby="w_LD"><span class="unit">m</span></label>
               <div class="field-warn" id="w_LD" role="status"></div>
             </div>
             <div class="field-wrap">
@@ -1050,7 +1050,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
               <thead><tr>
                 <th scope="col">Combinación</th>
                 <th scope="col">M<sub>RX</sub></th><th scope="col">M<sub>RZ</sub></th>
-                <th scope="col">M<sub>X</sub>·F<sub>Y</sub></th><th scope="col">M<sub>Z</sub>·F<sub>Y</sub></th>
+                <th scope="col">M<sub>X</sub>·F<sub>Y</sub></th><th scope="col">M<sub>Z</sub>·F<sub>X</sub></th>
                 <th scope="col">R<sub>FY</sub></th>
                 <th scope="col">X<sub>CC</sub>·F<sub>Y</sub></th><th scope="col">Y<sub>CC</sub>·F<sub>Y</sub></th>
                 <th scope="col">e<sub>x</sub></th><th scope="col">e<sub>y</sub></th>
@@ -1485,7 +1485,8 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           </div>
           <div class="props-grid" id="dadoArmadoComputed"></div>
           <div id="dadoCuantiaResultado"></div>
-          <div style="margin-top:16px; overflow-x:auto;">
+          <label class="field" style="max-width:320px; margin:10px 0 0;"><span class="lbl">Mostrar separación entre varillas</span><input type="checkbox" id="chkSepBarrasDado"></label>
+          <div style="margin-top:10px; overflow-x:auto;">
             <svg id="esquemaDadoSvg" style="width:100%; max-width:520px; height:auto; display:block; margin:0 auto;"></svg>
           </div>
           </div>
@@ -3187,8 +3188,6 @@ const GEOM_RANGES = {
   PZ: {min:0.30, max:2.50, label:"peralte de zapata"},
   Pd: {min:0.50, max:8.00, label:"profundidad de desplante"},
   Lo: {min:1.00, max:20.00, label:"distancia entre patas"},
-  AD: {min:0.30, max:2.00, label:"ancho de dados"},
-  LD: {min:0.30, max:2.00, label:"largo de dados"},
   HD: {min:0.00, max:1.50, label:"afloramiento del dado"},
   QADM: {min:1.00, max:100.00, label:"capacidad admisible del suelo"},
   FS: {min:1.00, max:10.00, label:"factor de seguridad"},
@@ -3440,6 +3439,22 @@ function computeLegCenters(cxPoly, cyPoly){
   const P1a = { x: cxPoly + Lo/2 + CX, y: P1b.y };
   const P1  = { x: cxPoly + CX,        y: P1b.y + Math.tan(60*Math.PI/180)*(Lo/2) };
   return { P1b, P1a, P1 };
+}
+
+// Dados FÍSICOS a dibujar/pesar: en M4 las 4 patas comparten un solo
+// pedestal central (no 4 dados independientes) — se colapsan a un único
+// centro (centroide de las 4 patas, sin rotación propia). En 3P/4P sigue
+// siendo un dado por pata, en su propio centro y ángulo. Centraliza la
+// diferencia para que visor 3D, Acero 3D y el peso de dados
+// (computeGeotecnico) queden consistentes entre sí.
+function dadosFisicos(legs, tipo){
+  const keys = legKeysFor(tipo);
+  if(tipo === "M4"){
+    const cx0 = keys.reduce((s,k)=>s+legs[k].x,0)/keys.length;
+    const cz0 = keys.reduce((s,k)=>s+legs[k].y,0)/keys.length;
+    return [{ nombre:"PEDESTAL", center:{x:cx0,y:cz0}, angleDeg:0 }];
+  }
+  return keys.map(k=>({ nombre:k, center: legs[k], angleDeg: state.angles[k] }));
 }
 
 // Dado rectangular: AD = ancho (eje local x, antes de rotar), LD = largo (eje local y).
@@ -3730,6 +3745,12 @@ function update3D(props, legs, dados, outerC, holeC){
   // Planta/Alzado deben leerse como un plano técnico (relleno plano de color,
   // sin sombreado tipo render 3D) — solo el modo "3d" usa material con luces.
   const flat = viewMode3d !== "3d";
+  // Color de aristas (contorno de zapata/dados): mismo criterio que
+  // --axis-color de la vista en planta SVG (negro en claro, blanco en
+  // oscuro) — el valor fijo 0x3a4250 quedaba casi invisible en el tema
+  // oscuro (reportado por el usuario, se perdía contra el fondo y el propio
+  // concreto en Planta/Alzado).
+  const edgeColor3D = getComputedStyle(document.documentElement).getPropertyValue("--axis-color").trim() || "#3a4250";
   function solidMat(color, opts){
     opts = opts || {};
     return flat
@@ -3766,22 +3787,22 @@ function update3D(props, legs, dados, outerC, holeC){
   // el umbral por defecto. Con un umbral alto se filtra, sin perder las
   // aristas reales (esquinas del contorno, paredes verticales, borde del
   // hueco), que difieren en mucho más que unos pocos grados.
-  const zapataEdges = new THREE.LineSegments(new THREE.EdgesGeometry(zapataGeo, 15), new THREE.LineBasicMaterial({color:0x3a4250}));
+  const zapataEdges = new THREE.LineSegments(new THREE.EdgesGeometry(zapataGeo, 15), new THREE.LineBasicMaterial({color:edgeColor3D}));
   zapataEdges.rotation.x = -Math.PI/2;
   zapataEdges.position.y = -Pd;
   mesh3dGroup.add(zapataEdges);
 
-  // --- Dados: rectangulares (AD x LD), uno por pata, rotado según su propio ángulo ---
+  // --- Dados: rectangulares (AD x LD), uno por dado físico (ver
+  // dadosFisicos() — en M4 es un solo pedestal central, en 3P/4P uno por
+  // pata rotado según su propio ángulo). ---
   const dadoAltura = Hr + HD;
   const dadoMat = concreteMat(0x8a95a5);
-  const dadoEdgeMat = new THREE.LineBasicMaterial({color:0x3a4250});
-  legKeysFor(state.tipoEstructura).forEach(key=>{
-    const center = legs[key];
-    const angleDeg = state.angles[key];
+  const dadoEdgeMat = new THREE.LineBasicMaterial({color:edgeColor3D});
+  dadosFisicos(legs, state.tipoEstructura).forEach(d=>{
     const geo = new THREE.BoxGeometry(AD, Math.max(dadoAltura,0.01), LD);
     const mesh = new THREE.Mesh(geo, dadoMat);
-    mesh.position.set(center.x, -Pd + PZ + dadoAltura/2, center.y);
-    mesh.rotation.y = -angleDeg*Math.PI/180;
+    mesh.position.set(d.center.x, -Pd + PZ + dadoAltura/2, d.center.y);
+    mesh.rotation.y = -d.angleDeg*Math.PI/180;
     mesh3dGroup.add(mesh);
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), dadoEdgeMat);
     edges.position.copy(mesh.position);
@@ -4132,7 +4153,10 @@ function makeForceLabelSprite3D(text, worldHeight, color, anchorX, anchorY){
 
 // Línea de cota simple: línea principal + marcas en los extremos + texto centrado.
 function addCota3D(group, p1, p2, label, worldHeight){
-  const color = 0x1a1a1a;
+  // Mismo criterio que --axis-color de la vista en planta SVG (negro en
+  // claro, blanco en oscuro) — el valor fijo 0x1a1a1a quedaba casi invisible
+  // en el tema oscuro (reportado por el usuario).
+  const color = getComputedStyle(document.documentElement).getPropertyValue("--axis-color").trim() || "#1a1a1a";
   const pts = [new THREE.Vector3(p1.x,p1.y,p1.z), new THREE.Vector3(p2.x,p2.y,p2.z)];
   const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color, depthTest:false}));
   line.renderOrder = 998;
@@ -4414,12 +4438,15 @@ function reaccionFyPorPosicion(comboTexto, posicion){
 // Vu de punzonamiento — ACI 318-19 §22.6.5.1: Vu = Pu del dado − presión de
 // suelo dentro del perímetro crítico (NO el esfuerzo local de una placa
 // suelta, que podía venir de cualquier parte de la malla sin relación con
-// el dado). Se revisa con los combos estructurales (1.2D+1.0W) en los 3
-// dados, y se toma el peor caso. La presión de suelo se toma como el
-// promedio neto (ΣPu de los 3 dados / área) para ese mismo combo — una
-// simplificación razonable frente a integrar Navier exacto, que hoy solo
-// está calculado para los combos 0.9D (volteo/geotécnico, sección 4.2),
-// no para los 1.2D que exige esta revisión de resistencia.
+// el dado). Se revisa con los combos estructurales (1.2D+1.0W) en cada dado
+// FÍSICO, y se toma el peor caso. En M4 las 4 columnas comparten un solo
+// pedestal, así que Pu del "dado" es la SUMA de las 4 reacciones de ese
+// combo (una sola sección crítica cargada por las 4), no cada una por
+// separado como en 3P/4P. La presión de suelo se toma como el promedio neto
+// (ΣPu de todas las patas / área) para ese mismo combo — una simplificación
+// razonable frente a integrar Navier exacto, que hoy solo está calculado
+// para los combos 0.9D (volteo/geotécnico, sección 4.2), no para los 1.2D
+// que exige esta revisión de resistencia.
 function calcularVuPunzonamiento(cd, props){
   const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
   if(!cfgTorre || !props || !(props.area > 0)) return { vu:0, dado:null, combo:null, pu:null, qu:null };
@@ -4431,10 +4458,16 @@ function calcularVuPunzonamiento(cd, props){
     const pus = posiciones.map(pos => reaccionFyPorPosicion(combo, pos));
     if(pus.some(p => p==null)) return;
     const quProm = pus.reduce((s,p)=>s+p, 0) / props.area; // Tn/m²
-    posiciones.forEach((pos, i)=>{
-      const vu = pus[i] - quProm*acrit; // Tn
-      if(vu > peor.vu) peor = { vu, dado:pos, combo, pu:pus[i], qu:quProm };
-    });
+    if(state.tipoEstructura === "M4"){
+      const puComb = pus.reduce((s,p)=>s+p, 0);
+      const vu = puComb - quProm*acrit; // Tn
+      if(vu > peor.vu) peor = { vu, dado:"pedestal", combo, pu:puComb, qu:quProm };
+    } else {
+      posiciones.forEach((pos, i)=>{
+        const vu = pus[i] - quProm*acrit; // Tn
+        if(vu > peor.vu) peor = { vu, dado:pos, combo, pu:pus[i], qu:quProm };
+      });
+    }
   });
   return isFinite(peor.vu) ? peor : { vu:0, dado:null, combo:null, pu:null, qu:null };
 }
@@ -4516,33 +4549,122 @@ function generarBarrasDado(){
   return { barras, b, h, rec, dEstribo };
 }
 
+// Etiqueta de dimensión con fondo semi-opaco (para que se lea sobre las
+// varillas/estribo) — usada por la separación entre varillas más abajo.
+function dimSeparacionSvg(x1,y1,x2,y2,valorCm,offX,offY,fontSize,strokeW,color){
+  const midx=(x1+x2)/2+offX, midy=(y1+y2)/2+offY;
+  const txt = `s = ${fmt(valorCm,1)} cm`;
+  const boxW = txt.length*fontSize*0.6, boxH = fontSize*1.15;
+  return `
+    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${strokeW*0.7}" stroke-dasharray="${strokeW*1.2},${strokeW}"/>
+    <circle cx="${x1}" cy="${y1}" r="${strokeW*1.3}" fill="${color}"/>
+    <circle cx="${x2}" cy="${y2}" r="${strokeW*1.3}" fill="${color}"/>
+    <rect x="${midx-boxW/2}" y="${midy-boxH/2}" width="${boxW}" height="${boxH}" fill="var(--canvas)" opacity="0.9"/>
+    <text x="${midx}" y="${midy}" font-size="${fontSize*0.78}" text-anchor="middle" dominant-baseline="middle" fill="${color}">${txt}</text>
+  `;
+}
+
+// Agrupa varillas por su coordenada FIJA (redondeada, para tolerar ruido de
+// punto flotante): eje "y" para las filas horizontales del grupo 1, eje "x"
+// para las columnas verticales del grupo 2 — cada grupo devuelto es una
+// fila/columna completa, ya lista para medir la separación entre sus
+// varillas consecutivas.
+function agruparBarrasPorEje(barras, ejeFijo){
+  const grupos = new Map();
+  barras.forEach(br=>{
+    const k = Math.round(br[ejeFijo]*1000); // 0.001 cm de tolerancia
+    if(!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(br);
+  });
+  return Array.from(grupos.values());
+}
+
 // Esquema 2D del dado en planta: contorno de concreto, estribo, varillas y
 // cotas (AD, LD, recubrimiento) — para verificar visualmente el armado que
-// alimenta al diagrama de interacción P-M-M.
+// alimenta al diagrama de interacción P-M-M. Con "Mostrar separación entre
+// varillas" activo, agrega la distancia centro a centro entre las 2 primeras
+// varillas de cada fila/columna (constante dentro de la misma fila/columna,
+// por el reparto equidistante de generarBarrasDado()).
 function renderEsquemaDado(){
   const svg = document.getElementById("esquemaDadoSvg");
   if(!svg) return;
   const { barras, b, h, rec, dEstribo } = generarBarrasDado();
   if(!(b>0) || !(h>0)){ svg.innerHTML = ""; return; }
-  const pad = Math.max(b,h)*0.32 + 6;
-  const xmin=-b/2-pad, xmax=b/2+pad*1.3, ymin=-h/2-pad*1.15, ymax=h/2+pad*1.5;
-  svg.setAttribute("viewBox", `${xmin} ${ymin} ${xmax-xmin} ${ymax-ymin}`);
 
   const strokeW = Math.max(b,h)/180;
   const fontSize = Math.max(b,h)/17;
   const xE = b/2-rec-dEstribo/2, yE = h/2-rec-dEstribo/2;
+  // Mismo criterio que el resto de los visores (negro en claro, blanco en
+  // oscuro) para el contorno de las varillas — un "#000" fijo se perdía
+  // contra el relleno oscuro del dado en tema oscuro.
+  const axisColor = getComputedStyle(document.documentElement).getPropertyValue("--axis-color").trim() || "#000000";
 
+  // Márgenes independientes por lado (antes un solo "pad" compartido dejaba
+  // un hueco enorme arriba, con el rótulo "r =" flotando lejos del dado,
+  // desconectado de lo que mide — reportado por el usuario). Cada lado
+  // reserva solo lo que su propio contenido necesita.
+  const padBase = Math.max(b,h)*0.12 + 5;
+  const padTop = fontSize*1.6 + strokeW*7;       // bracket de "r" + su texto, pegados al borde
+  const padBottom = padBase*0.6 + fontSize*1.6;  // cota AD + su texto
+  const padLeft = padBase*0.4 + fontSize*0.3;
+  const padRightBase = padBase*1.1;
+
+  const xmin = -b/2-padLeft, ymin = -h/2-padTop, ymax = h/2+padBottom;
+
+  // Varillas dibujadas con un radio mínimo legible (proporcional a la
+  // figura): a escala real, una varilla de 1-2 cm en un dado de varios
+  // metros queda como un punto casi invisible.
+  const radioMinBarra = Math.max(b,h)*0.014;
   const barrasSvg = barras.map(br=>
-    `<circle cx="${br.x}" cy="${-br.y}" r="${Math.max(br.d/2,0.3)}" fill="#c9822a" stroke="#000" stroke-width="${strokeW*0.5}"/>`
+    `<circle cx="${br.x}" cy="${-br.y}" r="${Math.max(br.d/2,radioMinBarra)}" fill="#E65100" stroke="${axisColor}" stroke-width="${strokeW*0.5}"/>`
   ).join("");
 
-  const cotaYAD = h/2 + pad*0.55;
-  const cotaXLD = b/2 + pad*0.75;
+  const chkSep = document.getElementById("chkSepBarrasDado");
+  let sepSvg = "";
+  if(chkSep && chkSep.checked){
+    const colorSep = "#1565C0";
+    agruparBarrasPorEje(barras.filter(br=>br.grupo===1), "y").forEach(fila=>{
+      if(fila.length<2) return;
+      fila.sort((a,b2)=>a.x-b2.x);
+      const [a,b2] = fila, s = Math.abs(b2.x-a.x);
+      const haciaCentro = a.y>0 ? 1 : -1; // etiqueta hacia adentro del dado
+      sepSvg += dimSeparacionSvg(a.x,-a.y, b2.x,-a.y, s, 0, haciaCentro*fontSize*1.3, fontSize, strokeW, colorSep);
+    });
+    agruparBarrasPorEje(barras.filter(br=>br.grupo===2), "x").forEach(col=>{
+      if(col.length<2) return;
+      col.sort((a,b2)=>a.y-b2.y);
+      const [a,b2] = col, s = Math.abs(b2.y-a.y);
+      const haciaCentro = a.x>0 ? -1 : 1;
+      sepSvg += dimSeparacionSvg(a.x,-a.y, a.x,-b2.y, s, haciaCentro*fontSize*2.4, 0, fontSize, strokeW, colorSep);
+    });
+  }
+
+  const cotaYAD = h/2 + padBottom*0.5;
+  const cotaXLD = b/2 + padRightBase*0.75;
+  const textoLD = `LD = ${fmt(state.geom.LD,2)} m`;
+  const ldTextX = cotaXLD+fontSize*0.35;
+  // Ancho del viewBox: no se puede medir con getComputedTextLength() de
+  // forma confiable porque esta tarjeta puede estar en una pestaña oculta
+  // (display:none) al renderizar, así que se estima el ancho por cantidad
+  // de caracteres (0.62·fontSize c/u, holgado a propósito para no cortar
+  // el texto de "LD = ...").
+  const anchoLD = textoLD.length * fontSize * 0.62;
+  const xmax = Math.max(b/2+padRightBase, ldTextX + anchoLD + fontSize*0.4);
+  svg.setAttribute("viewBox", `${xmin} ${ymin} ${xmax-xmin} ${ymax-ymin}`);
+
+  // Recubrimiento: bracket con líneas de extensión que SÍ tocan la
+  // geometría real (borde superior y esquina del estribo) — antes era una
+  // línea suelta muy por encima del dado, sin conexión visual con lo que
+  // mide.
+  const rBracketY = -h/2 - strokeW*2.4;
+  const rExtendY = rBracketY - strokeW*1.3;
+  const rTextY = rExtendY - fontSize*0.35;
 
   svg.innerHTML = `
-    <rect x="${-b/2}" y="${-h/2}" width="${b}" height="${h}" fill="var(--canvas)" stroke="var(--accent)" stroke-width="${strokeW*1.6}"/>
-    <rect x="${-xE}" y="${-yE}" width="${2*xE}" height="${2*yE}" fill="none" stroke="var(--muted)" stroke-width="${strokeW}" stroke-dasharray="${strokeW*2},${strokeW*1.5}"/>
+    <rect x="${-b/2}" y="${-h/2}" width="${b}" height="${h}" fill="var(--panel-2)" stroke="var(--accent)" stroke-width="${strokeW*1.6}"/>
+    <rect x="${-xE}" y="${-yE}" width="${2*xE}" height="${2*yE}" fill="none" stroke="#AB47BC" stroke-width="${strokeW*1.1}" stroke-dasharray="${strokeW*2},${strokeW*1.5}"/>
     ${barrasSvg}
+    ${sepSvg}
     <line x1="${-b/2}" y1="${cotaYAD}" x2="${b/2}" y2="${cotaYAD}" stroke="var(--text)" stroke-width="${strokeW*0.6}"/>
     <line x1="${-b/2}" y1="${h/2}" x2="${-b/2}" y2="${cotaYAD}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
     <line x1="${b/2}" y1="${h/2}" x2="${b/2}" y2="${cotaYAD}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
@@ -4550,9 +4672,11 @@ function renderEsquemaDado(){
     <line x1="${cotaXLD}" y1="${-h/2}" x2="${cotaXLD}" y2="${h/2}" stroke="var(--text)" stroke-width="${strokeW*0.6}"/>
     <line x1="${b/2}" y1="${-h/2}" x2="${cotaXLD}" y2="${-h/2}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
     <line x1="${b/2}" y1="${h/2}" x2="${cotaXLD}" y2="${h/2}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
-    <text x="${cotaXLD+fontSize*0.35}" y="0" font-size="${fontSize}" text-anchor="start" dominant-baseline="middle" fill="var(--text)">LD = ${fmt(state.geom.LD,2)} m</text>
-    <line x1="${-b/2}" y1="${-h/2-pad*0.15}" x2="${-xE-dEstribo/2}" y2="${-h/2-pad*0.15}" stroke="var(--danger-fg)" stroke-width="${strokeW*0.55}"/>
-    <text x="${-b/2}" y="${-h/2-pad*0.32}" font-size="${fontSize*0.8}" text-anchor="start" fill="var(--danger-fg)">r = ${fmt(rec,1)} cm</text>
+    <text x="${ldTextX}" y="0" font-size="${fontSize}" text-anchor="start" dominant-baseline="middle" fill="var(--text)">${textoLD}</text>
+    <line x1="${-b/2}" y1="${-h/2}" x2="${-b/2}" y2="${rExtendY}" stroke="var(--danger-fg)" stroke-width="${strokeW*0.4}"/>
+    <line x1="${-xE-dEstribo/2}" y1="${-h/2}" x2="${-xE-dEstribo/2}" y2="${rExtendY}" stroke="var(--danger-fg)" stroke-width="${strokeW*0.4}"/>
+    <line x1="${-b/2}" y1="${rBracketY}" x2="${-xE-dEstribo/2}" y2="${rBracketY}" stroke="var(--danger-fg)" stroke-width="${strokeW*0.6}"/>
+    <text x="${-b/2}" y="${rTextY}" font-size="${fontSize*0.8}" text-anchor="start" fill="var(--danger-fg)">r = ${fmt(rec,1)} cm</text>
   `;
 }
 
@@ -4575,9 +4699,12 @@ function calcularArmadoDado(){
 }
 
 // Reacciones extremas (Pu de compresión, Tu de tensión/levantamiento) entre
-// los 3 dados y los 3 combos estructurales (1.2D+1.0W) — mismo criterio que
-// usa el Excel original (peor caso entre todas las patas y combos), pero
-// reutilizando reaccionFyPorPosicion() en vez de rangos de celdas fijos.
+// los dados FÍSICOS y los combos estructurales (1.2D+1.0W) — mismo criterio
+// que usa el Excel original (peor caso entre todas las patas y combos), pero
+// reutilizando reaccionFyPorPosicion() en vez de rangos de celdas fijos. En
+// M4 las 4 columnas comparten un solo pedestal: la demanda axial de ese
+// pedestal es la SUMA de las 4 reacciones de cada combo (no cada columna
+// evaluada por separado contra la sección completa).
 function getReaccionesExtremasDado(){
   const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
   if(!cfgTorre) return { pu:0, tu:0 };
@@ -4585,12 +4712,20 @@ function getReaccionesExtremasDado(){
   const posiciones = legKeysFor(state.tipoEstructura);
   let pu = -Infinity, tu = Infinity;
   combos.forEach(combo=>{
-    posiciones.forEach(pos=>{
-      const fy = reaccionFyPorPosicion(combo, pos);
-      if(fy == null) return;
-      pu = Math.max(pu, fy);
-      tu = Math.min(tu, fy);
-    });
+    if(state.tipoEstructura === "M4"){
+      const fys = posiciones.map(pos => reaccionFyPorPosicion(combo, pos));
+      if(fys.some(f => f == null)) return;
+      const fySum = fys.reduce((s,f)=>s+f, 0);
+      pu = Math.max(pu, fySum);
+      tu = Math.min(tu, fySum);
+    } else {
+      posiciones.forEach(pos=>{
+        const fy = reaccionFyPorPosicion(combo, pos);
+        if(fy == null) return;
+        pu = Math.max(pu, fy);
+        tu = Math.min(tu, fy);
+      });
+    }
   });
   return { pu: isFinite(pu) ? pu : 0, tu: isFinite(tu) ? Math.abs(Math.min(tu,0)) : 0 };
 }
@@ -4755,6 +4890,12 @@ function carasGridPMM(nAngulos, nProf){
 // para el eje de STAAD). Brazo de palanca = Hr+HD (todo el largo del dado,
 // voladizo libre sin apoyo lateral del suelo — supuesto conservador ya
 // confirmado con el usuario tras revisar la excentricidad real).
+// En M4 las 4 columnas comparten un solo pedestal: la demanda P-M-M debe ser
+// GLOBAL (una sección, no 4 secciones independientes) — Pu es la suma de las
+// 4 reacciones del combo, y el momento suma el efecto de las 4 fuerzas
+// horizontales por el brazo MÁS el momento por la excentricidad real de cada
+// columna respecto al centro del pedestal (mismo principio que MxAdic/MzAdic
+// de computeGeotecnico, aplicado acá a escala del pedestal).
 function calcularDemandasPMM(){
   const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
   if(!cfgTorre) return [];
@@ -4762,6 +4903,23 @@ function calcularDemandasPMM(){
   const posiciones = legKeysFor(state.tipoEstructura);
   const brazo = (state.geom.Pd - state.geom.PZ) + state.geom.HD; // m
   const puntos = [];
+  const legs = lastPlanArgs ? lastPlanArgs.legs : null;
+  if(state.tipoEstructura === "M4" && legs){
+    const centro = dadosFisicos(legs, state.tipoEstructura)[0].center;
+    combos.forEach(combo=>{
+      let Pu=0, Mux=0, Muy=0, ok=true;
+      posiciones.forEach(pos=>{
+        const row = reaccionCompletaPorPosicion(combo, pos);
+        if(!row){ ok=false; return; }
+        Pu += row.fy;
+        Mux += (-row.fz)*brazo + row.fy*(legs[pos].y - centro.y);
+        Muy += row.fx*brazo + row.fy*(legs[pos].x - centro.x);
+      });
+      if(!ok) return;
+      puntos.push({ pata:"pedestal", combo, Pu, Mux, Muy });
+    });
+    return puntos;
+  }
   posiciones.forEach(pos=>{
     combos.forEach(combo=>{
       const row = reaccionCompletaPorPosicion(combo, pos);
@@ -4853,12 +5011,16 @@ function renderizarPMM(){
       color:"#4A90D9", opacity: Math.min(opacidad*0.4, 0.12), name:"Nominal Pn-Mnx-Mny", hoverinfo:"skip"
     });
   }
+  // Contorno de los marcadores/etiquetas: mismo --axis-color (negro en
+  // claro, blanco en oscuro) ya usado en el Visor 3D — antes era "#000000"
+  // fijo, que se perdía contra el fondo oscuro (reportado por el usuario).
+  const axisMarkColor = getComputedStyle(document.documentElement).getPropertyValue("--axis-color").trim() || "#000000";
   if(document.getElementById("chkPuntosDemanda").checked && demandas.length){
     const colores = demandas.map((d,i)=> (dc[i]<=1 ? "#43A047" : "#E53935"));
     traces.push({
       type:"scatter3d", mode:"markers",
       x: demandas.map(d=>d.Mux), y: demandas.map(d=>d.Muy), z: demandas.map(d=>d.Pu),
-      marker:{ size:6, color:colores, line:{color:"#000000", width:1}, symbol:"circle" },
+      marker:{ size:6, color:colores, line:{color:axisMarkColor, width:1}, symbol:"circle" },
       customdata: demandas.map((d,i)=>[`${d.pata} — ${d.combo}`, isFinite(dc[i])?dc[i]:0]),
       hovertemplate:"%{customdata[0]}<br>Pu=%{z:.2f} Tn<br>Mux=%{x:.2f} Tn-m<br>Muy=%{y:.2f} Tn-m<br>D/C=%{customdata[1]:.3f}<extra></extra>",
       name:"Demanda por combinación"
@@ -4875,13 +5037,28 @@ function renderizarPMM(){
     }
   }
 
+  // Texto/grilla del gráfico: Plotly usa colores propios por defecto
+  // (pensados para fondo claro) que no siguen el tema — se fijan acá a los
+  // tokens de la app (--text/--border) para que grilla y etiquetas se sigan
+  // leyendo bien en modo oscuro, y se refresca en vivo al cambiar de tema
+  // (ver applyTheme()).
+  const textColor3D = getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || "#1a1a1a";
+  const gridColor3D = getComputedStyle(document.documentElement).getPropertyValue("--border").trim() || "#d1d1d1";
+  function ejePMM(titulo){
+    return {
+      title:{text:titulo, font:{color:textColor3D}},
+      color:textColor3D, gridcolor:gridColor3D, zerolinecolor:gridColor3D,
+      backgroundcolor:"rgba(0,0,0,0)"
+    };
+  }
   const layout = {
     paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
+    font:{color:textColor3D},
     scene:{
-      xaxis:{title:"Mx [Tn-m]"}, yaxis:{title:"My [Tn-m]"}, zaxis:{title:"P [Tn]"},
+      xaxis:ejePMM("Mx [Tn-m]"), yaxis:ejePMM("My [Tn-m]"), zaxis:ejePMM("P [Tn]"),
       aspectmode:"auto"
     },
-    legend:{x:0, y:1}, margin:{l:0, r:0, t:0, b:0}
+    legend:{x:0, y:1, font:{color:textColor3D}}, margin:{l:0, r:0, t:0, b:0}
   };
   Plotly.react(div, traces, layout, {responsive:true, displaylogo:false});
 
@@ -4914,9 +5091,12 @@ function populatePataPMMSelector(){
   const sel = document.getElementById("selPataPMM");
   if(!sel) return;
   const prev = sel.value;
-  const legs = legKeysFor(state.tipoEstructura);
+  // En M4 calcularDemandasPMM() ya combina las 4 columnas en un solo punto
+  // de demanda por combo (pata:"pedestal") — no hay patas individuales que
+  // filtrar.
+  const legs = state.tipoEstructura === "M4" ? ["pedestal"] : legKeysFor(state.tipoEstructura);
   sel.innerHTML = ['<option value="todas">Todas</option>']
-    .concat(legs.map(k=>`<option value="${k}">${k}</option>`))
+    .concat(legs.map(k=>`<option value="${k}">${k === "pedestal" ? "Pedestal" : k}</option>`))
     .join("");
   sel.value = legs.includes(prev) ? prev : "todas";
 }
@@ -4983,7 +5163,11 @@ let aceroGroup=null, animAceroRunning=false;
 // cámara). Solo el concreto fantasma es transparente, con opacidad
 // controlada por el slider "Transparencia del concreto" de la pestaña.
 let concretoOpacidad=0.15;
-const matAceroInf = () => new THREE.MeshStandardMaterial({ color:0x1565C0, roughness:0.4, metalness:0.7 });
+// Azul más claro que el original (0x1565C0): ese tono, con metalness alto,
+// quedaba casi negro contra el fondo oscuro del tema dark (reportado por el
+// usuario) — 0x2196F3 mantiene el azul distinguible del verde/naranja/morado
+// pero con más luminosidad para contrastar en ambos temas.
+const matAceroInf = () => new THREE.MeshStandardMaterial({ color:0x2196F3, roughness:0.4, metalness:0.7 });
 const matAceroSup = () => new THREE.MeshStandardMaterial({ color:0x43A047, roughness:0.4, metalness:0.7 });
 const matAceroDado = () => new THREE.MeshStandardMaterial({ color:0xE65100, roughness:0.4, metalness:0.7 });
 const matEstriboAcero = () => new THREE.MeshStandardMaterial({ color:0x6A1B9A, roughness:0.4, metalness:0.7 });
@@ -5080,7 +5264,7 @@ function actualizarLeyendaAcero(lenInf, lenSup, lenDado1, lenDado2){
   if(!el) return;
   const item = (color, texto) => `<div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;"><span style="width:10px; height:10px; border-radius:50%; background:${color}; display:inline-block; flex-shrink:0;"></span><span>${texto}</span></div>`;
   el.innerHTML =
-    item("#1565C0", `Lecho inf: ${state.diseno.varInf} @ ${fmt(state.diseno.sepInfExist,0)} cm — ld=${fmt(lenInf.ld_cm,0)} cm, ldh=${fmt(lenInf.ldh_cm,0)} cm`) +
+    item("#2196F3", `Lecho inf: ${state.diseno.varInf} @ ${fmt(state.diseno.sepInfExist,0)} cm — ld=${fmt(lenInf.ld_cm,0)} cm, ldh=${fmt(lenInf.ldh_cm,0)} cm`) +
     item("#43A047", `Lecho sup: ${state.diseno.varSup} @ ${fmt(state.diseno.sepSupExist,0)} cm — ld=${fmt(lenSup.ld_cm,0)} cm`) +
     item("#E65100", `Long. dado: ${state.diseno.dadoN1}×${state.diseno.dadoVar1} + ${state.diseno.dadoN2}×${state.diseno.dadoVar2} — ldh=${fmt(lenDado1.ldh_cm,0)} cm`) +
     item("#6A1B9A", `Estribos: ${state.diseno.dadoEstriboVar} @ ${fmt(state.diseno.dadoEstriboSep,0)} cm — ${state.diseno.dadoEstribosRamas} rama(s)`);
@@ -5121,9 +5305,9 @@ function actualizarResumenAcero(volConcretoM3, resumenPorDiametro){
     </table>`;
 }
 
-// Construye toda la geometría (losa + 3 dados) dentro de aceroGroup, ya
-// creado por initAcero3D()/updateAcero3D(). Reutiliza generarBarrasDado()
-// (5.6, mismo armado para los 3 dados) y lastPlanArgs (outerC/legs/dados,
+// Construye toda la geometría (losa + dados físicos) dentro de aceroGroup,
+// ya creado por initAcero3D()/updateAcero3D(). Reutiliza generarBarrasDado()
+// (5.6, mismo armado para todos los dados físicos) y lastPlanArgs (outerC/legs/dados,
 // exactamente lo mismo que usa update3D() de la pestaña "Cálculos") — así
 // la posición del acero queda garantizada consistente con esas otras vistas.
 function buildAcero3D(){
@@ -5228,7 +5412,8 @@ function buildAcero3D(){
   });
 
   // Acero de los dados: mismo armado (generarBarrasDado(), 5.6) para todos,
-  // solo cambia la posición/rotación de cada uno (3 en 3P, 4 en 4P).
+  // solo cambia la posición/rotación de cada uno (3 en 3P, 4 en 4P, un solo
+  // pedestal central en M4 — ver dadosFisicos()).
   const dadoAltura = Hr + HD;
   const yBase = -Pd + PZ, yTop = yBase + dadoAltura;
   const lenDado1 = calcularLongitudDesarrolloACI(state.diseno.dadoVar1, state.diseno.dadoRecubrimiento, false);
@@ -5241,9 +5426,9 @@ function buildAcero3D(){
   const xIzq = -AD/2 + rEstr, xDer = AD/2 - rEstr;
   const zFre = -LD/2 + rEstr, zPos = LD/2 - rEstr;
 
-  legKeysFor(state.tipoEstructura).forEach(key=>{
-    const center = legs[key];
-    const theta = -state.angles[key]*Math.PI/180;
+  dadosFisicos(legs, state.tipoEstructura).forEach(d=>{
+    const center = d.center;
+    const theta = -d.angleDeg*Math.PI/180;
     const toWorld = (lx, lz) => ({
       x: center.x + lx*Math.cos(theta) + lz*Math.sin(theta),
       z: center.y - lx*Math.sin(theta) + lz*Math.cos(theta)
@@ -5253,7 +5438,18 @@ function buildAcero3D(){
       const w = toWorld(br.x/100, br.y/100); // generarBarrasDado da cm; acá en m
       const lenD = br.grupo===1 ? lenDado1 : lenDado2;
       const codigoDado = br.grupo===1 ? state.diseno.dadoVar1 : state.diseno.dadoVar2;
-      const embebido = Math.min(lenD.ldh_cm/100, PZ*0.9);
+      // El gancho del dado debe quedar POR ENCIMA del lecho inferior de la
+      // losa (yInfZ, la más alta de las dos capas cruzadas). El punto MÁS
+      // BAJO real no es "yGancho": addHook90Acero sigue bajando en la
+      // dirección de la barra un radio R adicional mientras gira a
+      // horizontal (su curva llega a pos + dirIn·R + dirHook·R, con
+      // dirIn=(0,-1,0) acá) ANTES de salir horizontal — hay que descontar
+      // ese mismo R (radio + medio diámetro) del embebido disponible, si no
+      // el gancho sigue asomando por debajo del lecho inferior aunque
+      // "yGancho" ya esté arriba de él.
+      const radioGanchoM = lenD.radio_cm/100 + (br.d/100)/2;
+      const embebidoMax = Math.max(0, yBase - yInfZ - radioGanchoM);
+      const embebido = Math.min(lenD.ldh_cm/100, embebidoMax);
       const yGancho = yBase - embebido;
       addBarAcero(aceroGroup, w.x, yGancho, w.z, w.x, yTop, w.z, br.d/100, matLong, "longDado", codigoDado);
       // Gancho estándar a 90° en la base (§25.3.2/25.4.3 ACI 318-19), doblado
@@ -5288,13 +5484,14 @@ function buildAcero3D(){
     aceroGroup.add(dadoMesh);
   });
 
-  // Volumen de concreto (zapata neta, sin el hueco, + los dados: 3 en 3P, 4
-  // en 4P) y peso de acero por diámetro (cada barra/gancho ya construido
-  // queda tageado en addBarAcero()/addHook90Acero() vía userData.codigo/
-  // longitud_m/pesoKg) — solo para mostrar en la leyenda de esta vista, no
-  // alimenta ningún otro cálculo de la app.
+  // Volumen de concreto (zapata neta, sin el hueco, + los dados físicos: 3 en
+  // 3P, 4 en 4P, 1 pedestal único en M4 — ver dadosFisicos()) y peso de acero
+  // por diámetro (cada barra/gancho ya construido queda tageado en
+  // addBarAcero()/addHook90Acero() vía userData.codigo/longitud_m/pesoKg) —
+  // solo para mostrar en la leyenda de esta vista, no alimenta ningún otro
+  // cálculo de la app.
   const areaZapataNeta = polygonArea(outerC) - (huecoActivo ? polygonArea(huecoActivo) : 0);
-  const nDados = legKeysFor(state.tipoEstructura).length;
+  const nDados = dadosFisicos(legs, state.tipoEstructura).length;
   const volConcretoM3 = areaZapataNeta*PZ + nDados*AD*LD*dadoAltura;
   const resumenPorDiametro = new Map(); // codigo -> {longitud_m, pesoKg}
   aceroGroup.traverse(obj=>{
@@ -5384,8 +5581,12 @@ function initAcero3D(){
 
   rendererAcero = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
   rendererAcero.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
-  const bgColor = getComputedStyle(document.documentElement).getPropertyValue("--canvas").trim() || "#e9edf1";
-  rendererAcero.setClearColor(bgColor, 1);
+  // Sin setClearColor: con alpha:true el canvas queda transparente por
+  // defecto (clearAlpha=0) y deja ver el fondo CSS var(--canvas) del wrapper
+  // (mismo patrón que el Visor 3D de la pestaña "Cálculos") — así el color
+  // de fondo sigue al tema claro/oscuro en vivo. Antes se fijaba un color
+  // sólido tomado UNA sola vez al crear la escena, que se quedaba fijo si
+  // el usuario cambiaba de tema después.
 
   sceneAcero = new THREE.Scene();
   cameraAcero = new THREE.PerspectiveCamera(45, 1, 0.05, 500);
@@ -5524,8 +5725,11 @@ function computeGeotecnico(props, legs){
   // altura completa Hr, al material que corresponda.
   const holeArea = (state.holeEnabled && state.hole && state.hole.length>=3) ? polygonArea(state.hole) : 0;
 
-  const legOrder = cfg.legs; // ["1b","1a","1"] en 3P, ["1c","1b","1a","1"] en 4P
-  const nDados = legOrder.length;
+  const legOrder = cfg.legs; // ["1b","1a","1"] en 3P, ["1c","1b","1a","1"] en 4P (reacciones, siempre una por pata)
+  // Dados físicos para peso/volumen: en M4 el peso de concreto de los dados y
+  // el volumen que desplazan del relleno/ciclópeo corresponden a UN solo
+  // pedestal central (dadosFisicos), no a las 4 patas.
+  const nDados = dadosFisicos(legs, state.tipoEstructura).length;
 
   const Wzapata = (g.PZ * props.area * m.gc) / 1000;
   let Wrelleno, Wciclopeo = 0;
@@ -7149,13 +7353,27 @@ function generarStaadModel(){
   // el total entre "# nodos" para no multiplicar la carga real por N). El
   // signo se invierte porque Fy>=0 en la tabla de Reacciones es compresión
   // (empuje hacia abajo = -Y global en Staad), igual convención que ya usa
-  // la vista 3D y computeGeotecnico.
+  // la vista 3D y computeGeotecnico. En M4 las 4 columnas comparten un solo
+  // pedestal ("PEDESTAL", único nombre en nombresDado): se aplica la SUMA de
+  // las 4 reacciones de ese combo repartida entre los nodos de su único
+  // anillo, en vez de la reacción de una sola pata (no existe "PEDESTAL"
+  // como posición real de reacción).
   //
   function bloqueJointLoadFy(numLoad, nombreLoad, comboTexto){
+    const esM4 = state.tipoEstructura === "M4";
+    const posicionesReal = legKeysFor(state.tipoEstructura);
     const lineas = nombresDado.map(nombre=>{
-      const fy = reaccionFyPorPosicion(comboTexto, nombre);
       const nNodos = (ringsByName[nombre]||[]).length;
-      if(fy==null || !nNodos) return null;
+      if(!nNodos) return null;
+      let fy;
+      if(esM4){
+        const fys = posicionesReal.map(pos => reaccionFyPorPosicion(comboTexto, pos));
+        if(fys.some(f => f == null)) return null;
+        fy = fys.reduce((s,f)=>s+f, 0);
+      } else {
+        fy = reaccionFyPorPosicion(comboTexto, nombre);
+        if(fy==null) return null;
+      }
       const fyKg = fy*1000; // la tabla de Reacciones está en Tn; el modelo en kg
       return `_${nombre} FY ${fmtStaadNum(-fyKg/nNodos)}`;
     }).filter(Boolean);
@@ -7569,7 +7787,7 @@ function renderAll(){
   propRow(punzEl, "Dado / combo crítico", punz.dado ? `${punz.dado} — ${punz.combo}` : "—", "");
   propRow(punzEl, "Pu (reacción del dado)", punz.pu!=null ? fmt(punz.pu, 3) : "—", "Tn");
   propRow(punzEl, "qu (presión de suelo prom.)", punz.qu!=null ? fmt(punz.qu, 3) : "—", "Tn/m²",
-    `qu = Σ Pu (3 dados) / Área`);
+    `qu = Σ Pu (todas las patas) / Área`);
   propRow(punzEl, "Vu", fmt(punz.vu, 3), "Tn/m²",
     `Vu = (Pu &minus; qu&middot;c1&middot;c2) / (b0&middot;d)<br><span style="font-size:11px; opacity:.75;">22.6.5.1 ACI 318-19</span>`);
   propRow(punzEl, "λs", fmt(punz.lambdaS, 4), "", `<span style="font-size:11px; opacity:.75;">22.5.5.1.3 ACI 318-19</span>`);
@@ -7616,7 +7834,9 @@ function renderAll(){
   propRow(dadoCompEl, "ɸ", fmt(compDado.phi, 2), "", `<span style="font-size:11px; opacity:.75;">21.2.2 ACI 318-19 (miembro con estribos)</span>`);
   propRow(dadoCompEl, "ɸPn,max", fmt(compDado.phiPnMax, 3), "Tn",
     `ɸPn = ɸ&middot;0.80&middot;[0.85f'c(Ag&minus;Ast) + fy&middot;Ast]<br><span style="font-size:11px; opacity:.75;">22.4.2.1 ACI 318-19</span>`);
-  propRow(dadoCompEl, "Pu", fmt(compDado.pu, 3), "Tn", `MAX entre los 3 dados y combos 1.2D+1.0W`);
+  propRow(dadoCompEl, "Pu", fmt(compDado.pu, 3), "Tn", state.tipoEstructura === "M4"
+    ? `MAX(Σ Pu de las 4 columnas) entre combos 1.2D+1.0W — un solo pedestal`
+    : `MAX entre los dados y combos 1.2D+1.0W`);
   propRow(dadoCompEl, "Eficiencia", isFinite(compDado.eficiencia) ? fmt(compDado.eficiencia*100,0)+"%" : "—", "", `Pu / ɸPn,max`);
   const cumpleComp = isFinite(compDado.eficiencia) && compDado.eficiencia <= 1;
   renderResultadoBadge("dadoCompresionResultado", isFinite(compDado.eficiencia) ? (cumpleComp?"ok":"fail") : "none",
@@ -7627,7 +7847,9 @@ function renderAll(){
   dadoTenEl.innerHTML = "";
   propRow(dadoTenEl, "ɸ", fmt(tenDado.phi, 2), "", `<span style="font-size:11px; opacity:.75;">21.2.2 ACI 318-19 (controlado por tracción)</span>`);
   propRow(dadoTenEl, "ɸTn", fmt(tenDado.phiTn, 3), "Tn", `ɸTn = ɸ&middot;Ast&middot;fy`);
-  propRow(dadoTenEl, "Tu", fmt(tenDado.tu, 3), "Tn", `ABS(MIN) entre los 3 dados y combos 1.2D+1.0W`);
+  propRow(dadoTenEl, "Tu", fmt(tenDado.tu, 3), "Tn", state.tipoEstructura === "M4"
+    ? `ABS(MIN(Σ Pu de las 4 columnas)) entre combos 1.2D+1.0W — un solo pedestal`
+    : `ABS(MIN) entre los dados y combos 1.2D+1.0W`);
   propRow(dadoTenEl, "Eficiencia", isFinite(tenDado.eficiencia) ? fmt(tenDado.eficiencia*100,0)+"%" : "—", "", `Tu / ɸTn`);
   const cumpleTen = isFinite(tenDado.eficiencia) && tenDado.eficiencia <= 1;
   renderResultadoBadge("dadoTensionResultado", isFinite(tenDado.eficiencia) ? (cumpleTen?"ok":"fail") : "none",
@@ -7652,9 +7874,12 @@ function renderAll(){
   const cxPoly = props ? props.cx : 0;
   const cyPoly = props ? props.cy : 0;
   const legs = computeLegCenters(cxPoly, cyPoly);
+  // Dados FÍSICOS (ver dadosFisicos()): en M4 es un solo pedestal central
+  // (clave "PEDESTAL"), no 4 rectángulos independientes — de ahí sale la
+  // malla FEM (generateMallaFEM) y los grupos JOINT del export STAAD.
   const dados = {};
-  legKeysFor(state.tipoEstructura).forEach(key=>{
-    dados[key] = dadoRect(legs[key], state.geom.AD, state.geom.LD, state.angles[key]);
+  dadosFisicos(legs, state.tipoEstructura).forEach(d=>{
+    dados[d.nombre] = dadoRect(d.center, state.geom.AD, state.geom.LD, d.angleDeg);
   });
   renderDadosTable(legs);
   lastPlanArgs = {props, legs, dados, outerC, holeC};
@@ -7782,6 +8007,18 @@ function applyTheme(theme){
   } else {
     document.documentElement.removeAttribute("data-theme");
   }
+  // Los colores de aristas/cotas del Visor 3D (edgeColor3D en update3D(),
+  // addCota3D()) se leen de --axis-color en el momento de construir la
+  // malla — a diferencia del SVG de planta (que usa "var(--axis-color)"
+  // directo y se actualiza solo), acá hay que reconstruir la malla para que
+  // tomen el color nuevo al cambiar de tema.
+  if(scene3d && last3dArgs){
+    update3D(last3dArgs.props, last3dArgs.legs, last3dArgs.dados, last3dArgs.outerC, last3dArgs.holeC);
+  }
+  // Mismo caso que arriba para el diagrama de Interacción 3D (Plotly): sus
+  // colores de grilla/texto/contorno de marcadores también se fijan al
+  // construir el gráfico, no siguen el tema solos.
+  if(typeof Plotly !== "undefined" && lastPMM) renderizarPMM();
 }
 function initTheme(){
   const saved = localStorage.getItem(THEME_KEY);
@@ -8588,6 +8825,7 @@ function initBindings(){
       renderAll();
     });
   });
+  document.getElementById("chkSepBarrasDado").addEventListener("change", renderEsquemaDado);
   document.getElementById("g_metodoBalasto").addEventListener("change", (e)=>{
     state.geom.metodoBalasto = e.target.value;
     renderAll();

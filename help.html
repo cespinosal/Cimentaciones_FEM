@@ -234,7 +234,7 @@
   <ul>
     <li><b>Autosoportada 3P</b> — torre de 3 patas (patas <code>1b</code>, <code>1a</code>, <code>1</code>). Es el <b>único tipo con la revisión geotécnica completa implementada</b> (volteo, capacidad portante, mallado).</li>
     <li><b>Autosoportada 4P</b> — torre de 4 patas (<code>1c</code>, <code>1b</code>, <code>1a</code>, <code>1</code>).</li>
-    <li><b>M4</b> — alias exacto de "Autosoportada 4P": comparte la misma tabla de reacciones, no es un tipo independiente.</li>
+    <li><b>M4</b> — mismas reacciones que "Autosoportada 4P" (4 patas), pero embebidas en <b>un solo pedestal central</b> en vez de 4 dados independientes: el Visor 3D dibuja un único bloque A<sub>D</sub>×L<sub>D</sub> centrado en el centroide de las 4 patas.</li>
     <li><b>Monopolo</b> — un solo apoyo por combinación de carga (sin patas, sin Radius/Azimuth).</li>
   </ul>
   <div class="alert alert-warning">
@@ -346,8 +346,8 @@
       <tr><td>Peralte de la zapata</td><td>P<sub>Z</sub></td><td>m</td><td>0.30 – 2.50</td></tr>
       <tr><td>Profundidad de desplante</td><td>P<sub>d</sub></td><td>m</td><td>0.50 – 8.00</td></tr>
       <tr><td>Distancia entre Montantes</td><td>Lo</td><td>m</td><td>1.00 – 20.00</td></tr>
-      <tr><td>Ancho de dados</td><td>A<sub>D</sub></td><td>m</td><td>0.30 – 2.00</td></tr>
-      <tr><td>Largo de dados</td><td>L<sub>D</sub></td><td>m</td><td>0.30 – 2.00</td></tr>
+      <tr><td>Ancho del dado</td><td>A<sub>D</sub></td><td>m</td><td>0.30 – 2.00</td></tr>
+      <tr><td>Largo del dado</td><td>L<sub>D</sub></td><td>m</td><td>0.30 – 2.00</td></tr>
       <tr><td>Afloramiento del dado</td><td>H<sub>D</sub></td><td>m</td><td>0.00 – 1.50</td></tr>
       <tr><td>Distancia entre centroides (horiz.)</td><td>C<sub>X</sub></td><td>m</td><td>sin validación</td></tr>
       <tr><td>Distancia entre centroides (vert.)</td><td>C<sub>Y</sub></td><td>m</td><td>sin validación</td></tr>
