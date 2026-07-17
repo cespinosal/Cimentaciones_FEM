@@ -3134,7 +3134,12 @@ function defaultState(){
     proyecto: { assetNum:"", assetName:"", engineer:"", date:"", country:"Colombia", request:"" },
     materiales: { fc:210, gc:2400, gr:1600, fy:4200, existeCiclopeo:"No", espesorCiclopeo:1.00, gcc:2200, pesoAdicional:0 },
     diseno: { r:7.5, phiFlexion:0.9, phiCortante:0.75, alphaS:40, varInf:"#5", varSup:"#5", varInfExist:"#5", sepInfExist:15, varSupExist:"#5", sepSupExist:15,
-      dadoN1:14, dadoVar1:"#4", dadoN2:10, dadoVar2:"#4", dadoEstribosRamas:1, dadoEstriboVar:"#3", dadoEstriboSep:15, dadoRecubrimiento:5 }
+      dadoN1:14, dadoVar1:"#4", dadoN2:10, dadoVar2:"#4", dadoEstribosRamas:1, dadoEstriboVar:"#3", dadoEstriboSep:15, dadoRecubrimiento:5 },
+    // Resultados de las animaciones de Brazo de palanca (4.2.1) y Área
+    // efectiva (4.3.2), por combinación — al vivir en state quedan incluidos
+    // en "Guardar como…"/localStorage y ya aparecen al reabrir el proyecto.
+    brazoCache: {},
+    areaEfectivaCache: {}
   };
 }
 
@@ -3599,11 +3604,12 @@ let viewMode3d = "3d";
 let selectedVolteoCombo = null; // combinación elegida en el selector "Combinación" del header de Vista 3D
 let lastGeoData = null; // {geo, cap, props, outerC, holeC} del último renderAll() — usado por los modales de animación del Brazo y del Área efectiva
 // Resultados de las animaciones de Brazo/Área efectiva, por combinación —
-// viven fuera de lastGeoData (que se reconstruye entero en cada renderAll())
-// para que NO se pierdan con un renderAll() disparado por un cambio ajeno
-// (otra pestaña, otra tabla); solo se reemplazan al volver a pulsar el botón.
-const brazoCache = {};
-const areaEfectivaCache = {};
+// viven en state.brazoCache/state.areaEfectivaCache (no en lastGeoData, que
+// se reconstruye entero en cada renderAll()) para que NO se pierdan con un
+// renderAll() disparado por un cambio ajeno (otra pestaña, otra tabla); solo
+// se reemplazan al volver a pulsar el botón. Al vivir en "state" quedan
+// incluidos en "Guardar como…"/localStorage, así que al reabrir el proyecto
+// ya aparecen sin tener que rehacer la animación.
 let forceLabelSprites = []; // etiquetas Fx/Fy/Fz activas — se reescalan cada frame en start3DLoop para compensar la perspectiva (ver registerLabel dentro de update3D)
 
 function init3D(){
@@ -4568,6 +4574,15 @@ function dimSeparacionSvg(x1,y1,x2,y2,valorCm,offX,offY,fontSize,strokeW,color){
   `;
 }
 
+// Cabeza de flecha (triángulo) para el extremo de una línea de cota: la
+// punta queda en (x1,y1) y "mira" hacia (x2,y2) (el resto de la línea).
+function flechaCotaSvg(x1,y1,x2,y2,size,color){
+  const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1;
+  const ux=dx/len, uy=dy/len, px=-uy, py=ux, halfW=size*0.4;
+  const baseX=x1+ux*size, baseY=y1+uy*size;
+  return `<polygon points="${x1},${y1} ${baseX+px*halfW},${baseY+py*halfW} ${baseX-px*halfW},${baseY-py*halfW}" fill="${color}"/>`;
+}
+
 // Agrupa varillas por su coordenada FIJA (redondeada, para tolerar ruido de
 // punto flotante): eje "y" para las filas horizontales del grupo 1, eje "x"
 // para las columnas verticales del grupo 2 — cada grupo devuelto es una
@@ -4597,6 +4612,7 @@ function renderEsquemaDado(){
 
   const strokeW = Math.max(b,h)/180;
   const fontSize = Math.max(b,h)/17;
+  const arrowSize = strokeW*4.5; // cabezas de flecha de las cotas AD/LD
   const xE = b/2-rec-dEstribo/2, yE = h/2-rec-dEstribo/2;
   // Mismo criterio que el resto de los visores (negro en claro, blanco en
   // oscuro) para el contorno de las varillas — un "#000" fijo se perdía
@@ -4670,10 +4686,14 @@ function renderEsquemaDado(){
     ${barrasSvg}
     ${sepSvg}
     <line x1="${-b/2}" y1="${cotaYAD}" x2="${b/2}" y2="${cotaYAD}" stroke="var(--text)" stroke-width="${strokeW*0.6}"/>
+    ${flechaCotaSvg(-b/2,cotaYAD, b/2,cotaYAD, arrowSize, "var(--text)")}
+    ${flechaCotaSvg(b/2,cotaYAD, -b/2,cotaYAD, arrowSize, "var(--text)")}
     <line x1="${-b/2}" y1="${h/2}" x2="${-b/2}" y2="${cotaYAD}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
     <line x1="${b/2}" y1="${h/2}" x2="${b/2}" y2="${cotaYAD}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
     <text x="0" y="${cotaYAD+fontSize*1.2}" font-size="${fontSize}" text-anchor="middle" fill="var(--text)">AD = ${fmt(state.geom.AD,2)} m</text>
     <line x1="${cotaXLD}" y1="${-h/2}" x2="${cotaXLD}" y2="${h/2}" stroke="var(--text)" stroke-width="${strokeW*0.6}"/>
+    ${flechaCotaSvg(cotaXLD,-h/2, cotaXLD,h/2, arrowSize, "var(--text)")}
+    ${flechaCotaSvg(cotaXLD,h/2, cotaXLD,-h/2, arrowSize, "var(--text)")}
     <line x1="${b/2}" y1="${-h/2}" x2="${cotaXLD}" y2="${-h/2}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
     <line x1="${b/2}" y1="${h/2}" x2="${cotaXLD}" y2="${h/2}" stroke="var(--border)" stroke-width="${strokeW*0.4}"/>
     <text x="${ldTextX}" y="0" font-size="${fontSize}" text-anchor="start" dominant-baseline="middle" fill="var(--text)">${textoLD}</text>
@@ -5000,11 +5020,32 @@ function renderizarPMM(){
   const traces = [];
   const caras = carasGridPMM(PMM_N_ANGULOS, PMM_N_PROF);
 
+  // Contorno de los marcadores/etiquetas: mismo --axis-color (negro en
+  // claro, blanco en oscuro) ya usado en el Visor 3D — antes era "#000000"
+  // fijo, que se perdía contra el fondo oscuro (reportado por el usuario).
+  const axisMarkColor = getComputedStyle(document.documentElement).getPropertyValue("--axis-color").trim() || "#000000";
+  // Colores de las superficies y puntos: "#1B3A6B" (resistente) es casi el
+  // mismo azul marino del fondo del tema oscuro — quedaba casi invisible
+  // (reportado por el usuario). En oscuro se usa el cian de acento de la app
+  // (alto contraste sobre navy) y los mismos verdes/rojos de éxito/error ya
+  // definidos para ese tema (--success-fg/--danger-fg), en vez de tonos fijos.
+  const esOscuro = axisMarkColor.toLowerCase() === "#ffffff";
+  const colorResistente = esOscuro ? "#22D3EE" : "#1B3A6B";
+  const colorNominal = esOscuro ? "#7DD3FC" : "#4A90D9";
+  // Mismo criterio que dangerColor: en claro se deja el verde original
+  // (#43A047) — --success-fg en claro es un verde oscuro/apagado (#0e5c0e)
+  // pensado para texto, no para un punto pequeño en un fondo 3D, y se veía
+  // más oscuro que antes (reportado por el usuario).
+  const successColor = esOscuro ? (getComputedStyle(document.documentElement).getPropertyValue("--success-fg").trim() || "#5EEAD4") : "#43A047";
+  // En claro se deja el rojo original (#E53935) tal cual pedido — solo el
+  // oscuro toma el tono de --danger-fg (pensado para contrastar en navy).
+  const dangerColor = esOscuro ? (getComputedStyle(document.documentElement).getPropertyValue("--danger-fg").trim() || "#F87171") : "#E53935";
+
   if(document.getElementById("chkSupResistente").checked && sup.resistente.length){
     traces.push({
       type:"mesh3d", i:caras.i, j:caras.j, k:caras.k,
       x: sup.resistente.map(p=>p.Mnx), y: sup.resistente.map(p=>p.Mny), z: sup.resistente.map(p=>p.Pn),
-      color:"#1B3A6B", opacity: opacidad, flatshading:true, lighting:{ambient:0.8},
+      color:colorResistente, opacity: opacidad, flatshading:true, lighting:{ambient:0.8},
       name:"Resistente ɸPn-ɸMnx-ɸMny", hoverinfo:"skip"
     });
   }
@@ -5012,15 +5053,11 @@ function renderizarPMM(){
     traces.push({
       type:"mesh3d", i:caras.i, j:caras.j, k:caras.k,
       x: sup.nominal.map(p=>p.Mnx), y: sup.nominal.map(p=>p.Mny), z: sup.nominal.map(p=>p.Pn),
-      color:"#4A90D9", opacity: Math.min(opacidad*0.4, 0.12), name:"Nominal Pn-Mnx-Mny", hoverinfo:"skip"
+      color:colorNominal, opacity: Math.min(opacidad*0.4, 0.12), name:"Nominal Pn-Mnx-Mny", hoverinfo:"skip"
     });
   }
-  // Contorno de los marcadores/etiquetas: mismo --axis-color (negro en
-  // claro, blanco en oscuro) ya usado en el Visor 3D — antes era "#000000"
-  // fijo, que se perdía contra el fondo oscuro (reportado por el usuario).
-  const axisMarkColor = getComputedStyle(document.documentElement).getPropertyValue("--axis-color").trim() || "#000000";
   if(document.getElementById("chkPuntosDemanda").checked && demandas.length){
-    const colores = demandas.map((d,i)=> (dc[i]<=1 ? "#43A047" : "#E53935"));
+    const colores = demandas.map((d,i)=> (dc[i]<=1 ? successColor : dangerColor));
     traces.push({
       type:"scatter3d", mode:"markers",
       x: demandas.map(d=>d.Mux), y: demandas.map(d=>d.Muy), z: demandas.map(d=>d.Pu),
@@ -5034,7 +5071,7 @@ function renderizarPMM(){
         traces.push({
           type:"scatter3d", mode:"lines",
           x:[0,d.Mux], y:[0,d.Muy], z:[0,d.Pu],
-          line:{ color: dc[i]<=1 ? "#43A047" : "#E53935", width:3 },
+          line:{ color: dc[i]<=1 ? successColor : dangerColor, width:3 },
           opacity:0.5, showlegend:false, hoverinfo:"skip"
         });
       });
@@ -5820,7 +5857,7 @@ function computeGeotecnico(props, legs){
   // Reaplica el Brazo ya animado (si lo hay) para esta combinación — así
   // sobrevive a un renderAll() disparado por algo ajeno a esta sección.
   rows2.forEach(row=>{
-    const brazo = brazoCache[row.combo];
+    const brazo = state.brazoCache[row.combo];
     if(brazo!=null) aplicarBrazoARow(row, brazo);
   });
 
@@ -5862,7 +5899,7 @@ function computeCapacidadPortante(props, outerC, rows2, PhiCarga){
     const row = { combo:r.combo, MxTotal:r.MxTotal, MzTotal:r.MzTotal, RFYTotal:r.RFYTotal, exT:r.exT, eyT:r.eyT, stresses, maxTau, eficiencia, areaEfectiva:null, qProm:null };
     // Reaplica el Área efectiva ya animada (si la hay) para esta combinación
     // — así sobrevive a un renderAll() disparado por algo ajeno a esta sección.
-    const areaEfectivaCacheada = areaEfectivaCache[r.combo];
+    const areaEfectivaCacheada = state.areaEfectivaCache[r.combo];
     if(areaEfectivaCacheada!=null) aplicarAreaEfectivaARow(row, areaEfectivaCacheada, QultDesign);
     return row;
   });
@@ -6061,13 +6098,14 @@ function aplicarBrazoARow(row, brazo){
 function finalizeBrazo(resultados){
   if(!lastGeoData || !lastGeoData.geo) return;
   const byCombo = {};
-  resultados.forEach(r=>{ byCombo[r.combo] = r.brazo; brazoCache[r.combo] = r.brazo; });
+  resultados.forEach(r=>{ byCombo[r.combo] = r.brazo; state.brazoCache[r.combo] = r.brazo; });
   lastGeoData.geo.rows2.forEach(row=>{
     const brazo = byCombo[row.combo];
     if(brazo==null) return;
     aplicarBrazoARow(row, brazo);
   });
   renderGeotecnico(lastGeoData.geo);
+  saveToStorage(); // persiste el brazo ya calculado (state.brazoCache) sin esperar a otro renderAll()
 }
 
 /* ============================================================
@@ -6227,9 +6265,10 @@ function finalizeAreaEfectiva(combo, areaEfectiva){
   if(!lastGeoData || !lastGeoData.cap) return;
   const row = lastGeoData.cap.rows.find(r=>r.combo===combo);
   if(!row) return;
-  areaEfectivaCache[combo] = areaEfectiva;
+  state.areaEfectivaCache[combo] = areaEfectiva;
   aplicarAreaEfectivaARow(row, areaEfectiva, lastGeoData.cap.QultDesign);
   renderCapacidadPortante(lastGeoData.cap, lastGeoData.props, lastGeoData.outerC, lastGeoData.holeC);
+  saveToStorage(); // persiste el área efectiva ya calculada (state.areaEfectivaCache) sin esperar a otro renderAll()
 }
 
 /* ============================================================
@@ -8595,12 +8634,14 @@ const MEMORIA_STYLES = {
   colorBgHead:"DEF2FF", fontBody:"Calibri", sizeBody:22, sizeSmall:18
 };
 
-function memoriaH1(text){ return new docx.Paragraph({ text, heading: docx.HeadingLevel.HEADING_1 }); }
-function memoriaH2(text){ return new docx.Paragraph({ text, heading: docx.HeadingLevel.HEADING_2 }); }
-function memoriaH3(text){ return new docx.Paragraph({ text, heading: docx.HeadingLevel.HEADING_3 }); }
-function memoriaP(text){ return new docx.Paragraph({ children:[new docx.TextRun({text, font:MEMORIA_STYLES.fontBody, size:MEMORIA_STYLES.sizeBody})] }); }
+// Espaciado explícito antes/después: sin esto, un título quedaba pegado
+// directo al punto final del párrafo anterior (reportado por el usuario).
+function memoriaH1(text){ return new docx.Paragraph({ text, heading: docx.HeadingLevel.HEADING_1, spacing:{before:360, after:160} }); }
+function memoriaH2(text){ return new docx.Paragraph({ text, heading: docx.HeadingLevel.HEADING_2, spacing:{before:280, after:140} }); }
+function memoriaH3(text){ return new docx.Paragraph({ text, heading: docx.HeadingLevel.HEADING_3, spacing:{before:200, after:120} }); }
+function memoriaP(text){ return new docx.Paragraph({ spacing:{after:160}, children:[new docx.TextRun({text, font:MEMORIA_STYLES.fontBody, size:MEMORIA_STYLES.sizeBody})] }); }
 function memoriaNota(text){
-  return new docx.Paragraph({ children:[new docx.TextRun({ text, italics:true, size:MEMORIA_STYLES.sizeSmall, color:MEMORIA_STYLES.colorMuted })] });
+  return new docx.Paragraph({ spacing:{after:160}, children:[new docx.TextRun({ text, italics:true, size:MEMORIA_STYLES.sizeSmall, color:MEMORIA_STYLES.colorMuted })] });
 }
 const memoriaPageBreak = () => new docx.Paragraph({ children:[new docx.PageBreak()] });
 
@@ -8631,16 +8672,25 @@ function memoriaTablaProps(filas){
     memoriaCelda(label, {fill:MEMORIA_STYLES.colorBgHead}), memoriaCelda(`${valor} ${unidad||""}`.trim())
   ]));
 }
-function memoriaImagenOAviso(dataURL, widthCm, heightCm){
+// caption opcional: además de la separación propia del párrafo de imagen
+// (spacing.after), agrega un renglón de texto centrado debajo — así varias
+// imágenes seguidas (ej. las 4 vistas de Acero 3D) no quedan pegadas ni se
+// confunden entre sí (reportado por el usuario, "no encimes las imágenes").
+function memoriaImagenOAviso(dataURL, widthCm, heightCm, caption){
   if(!dataURL){
-    return memoriaNota("⚠ Vista no disponible. Inicializar la pestaña correspondiente antes de exportar.");
+    return [memoriaNota("⚠ Vista no disponible. Inicializar la pestaña correspondiente antes de exportar.")];
   }
   const base64 = dataURL.split(",")[1];
   const bytes = Uint8Array.from(atob(base64), c=>c.charCodeAt(0));
-  return new docx.Paragraph({
-    alignment: docx.AlignmentType.CENTER,
+  const parrafos = [ new docx.Paragraph({
+    alignment: docx.AlignmentType.CENTER, spacing:{after: caption ? 40 : 240},
     children:[ new docx.ImageRun({ data:bytes, transformation:{ width:Math.round(widthCm*37.8), height:Math.round(heightCm*37.8) } }) ]
-  });
+  }) ];
+  if(caption){
+    parrafos.push(new docx.Paragraph({ alignment:docx.AlignmentType.CENTER, spacing:{after:240},
+      children:[ new docx.TextRun({ text:caption, italics:true, size:MEMORIA_STYLES.sizeSmall, color:MEMORIA_STYLES.colorMuted }) ] }));
+  }
+  return parrafos;
 }
 
 /* ---------- Captura de vistas (canvas 3D, SVG, Plotly) ---------- */
@@ -8659,11 +8709,67 @@ function memoriaCaptureCanvas(canvasId){
   });
 }
 
+// Captura del diagrama P-M-M para la memoria — NO reutiliza la vista
+// interactiva tal cual: esa vista sigue el tema (fondo transparente, baja
+// opacidad para verse bien sobre fondo oscuro) y al exportarla a PNG sobre
+// una página de Word blanca, la superficie resistente/nominal queda casi
+// invisible y solo se distinguen los puntos de demanda (reportado por el
+// usuario). Se arma un layout aparte, con fondo blanco y opacidades más
+// altas, SOLO para esta captura, y se restaura la vista normal al final.
 async function memoriaCapturePlotlyPMM(){
   const el = document.getElementById("interaccionPlot");
-  if(!el || typeof Plotly === "undefined" || !el.data) return null;
-  try{ return await Plotly.toImage(el, { format:"png", width:1100, height:750, scale:2 }); }
-  catch(e){ return null; }
+  if(!el || typeof Plotly === "undefined" || !lastPMM) return null;
+  const { sup, demandas, dc } = lastPMM;
+  const caras = carasGridPMM(PMM_N_ANGULOS, PMM_N_PROF);
+  const traces = [];
+  if(sup && sup.resistente && sup.resistente.length){
+    traces.push({
+      type:"mesh3d", i:caras.i, j:caras.j, k:caras.k,
+      x: sup.resistente.map(p=>p.Mnx), y: sup.resistente.map(p=>p.Mny), z: sup.resistente.map(p=>p.Pn),
+      color:"#1B3A6B", opacity:0.55, flatshading:true, lighting:{ambient:0.85},
+      name:"Resistente ɸPn-ɸMnx-ɸMny", hoverinfo:"skip"
+    });
+  }
+  if(sup && sup.nominal && sup.nominal.length){
+    traces.push({
+      type:"mesh3d", i:caras.i, j:caras.j, k:caras.k,
+      x: sup.nominal.map(p=>p.Mnx), y: sup.nominal.map(p=>p.Mny), z: sup.nominal.map(p=>p.Pn),
+      color:"#4A90D9", opacity:0.22, name:"Nominal Pn-Mnx-Mny", hoverinfo:"skip"
+    });
+  }
+  if(demandas && demandas.length){
+    const colores = demandas.map((d,i)=> (dc[i]<=1 ? "#2E7D32" : "#C62828"));
+    traces.push({
+      type:"scatter3d", mode:"markers",
+      x: demandas.map(d=>d.Mux), y: demandas.map(d=>d.Muy), z: demandas.map(d=>d.Pu),
+      marker:{ size:6, color:colores, line:{color:"#000000", width:1}, symbol:"circle" },
+      name:"Demanda por combinación", hoverinfo:"skip"
+    });
+  }
+  function ejeExport(titulo){
+    return { title:{text:titulo, font:{color:"#242424"}}, color:"#242424", gridcolor:"#d1d1d1", zerolinecolor:"#b0b0b0", backgroundcolor:"#ffffff" };
+  }
+  const layout = {
+    paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", font:{color:"#242424"},
+    scene:{ xaxis:ejeExport("Mx [Tn-m]"), yaxis:ejeExport("My [Tn-m]"), zaxis:ejeExport("P [Tn]"), aspectmode:"auto" },
+    showlegend:true, legend:{x:0, y:1, font:{color:"#242424"}}, margin:{l:0, r:0, t:10, b:0}
+  };
+  if(!traces.length) return null;
+  try{
+    // newPlot (no react): fuerza una reconstrucción completa del gráfico —
+    // react() puede preservar cámara/rango de ejes de la vista interactiva
+    // previa, lo que en pruebas dejaba el encuadre ajustado solo a los
+    // puntos de demanda (escala mucho menor que la superficie) y esta
+    // aparecía fuera de cuadro/sin entrada en la leyenda.
+    await Plotly.newPlot(el, traces, layout, {displaylogo:false});
+    await new Promise(r=>setTimeout(r, 400)); // deja pintar el canvas WebGL antes de capturar
+    return await Plotly.toImage(el, { format:"png", width:1200, height:850, scale:2 });
+  }catch(e){
+    console.error(e);
+    return null;
+  }finally{
+    renderizarPMM(); // restaura la vista interactiva normal (tema/checkboxes/opacidad reales)
+  }
 }
 
 // Captura de un <svg> ya renderizado en el DOM (mallado FEM) rasterizándolo
@@ -8742,31 +8848,6 @@ function memoriaDescargarBlob(blob, nombre){
   setTimeout(()=>URL.revokeObjectURL(url), 4000);
 }
 
-// Archivo HTML aparte con el diagrama P-M-M interactivo (Plotly). Se genera
-// SIEMPRE junto con el .docx — no se intenta incrustarlo como objeto OLE
-// dentro del Word (docx.js no lo soporta de forma nativa y requeriría
-// manipular el .zip del .docx a mano; este archivo aparte ya da
-// interactividad completa sin ese riesgo). Reutiliza el mismo CDN de
-// Plotly que ya usa la app (única excepción documentada a "sin CDN").
-function memoriaGenerarHTMLInteraccion(){
-  const el = document.getElementById("interaccionPlot");
-  if(!el || typeof Plotly === "undefined" || !el.data) return null;
-  const dataJson = JSON.stringify(el.data);
-  const layoutJson = JSON.stringify(el.layout);
-  const titulo = `Interacción P-M-M — ${state.proyecto.assetName||"Cimentación"} (${state.proyecto.assetNum||""})`;
-  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
-<title>${titulo}</title>
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"><\/script>
-<style>html,body{margin:0;height:100%;font-family:Segoe UI,Arial,sans-serif;background:#0A1628;color:#E2E8F0;}
-h1{font-size:14px;padding:10px 16px;margin:0;font-weight:600;}
-#plot{width:100vw;height:calc(100vh - 38px);}</style>
-</head><body>
-<h1>${titulo}</h1>
-<div id="plot"></div>
-<script>Plotly.newPlot('plot', ${dataJson}, ${layoutJson}, {responsive:true, displaylogo:false});<\/script>
-</body></html>`;
-}
-
 /* ---------- Construcción del documento ---------- */
 
 function memoriaFilasReacciones(){
@@ -8794,12 +8875,6 @@ function memoriaFilasReacciones(){
     return [combo, fmt(r.fx,3), fmt(r.fy,3), fmt(r.fz,3), fmt(r.mx,3), fmt(r.my,3), fmt(r.mz,3)];
   }).filter(Boolean);
   return { encabezados, filas };
-}
-
-function memoriaFilasRevisiones(){
-  return Array.from(document.querySelectorAll("#tblRevisiones tbody tr")).map(tr=>
-    Array.from(tr.children).map(td=>td.textContent.trim())
-  );
 }
 
 async function memoriaConstruirDocumento(imgs){
@@ -8847,10 +8922,9 @@ async function memoriaConstruirDocumento(imgs){
     memoriaP(`Memoria de cálculo generada automáticamente a partir del estado actual del proyecto "${pr.assetName||"(sin nombre)"}" — cubre el diseño geotécnico (volteo, capacidad de carga) y estructural (flexión, cortante, punzonamiento, dados de desplante) de la zapata/losa general, para una estructura de tipo "${state.tipoEstructura}".`),
     memoriaH2("1.2 Datos del sitio"),
     memoriaTablaProps([["País/Sitio", pr.country||"—"], ["Ingeniero responsable", pr.engineer||"—"], ["Fecha", pr.date||fecha], ["Solicitud", pr.request||"—"]]),
-    memoriaH2("1.3 Historial de revisiones"),
-    memoriaTabla(["Versión","Descripción del cambio","Autor","Fecha"], memoriaFilasRevisiones()),
-    memoriaH2("1.4 Normas y referencias"),
-    memoriaP("ACI 318-19 (Building Code Requirements for Structural Concrete) — diseño estructural por resistencia (LRFD). ANSI/TIA-222-H — combinaciones de carga y criterios de resistencia geotécnica para estructuras de telecomunicaciones.")
+    memoriaH2("1.3 Normas y referencias"),
+    memoriaP("ACI 318-19 — Building Code Requirements for Structural Concrete and Commentary. Norma base para el diseño estructural por resistencia (LRFD) de la zapata/losa y los dados de desplante: bloque equivalente de esfuerzos (Cap. 22), cuantías mínimas (Cap. 24), factores de reducción de resistencia Φ (§21.2) y longitudes de desarrollo (Cap. 25)."),
+    memoriaP("ANSI/TIA-222-H — Structural Standard for Antenna Supporting Structures and Antennas. Fuente de las combinaciones de carga (viento/servicio), del factor de reducción de capacidad portante (Φ carga) y de la cuantía mínima de acero longitudinal en dados de desplante (§9.4.1).")
   ];
 
   const cap2 = [
@@ -8861,7 +8935,7 @@ async function memoriaConstruirDocumento(imgs){
       ["γr (peso volumétrico del relleno)", fmt(state.materiales.gr,0), "kg/m³"],
       ["fy (fluencia del acero)", fmt(state.materiales.fy,0), "kg/cm²"],
       ["Concreto ciclópeo", state.materiales.existeCiclopeo, ""],
-      ["Espesor ciclópeo", fmt(state.materiales.espesorCiclopeo,2), "m"],
+      ["Espesor ciclópeo", fmt(state.materiales.existeCiclopeo === "No" ? 0 : state.materiales.espesorCiclopeo, 2), "m"],
       ["γcc (peso volumétrico ciclópeo)", fmt(state.materiales.gcc,0), "kg/m³"],
       ["Peso adicional", fmt(state.materiales.pesoAdicional,0), "kg"]
     ])
@@ -8886,7 +8960,7 @@ async function memoriaConstruirDocumento(imgs){
       memoriaTabla(["#","X [m]","Y [m]"], state.hole.map((p,i)=>[i+1, fmt(p.x,3), fmt(p.y,3)]))
     ] : []),
     memoriaH2("3.5 Vista 3D de la cimentación"),
-    memoriaImagenOAviso(imgs.png3D, 15, 10)
+    ...memoriaImagenOAviso(imgs.png3D, 15, 10)
   ];
 
   const { encabezados: reacEnc, filas: reacFilas } = memoriaFilasReacciones();
@@ -8908,21 +8982,21 @@ async function memoriaConstruirDocumento(imgs){
       memoriaTabla(["Combinación","Brazo [m]","M resistente [Tn·m]","FSV","Eficiencia"],
         geo.rows2.map(r=>[r.combo, r.brazo!=null?fmt(r.brazo,3):"—", r.MR!=null?fmt(r.MR,3):"—",
           r.FSV!=null?fmt(r.FSV,3):"—", r.eficienciaVolteo!=null&&isFinite(r.eficienciaVolteo)?fmt(r.eficienciaVolteo*100,0)+"%":"—"])),
-      memoriaNota("FSV = M resistente / M actuante. Combos de volteo: 0.9D + 1.0W (mínima carga muerta, caso crítico ante viento).")
+      memoriaNota("FSV = M resistente (M_R) / M actuante (M_act), con M_act = √(Mx_Total² + Mz_Total²) el momento resultante en la base de la zapata. Combos revisados: 0.9D + 1.0W (mínima carga muerta, caso crítico ante viento — ANSI/TIA-222-H). Eficiencia = 1/FSV; se considera aceptable FSV ≥ 1.0.")
     ] : []),
     ...(cap && cap.rows ? [
       memoriaH2("5.3 Revisión por capacidad de carga — Ley de Navier"),
       memoriaTabla(["Combinación","Eficiencia"], cap.rows.map(r=>[r.combo, isFinite(r.eficiencia)?fmt(r.eficiencia*100,0)+"%":"—"])),
-      memoriaNota("τ = RFY_Total/Área + Mx_Total·y/Ix + Mz_Total·x/Iy, evaluado en el perímetro de la zapata.")
+      memoriaNota("τ(x,y) = RFY_Total/Área + Mx_Total·y/Ix + Mz_Total·x/Iy, evaluado en cada vértice del contorno de la zapata (Ix, Iy respecto al centroide de la sección). El esfuerzo máximo se compara contra Φ·Qult = Φ·QADM·FS, con Φ el factor de reducción de capacidad portante de ANSI/TIA-222-H (0.60 arriostradas, 0.75 autosoportadas/monopolo).")
     ] : []),
     memoriaH2("5.4 Mallado FEM"),
-    memoriaImagenOAviso(imgs.pngMallado, 15, 9),
+    ...memoriaImagenOAviso(imgs.pngMallado, 15, 9),
     memoriaP(`Elementos generados: ${lastMallaMesh ? lastMallaMesh.elements.length : "—"}. Tamaño de elemento: ${fmt(state.geom.mallaTamElem,0)} cm.`),
     memoriaH2("5.5 Coeficiente de balasto"),
     memoriaTablaProps([["Método", state.geom.metodoBalasto||"—", ""], ["K (interno)", fmt(getKBalastoKgm3(),2), "kg/m³"]]),
     memoriaH2("5.6 Propiedades del concreto"),
     memoriaTablaProps([["Ec", fmt(pc.Ec,0), "kg/cm²"], ["G", fmt(pc.G,0), "kg/cm²"], ["ν (relación de Poisson)", fmt(pc.v,3), ""]]),
-    memoriaNota("Ec = 15100·√f'c (ACI 318-19 §19.2.2.1, coeficiente en kg/cm²); G = Ec/(2(1+ν)).")
+    memoriaNota("Ec = 15100·√f'c [kg/cm²] (ACI 318-19 §19.2.2.1 — coeficiente equivalente en kg/cm² a 4700·√f'c en MPa). G = Ec/(2·(1+ν)).")
   ];
 
   const cap6 = [
@@ -8936,95 +9010,111 @@ async function memoriaConstruirDocumento(imgs){
       ["c1 (AD+d)", fmt(cd.c1,3), "m"], ["c2 (LD+d)", fmt(cd.c2,3), "m"], ["b0 (perímetro crítico)", fmt(cd.b0,3), "m"],
       ["Φ flexión", fmt(state.diseno.phiFlexion,2), ""], ["Φ cortante", fmt(state.diseno.phiCortante,2), ""]
     ]),
-    memoriaNota("β1: ACI 318-19 §22.2.2.4.3. Φ flexión/cortante: §21.2.1/§21.2.2."),
+    memoriaNota("β1 = 0.85 si f'c ≤ 280 kg/cm²; β1 = 0.65 si f'c > 560 kg/cm²; en el rango intermedio, β1 = 0.85 − (f'c−280)·(0.05/70) (ACI 318-19 §22.2.2.4.3). d = PZ − r (peralte efectivo). c1 = AD+d, c2 = LD+d: dimensiones de la sección crítica a d/2 del perímetro del dado (§22.6.4.1). b0 = 2·(c1+c2): perímetro de la sección crítica. Φ flexión = 0.90 y Φ cortante = 0.75 — secciones controladas por tracción (ACI 318-19 Tabla 21.2.1 y §21.2.2)."),
     memoriaH2("6.3 Diseño por flexión"),
+    memoriaNota("Momento de diseño Mu combinado por Wood-Armer, con Mx, My y Mxy de la MISMA fila de la malla de placas: Mu(inferior) = MAX(Mx+|Mxy|, My+|Mxy|) y Mu(superior) = |MIN(Mx−|Mxy|, My−|Mxy|)|, tomando el peor caso entre todas las filas de 6.1 — evita subestimar el momento real al ignorar la torsión Mxy."),
     memoriaH3("6.3.1 Lecho inferior"),
     memoriaTablaProps([["Mu", fmt(muInferior,3), "Tn·m/m"], ["As requerido", fmt(flexInf.asReq,2), "cm²/m"],
       ["Varilla propuesta", state.diseno.varInf, ""], ["Separación", fmt(calcularSeparacionVarilla(flexInf.asReq, state.diseno.varInf).separacion,0), "cm"]]),
+    memoriaNota("As = ρ·b·d (b=100 cm), con ρ = (0.85f'c/fy)·(1−√(1−2Rn/(0.85f'c))) y Rn = Mu/(Φ·b·d²) (ACI 318-19 §22.2.2.4.1, bloque equivalente de Whitney; §22.3.2.1, Mn=As·fy(d−a/2), resuelto en forma cerrada para ρ). ρ se acota entre ρmin, por temperatura y contracción (§24.4.3.2/Tabla 7.6.1.1 — no §9.6.1.2, que es para vigas), y ρmax = (εcu/(εcu+εt))·0.85β1·(f'c/fy), con εcu=0.003 y εt=0.005 (§21.2.2, sección controlada por tracción)."),
     memoriaH3("6.3.2 Comparación con acero existente — lecho inferior"),
     memoriaTablaProps([["As real", fmt(existInf.asReal,2), "cm²/m"], ["ΦMn", fmt(existInf.phiMn,3), "Tn·m/m"],
       ["% Momento (Mu/ΦMn)", isFinite(existInf.effMomento)?fmt(existInf.effMomento*100,0)+"%":"—", ""],
       ["% Acero (As req/As real)", isFinite(existInf.effAcero)?fmt(existInf.effAcero*100,0)+"%":"—", ""]]),
+    memoriaNota("ΦMn = Φ·As_real·fy·(d−a/2), con a = As_real·fy/(0.85f'c·b) — equilibrio real de la sección (ACI 318-19 §22.3.2.1), no la aproximación Mn≈As·fy·d·(1−0.5ρ) de métodos simplificados."),
     memoriaH3("6.3.3 Lecho superior"),
     memoriaTablaProps([["Mu", fmt(muSuperior,3), "Tn·m/m"], ["As requerido", fmt(flexSup.asReq,2), "cm²/m"],
       ["Varilla propuesta", state.diseno.varSup, ""], ["Separación", fmt(calcularSeparacionVarilla(flexSup.asReq, state.diseno.varSup).separacion,0), "cm"]]),
+    memoriaNota("Misma formulación de 6.3.1 (As = ρ·b·d, ACI 318-19 §22.2.2.4.1/§22.3.2.1/§21.2.2), aplicada al momento negativo (tensión en la cara superior)."),
     memoriaH3("6.3.4 Comparación con acero existente — lecho superior"),
     memoriaTablaProps([["As real", fmt(existSup.asReal,2), "cm²/m"], ["ΦMn", fmt(existSup.phiMn,3), "Tn·m/m"],
       ["% Momento (Mu/ΦMn)", isFinite(existSup.effMomento)?fmt(existSup.effMomento*100,0)+"%":"—", ""],
       ["% Acero (As req/As real)", isFinite(existSup.effAcero)?fmt(existSup.effAcero*100,0)+"%":"—", ""]]),
-    memoriaNota("Momento de diseño combinado por Wood-Armer (Mx, My, Mxy de la misma fila) — ACI 318-19 §22.2/§22.3.2.1 para la resistencia."),
+    memoriaNota("ΦMn = Φ·As_real·fy·(d−a/2), misma ecuación de equilibrio de 6.3.2 (ACI 318-19 §22.3.2.1)."),
     memoriaH2("6.4 Revisión por cortante en una dirección"),
     new docx.Table({ width:{size:100,type:docx.WidthType.PERCENTAGE}, rows:[
       new docx.TableRow({tableHeader:true, children:["Eje","Vu [Tn/m²]","ΦVc [Tn/m²]","Eficiencia","Resultado"].map(h=>memoriaCelda(h,{bold:true,fill:MEMORIA_STYLES.colorBgHead}))}),
       new docx.TableRow({children:[memoriaCelda("X"), memoriaCelda(fmt(cort.vux,3)), memoriaCelda(fmt(cort.phiVc,3)), memoriaCelda(isFinite(cort.eficienciaX)?fmt(cort.eficienciaX*100,0)+"%":"—"), memoriaBadgeCell(cort.eficienciaX<=1)]}),
       new docx.TableRow({children:[memoriaCelda("Y"), memoriaCelda(fmt(cort.vuy,3)), memoriaCelda(fmt(cort.phiVc,3)), memoriaCelda(isFinite(cort.eficienciaY)?fmt(cort.eficienciaY*100,0)+"%":"—"), memoriaBadgeCell(cort.eficienciaY<=1)]})
     ]}),
-    memoriaNota("ΦVc = Φ·0.53·λs·λ·√f'c (ACI 318-19 §22.5.5.1, kg/cm² → Tn/m²)."),
+    memoriaNota("ΦVc = Φ·0.53·λs·λ·√f'c [kg/cm² → Tn/m²] (ACI 318-19 §22.5.5.1 — equivalente a 0.17√f'c en MPa). λs = √(2/(1+0.04d)) ≤ 1, d en cm (§22.5.5.1.3, factor de efecto de tamaño). λ=1.0, concreto de peso normal (§19.2.4.2). Vu = MAX(|SQX|) y MAX(|SQY|) de la malla de placas (6.1), evaluados por eje SEPARADAMENTE (misma ΦVc para ambos, solo cambia la demanda)."),
     memoriaH2("6.5 Revisión por punzonamiento"),
     memoriaTablaProps([["Vu", fmt(punz.vu,3), "Tn/m²"], ["ΦVc (gobierna)", fmt(punz.phiVc,3), "Tn/m²"],
       ["Eficiencia", isFinite(punz.eficiencia)?fmt(punz.eficiencia*100,0)+"%":"—", ""]]),
     memoriaBadgeParrafo(isFinite(punz.eficiencia) && punz.eficiencia<=1),
-    memoriaNota("ΦVc = MIN de tres expresiones (ACI 318-19 §22.6.5.2, coeficientes 1.06/0.53(1+2/β)/0.265(2+αsd/b0) en kg/cm²). Vu = Pu del dado − qu·(c1·c2), con qu = presión de suelo promedio."),
+    memoriaNota("Vu = Pu(dado) − qu·(c1·c2), con qu = presión de suelo promedio (ΣPu de las reacciones/Área de la zapata) para el combo 1.2D+1.0W crítico (ACI 318-19 §22.6.5.1). ΦVc = MIN de tres expresiones [kg/cm²] (§22.6.5.2): (a) Φ·1.06·λs·λ·√f'c; (b) Φ·0.53·(1+2/β)·λs·λ·√f'c, con β=MAX(c1,c2)/MIN(c1,c2) (c1,c2 reales, sin asumir dado cuadrado); (c) Φ·0.265·(2+αs·d/b0)·λs·λ·√f'c, con αs=40 (columna interior). Equivalentes en MPa: 0.33√f'c / 0.17(1+2/β)√f'c / 0.083(2+αsd/b0)√f'c."),
     memoriaH2("6.6 Revisión de dados de desplante"),
     memoriaH3("6.6.1 Armado del dado"),
     memoriaTablaProps([["Grupo 1", `${state.diseno.dadoN1}×${state.diseno.dadoVar1}`, ""], ["Grupo 2", `${state.diseno.dadoN2}×${state.diseno.dadoVar2}`, ""],
       ["Estribos", `${state.diseno.dadoEstriboVar} @ ${fmt(state.diseno.dadoEstriboSep,0)} cm — ${state.diseno.dadoEstribosRamas} rama(s)`, ""],
       ["Ast", fmt(armado.ast,2), "cm²"], ["Ag", fmt(armado.ag,2), "cm²"], ["Cuantía", fmt(armado.cuantia,4), ""], ["Cuantía mínima", fmt(armado.cuantiaMin,4), ""]]),
     memoriaBadgeParrafo(armado.cumpleCuantia, armado.cumpleCuantia?"CUMPLE CUANTÍA MÍNIMA":"NO CUMPLE CUANTÍA MÍNIMA"),
-    memoriaNota("Cuantía mínima: ANSI/TIA-222-H §9.4.1 (0.5%, distinto del 1% de columnas de ACI 318 §10.6.1.1 — no aplica a dados de torres)."),
+    memoriaNota("Ast = N1·Av1 + N2·Av2 (grupos 1 y 2 de varillas longitudinales). Ag = AD·LD (dimensiones reales del dado, sin asumir sección cuadrada). Cuantía = Ast/Ag ≥ 0.005 (ANSI/TIA-222-H §9.4.1 — distinta del 1% de columnas de ACI 318-19 §10.6.1.1, que no aplica a dados de desplante de torres)."),
     memoriaH3("6.6.2 Revisión por compresión axial"),
     memoriaTablaProps([["Pu", fmt(compDado.pu,3), "Tn"], ["ΦPn,max", fmt(compDado.phiPnMax,3), "Tn"],
       ["Eficiencia", isFinite(compDado.eficiencia)?fmt(compDado.eficiencia*100,0)+"%":"—", ""]]),
     memoriaBadgeParrafo(isFinite(compDado.eficiencia) && compDado.eficiencia<=1),
-    memoriaNota("ΦPn,max = Φ·0.80·[0.85f'c(Ag−Ast)+fy·Ast], Φ=0.65 (ACI 318-19 §22.4.2.1/§21.2.2, miembro con estribos)."),
+    memoriaNota("ΦPn,max = Φ·0.80·[0.85f'c·(Ag−Ast) + fy·Ast], con Φ=0.65 para miembros con estribos rectangulares (ACI 318-19 §22.4.2.1 y Tabla 21.2.2 — el factor 0.80 limita la excentricidad mínima accidental). Pu = MAX entre los dados físicos y los combos estructurales 1.2D+1.0W (en configuración M4, suma de las 4 reacciones sobre el pedestal único compartido)."),
     memoriaH3("6.6.3 Revisión por tensión axial"),
     memoriaTablaProps([["Tu", fmt(tenDado.tu,3), "Tn"], ["ΦTn", fmt(tenDado.phiTn,3), "Tn"],
       ["Eficiencia", isFinite(tenDado.eficiencia)?fmt(tenDado.eficiencia*100,0)+"%":"—", ""]]),
     memoriaBadgeParrafo(isFinite(tenDado.eficiencia) && tenDado.eficiencia<=1),
-    memoriaNota("ΦTn = Φ·Ast·fy, Φ=0.90 (comportamiento controlado por tracción, ACI 318-19 §21.2.2).")
+    memoriaNota("ΦTn = Φ·Ast·fy, con Φ=0.90 (mismo Φ de flexión, comportamiento controlado por tracción, ACI 318-19 §21.2.2) — resistido únicamente por el acero longitudinal del dado, ya que el concreto se agrieta ante tensión. Tu = ABS(MIN) entre los dados físicos y los combos estructurales 1.2D+1.0W (suma de las 4 reacciones en M4).")
   ];
 
   const dcMax = lastPMM && lastPMM.dc && lastPMM.dc.length ? Math.max(...lastPMM.dc.filter(isFinite), 0) : NaN;
   const cap7 = [
     memoriaPageBreak(), memoriaH1("7. Diagrama de interacción P-M-M (dados)"),
-    memoriaImagenOAviso(imgs.pngPMM, 16, 11),
+    ...memoriaImagenOAviso(imgs.pngPMM, 16, 11),
     lastPMM && lastPMM.demandas && lastPMM.demandas.length ? memoriaTabla(
       ["Combinación","Pata","Pu [Tn]","Mux [Tn·m]","Muy [Tn·m]","D/C"],
       lastPMM.demandas.map((d,i)=>[d.combo, d.pata, fmt(d.Pu,3), fmt(d.Mux,3), fmt(d.Muy,3), isFinite(lastPMM.dc[i])?fmt(lastPMM.dc[i],3):"—"])
     ) : memoriaNota("Sin datos de demanda P-M-M."),
-    isFinite(dcMax) ? new docx.Paragraph({ spacing:{before:200}, children:[
+    isFinite(dcMax) ? new docx.Paragraph({ spacing:{before:200,after:160}, children:[
       new docx.TextRun({ text:`D/C máximo = ${fmt(dcMax,3)} — `, bold:true, size:MEMORIA_STYLES.sizeBody }),
       new docx.TextRun({ text: dcMax<=1?"CUMPLE":"NO CUMPLE", bold:true, size:MEMORIA_STYLES.sizeBody, color: dcMax<=1?MEMORIA_STYLES.colorOK:MEMORIA_STYLES.colorFail })
-    ]}) : memoriaNota("Sin datos suficientes para un veredicto D/C.")
+    ]}) : memoriaNota("Sin datos suficientes para un veredicto D/C."),
+    memoriaNota("Superficie de interacción construida por compatibilidad de deformaciones (ACI 318-19 Cap. 22): barrido de 72 ángulos × 30 profundidades del eje neutro, bloque de Whitney para el concreto en compresión (Cc=0.85f'c·área comprimida) y ley constitutiva bilineal del acero (εsi=εcu·(c−di)/c, acotada a ±fy, Es=2,000,000 kg/cm²). Φ interpolado linealmente entre 0.65 (falla en compresión, εsy) y 0.90 (falla en tracción, εt=0.005) — mismos εcu/εt de la flexión de la losa (§21.2.2). Demanda: Pu=Fy, Mux=(−Fz)·brazo, Muy=Fx·brazo, con brazo=Hr+HD (voladizo libre, sin apoyo lateral del suelo — supuesto conservador) para los combos 1.2D+1.0W. D/C: relación entre la magnitud vectorial de la demanda y la de la superficie resistente en la misma dirección.")
   ];
 
   const cap8 = [
     memoriaPageBreak(), memoriaH1("8. Detalle de acero de refuerzo (vista 3D)"),
     memoriaH2("8.1 Vistas del refuerzo"),
-    memoriaImagenOAviso(imgs.acero.isometrica, 15, 10),
-    memoriaImagenOAviso(imgs.acero.planta, 14, 9),
-    memoriaImagenOAviso(imgs.acero.alzadoX, 14, 9),
-    memoriaImagenOAviso(imgs.acero.alzadoZ, 14, 9),
+    ...memoriaImagenOAviso(imgs.acero.isometrica, 15, 10, "Vista isométrica"),
+    ...memoriaImagenOAviso(imgs.acero.planta, 14, 9, "Vista en planta"),
+    ...memoriaImagenOAviso(imgs.acero.alzadoX, 14, 9, "Alzado — eje X"),
+    ...memoriaImagenOAviso(imgs.acero.alzadoZ, 14, 9, "Alzado — eje Z"),
     memoriaH2("8.2 Longitudes de desarrollo (ACI 318-19 §25.4)"),
     memoriaTabla(["Varilla","Uso","ld [cm]","ldh [cm]"], [
       [state.diseno.varInf, "Lecho inferior", fmt(lenInf.ld_cm,1), fmt(lenInf.ldh_cm,1)],
       [state.diseno.varSup, "Lecho superior", fmt(lenSup.ld_cm,1), fmt(lenSup.ldh_cm,1)],
       [state.diseno.dadoVar1, "Dado — grupo 1", fmt(lenDad1.ld_cm,1), fmt(lenDad1.ldh_cm,1)],
       [state.diseno.dadoVar2, "Dado — grupo 2", fmt(lenDad2.ld_cm,1), fmt(lenDad2.ldh_cm,1)]
-    ])
+    ]),
+    memoriaNota("ld = (3/40)·(fy/(λ√f'c))·(ψtψeψsψg/factor_lim)·db (ACI 318-19 §25.4.2.3, en psi/pulgadas; factor_lim=MIN(cb/db, 2.5), cb=r+db/2), con ld ≥ 30 cm (§25.4.2.1b). ldh (gancho estándar en tracción) = 0.02·ψeψg·(fy/(λ√f'c))·db (§25.4.3.2), con ldh ≥ MAX(8db, 15 cm). Gancho estándar a 90° (§25.3.2): extensión = 12db; radio interior del doblez = 3db (#3-#5), 4db (#6-#8), 5db (#9-#11), 6db (#12+).")
   ];
 
   const cap9 = [
     memoriaPageBreak(), memoriaH1("9. Referencias normativas"),
-    memoriaP("β1 (bloque equivalente de Whitney): ACI 318-19 §22.2.2.4.3. Φ flexión y Φ cortante: Tabla 21.2.1/21.2.2. Cuantía mínima por temperatura/contracción (lechos): §24.4.3.2. Cortante en una dirección: §22.5.5.1 (λs, §22.5.5.1.3). Punzonamiento: §22.6.5.2. Compresión axial del dado: §22.4.2.1. Cuantía mínima del dado: ANSI/TIA-222-H §9.4.1. Longitudes de desarrollo y ganchos estándar: §25.4.2, §25.4.3, §25.3.2.")
-  ];
-
-  const anexos = [
-    memoriaPageBreak(), memoriaH1("Anexos"),
-    memoriaH2("A. Coordenadas completas del contorno de la zapata"),
-    memoriaTabla(["#","X [m]","Y [m]"], (state.outer||[]).map((p,i)=>[i+1, fmt(p.x,3), fmt(p.y,3)])),
-    memoriaH2("B. Tabla completa de reacciones"),
-    memoriaTabla(reacEnc, reacFilas)
+    memoriaP("Resumen de las cláusulas de ACI 318-19 y ANSI/TIA-222-H aplicadas en cada sección de esta memoria, con la fórmula que rige en cada caso."),
+    memoriaTabla(["Sección","Verificación","Norma / cláusula","Fórmula"], [
+      ["5.1","Φ de resistencia geotécnica","ANSI/TIA-222-H","Φ carga = 0.60 (arriostradas) / 0.75 (autosoportadas, monopolo)"],
+      ["5.2","Volteo","ANSI/TIA-222-H, combo 0.9D+1.0W","FSV = M_R/M_act ≥ 1.0"],
+      ["5.3","Capacidad de carga (Navier)","Mecánica clásica + Φ ANSI/TIA-222-H","τ = RFY/A + Mx·y/Ix + Mz·x/Iy ≤ Φ·QADM·FS"],
+      ["5.6","Módulo de elasticidad del concreto","ACI 318-19 §19.2.2.1","Ec = 15100·√f'c [kg/cm²]"],
+      ["6.2","Factor β1","ACI 318-19 §22.2.2.4.3","β1 = 0.85 − (f'c−280)·0.05/70, acotado [0.65, 0.85]"],
+      ["6.2","Φ flexión / Φ cortante","ACI 318-19 Tabla 21.2.1 / §21.2.2","Φ = 0.90 / 0.75"],
+      ["6.3","Acero a flexión","ACI 318-19 §22.2.2.4.1 / §22.3.2.1","As = ρbd, ρ = (0.85f'c/fy)(1−√(1−2Rn/0.85f'c))"],
+      ["6.3","Cuantía mínima por temperatura","ACI 318-19 §24.4.3.2 / Tabla 7.6.1.1","ρmin = 0.0020 (fy≤4200) u homólogo"],
+      ["6.3","Cuantía máxima (sección controlada por tracción)","ACI 318-19 §21.2.2","ρmax = (εcu/(εcu+εt))·0.85β1·(f'c/fy)"],
+      ["6.4","Cortante en una dirección","ACI 318-19 §22.5.5.1 / §22.5.5.1.3","ΦVc = Φ·0.53·λs·λ·√f'c"],
+      ["6.5","Punzonamiento","ACI 318-19 §22.6.5.1 / §22.6.5.2","ΦVc = MIN[Φ·1.06·√f'c ; Φ·0.53(1+2/β)√f'c ; Φ·0.265(2+αsd/b0)√f'c]"],
+      ["6.6.1","Cuantía mínima del dado","ANSI/TIA-222-H §9.4.1","Ast/Ag ≥ 0.005"],
+      ["6.6.2","Compresión axial del dado","ACI 318-19 §22.4.2.1 / Tabla 21.2.2","ΦPn,max = Φ·0.80·[0.85f'c(Ag−Ast)+fy·Ast], Φ=0.65"],
+      ["6.6.3","Tensión axial del dado","ACI 318-19 §21.2.2","ΦTn = Φ·Ast·fy, Φ=0.90"],
+      ["7","Interacción P-M-M","ACI 318-19 Cap. 22 (compatibilidad de deformaciones)","εsi=εcu(c−di)/c; Cc=0.85f'c·A_comp"],
+      ["8.2","Longitud de desarrollo / gancho estándar","ACI 318-19 §25.4.2.3 / §25.4.3.2 / §25.3.2","ld, ldh según fórmulas de 8.2"]
+    ])
   ];
 
   const header = new docx.Header({ children:[ new docx.Paragraph({ alignment:docx.AlignmentType.RIGHT, children:[
@@ -9039,7 +9129,7 @@ async function memoriaConstruirDocumento(imgs){
     sections:[{
       properties:{ page:{ size:{ width:docx.convertInchesToTwip(8.5), height:docx.convertInchesToTwip(11) }, margin:{top:1440,bottom:1080,left:1440,right:1080} } },
       headers:{ default: header }, footers:{ default: footer },
-      children:[ ...portada, ...cap1, ...cap2, ...cap3, ...cap4, ...cap5, ...cap6, ...cap7, ...cap8, ...cap9, ...anexos ]
+      children:[ ...portada, ...cap1, ...cap2, ...cap3, ...cap4, ...cap5, ...cap6, ...cap7, ...cap8, ...cap9 ]
     }]
   });
 }
@@ -9072,7 +9162,7 @@ async function generarMemoriaWord(){
     const png3D = await memoriaCaptureCanvas("canvas3d");
     const pngMallado = await memoriaCaptureSvg("#geoMallaDiagrama svg", 900, 560);
 
-    await memoriaActivarPestanaYEsperar("interaccion", 700);
+    await memoriaActivarPestanaYEsperar("interaccion", 1200);
     const pngPMM = await memoriaCapturePlotlyPMM();
 
     await memoriaActivarPestanaYEsperar("acero3d", 700);
@@ -9086,11 +9176,6 @@ async function generarMemoriaWord(){
     const nombreBase = `${state.proyecto.assetNum||"cimentacion"}_${state.proyecto.assetName||""}_memoria_${new Date().toISOString().slice(0,10)}`
       .replace(/\s+/g,"_").replace(/__+/g,"_");
     memoriaDescargarBlob(blob, nombreBase + ".docx");
-
-    const htmlPMM = memoriaGenerarHTMLInteraccion();
-    if(htmlPMM){
-      memoriaDescargarBlob(new Blob([htmlPMM], {type:"text/html"}), nombreBase + "_interaccion.html");
-    }
   }catch(e){
     console.error(e);
     alert("Ocurrió un error generando la memoria: " + (e && e.message ? e.message : e));
