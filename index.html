@@ -701,6 +701,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
             <tr><td>V1.6</td><td style="text-align:left">Se incorpora la adición de reacciones unitarias y se programa procedimiento de Automallado</td><td>Ing. Juan Espinosa</td><td>15/12/2025</td></tr>
             <tr><td>V1.7</td><td style="text-align:left">Se añade opción para rotar dados sobre sus ejes locales, así como discretizar la carga axial en el perímetro del dado</td><td>Ing. Juan Espinosa</td><td>12/05/2026</td></tr>
             <tr><td>V2.0</td><td style="text-align:left"><b>Desarrollo en aplicación web</b> (esta versión) — geometría, propiedades de sección, reacciones (con importación desde PDF), revisión geotécnica por volteo y capacidad portante para Autosoportada 3P, previsualización de mallado FEM "Urdimbre Mesh" y sección de Ayuda integrada</td><td>Ing. Juan Espinosa</td><td>15/07/2026</td></tr>
+            <tr><td>V2.1</td><td style="text-align:left">Se agrega exportación completa del modelo a STAAD.Pro (.STD); diseño estructural por ACI 318-19 (flexión con Wood-Armer, cortante, punzonamiento, dados de desplante) y resumen de eficiencias; diagrama de interacción P-M-M 3D del dado y vista 3D del acero de refuerzo; soporte de Autosoportada 4P y M4 (visor 3D, malla, geotécnico, diseño estructural y exportación STAAD); y exportación de la memoria de cálculo completa a Word, con fórmulas en formato de ecuación nativa</td><td>Ing. Juan Espinosa</td><td>20/07/2026</td></tr>
           </tbody>
         </table>
         <p class="small" style="margin-top:12px; color:var(--muted);">Si se requieren ajustes o revisión de cálculos contactar a los desarrolladores.</p>
@@ -1600,8 +1601,6 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
                 <button class="btn subtle" id="btnVistaPMx" type="button">P vs Mx</button>
                 <button class="btn subtle" id="btnVistaPMy" type="button">P vs My</button>
                 <button class="btn subtle" id="btnVistaMxMy" type="button">Mx vs My</button>
-                <button class="btn subtle" id="btnExportPngPMM" type="button">Exportar PNG</button>
-                <button class="btn subtle" id="btnExportCsvPMM" type="button">Exportar CSV</button>
               </div>
             </div>
             <div style="flex:0 0 230px;">
@@ -3436,12 +3435,16 @@ function computeLegCenters(cxPoly, cyPoly){
   if(reactionTypeKey(state.tipoEstructura) === "Autosoportada 4P"){
     // 4 dados en los vértices de un cuadrado de lado Lo centrado en el
     // centroide de la zapata (con corrección CX/CY) — P1a/P1b forman la
-    // fila inferior (igual convención que en 3P) y P1/P1c la fila superior.
+    // fila inferior y P1/P1c la fila superior (igual criterio que en 3P).
+    // CONFIRMADO por el usuario contra la geometría real del proyecto: dentro
+    // de cada fila, el corrimiento correcto es P1a/P1 del lado "−h" y P1b/P1c
+    // del lado "+h" (antes estaba al revés: P1b/P1c en "−h" y P1a/P1 en
+    // "+h", lo que aplicaba cada reacción al dado físico contrario).
     const h = Lo/2;
-    const P1b = { x: cxPoly - h + CX, y: cyPoly - h + CY };
-    const P1a = { x: cxPoly + h + CX, y: P1b.y };
-    const P1c = { x: P1b.x,           y: cyPoly + h + CY };
-    const P1  = { x: P1a.x,           y: P1c.y };
+    const P1a = { x: cxPoly - h + CX, y: cyPoly - h + CY };
+    const P1b = { x: cxPoly + h + CX, y: P1a.y };
+    const P1  = { x: P1a.x,           y: cyPoly + h + CY };
+    const P1c = { x: P1b.x,           y: P1.y };
     return { P1b, P1a, P1c, P1 };
   }
   const P1b = { x: cxPoly - Lo/2 + CX, y: cyPoly - Math.tan(30*Math.PI/180)*(Lo/2) + CY };
@@ -3734,7 +3737,11 @@ function getConcreteTexture3D(){
   }
   const tex = new THREE.CanvasTexture(cnv);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(4, 4);
+  // El UV de ExtrudeGeometry usa las coordenadas reales en metros (no 0-1),
+  // así que un repeat alto tilea demasiado fino para una zapata de varios
+  // metros — las motas solo se resolvían haciendo mucho zoom. Con un repeat
+  // bajo cada mota ocupa más área real y se ve a distancia normal de cámara.
+  tex.repeat.set(0.4, 0.4);
   concreteTexture3d = tex;
   return tex;
 }
@@ -3882,6 +3889,14 @@ function update3D(props, legs, dados, outerC, holeC){
           const labelY = makeForceLabelSprite3D(`Fy ${n2(row.fy)} ton`, labelH, colorY, 0.5, 0);
           labelY.position.set(cx0, topY+vLen+0.08, cz0);
           registerLabel(labelY);
+
+          // Nombre de la pata (1, 1a, 1b, 1c), por encima de TODAS las
+          // etiquetas de fuerza (para que no se tape con Fx/Fz), en el mismo
+          // color de eje/cota (negro en claro, blanco en oscuro) y un poco
+          // más grande para que se lea de un vistazo.
+          const labelNombre = makeForceLabelSprite3D(suffix, labelH*1.4, edgeColor3D, 0.5, 0);
+          labelNombre.position.set(cx0, topY+vLen+0.08+labelH*1.3, cz0);
+          registerLabel(labelNombre);
 
           // Fx: horizontal, eje mundo X. La etiqueta queda centrada
           // exactamente en la punta de la flecha (anclaje 0.5,0.5), del
@@ -5795,8 +5810,10 @@ function computeGeotecnico(props, legs){
   // invierte el signo de MZ·FY exactamente, que es justo lo que reportó el
   // usuario). Para 4P no hay Excel de referencia que justifique un cruce
   // (y el cuadrado tiene DOS pares espejo, no uno solo) — se usa mapeo
-  // directo hasta que aparezca un caso real que diga lo contrario, mismo
-  // criterio ya usado en el resto de la app (vista 3D, STAAD, punzonamiento).
+  // directo, mismo criterio ya usado en el resto de la app (vista 3D, STAAD,
+  // punzonamiento). CONFIRMADO con caso real (reacciones 1.2D+1.0W 45° y
+  // Normal de un proyecto): 1c/1 (fila superior) y 1b/1a (fila inferior) son
+  // justo el par-fila que predice el mapeo directo — sin cruce.
   const LEG_POSITION_MAP = tipoKey === "Autosoportada 3P"
     ? { "1a":"P1b", "1b":"P1a", "1":"P1" }
     : Object.fromEntries(legOrder.map(leg => [leg, "P"+leg]));
@@ -5839,17 +5856,16 @@ function computeGeotecnico(props, legs){
     const RFYTotal = pesoTotal + row.RFY;
     const exT = MzTotal / RFYTotal;
     const eyT = MxTotal / RFYTotal;
-    const isNormal = /normal/i.test(row.combo);
-    const denom = isNormal ? -MzTotal : MzTotal;
-    // OJO: antes había una guarda "denom===0 ? 90 : ..." que siempre devolvía
-    // +90 sin importar el signo — pero en JS (a diferencia de Excel) dividir
-    // por 0 NO da error, da ±Infinity, y atan(±Infinity) ya resuelve solo al
-    // ±90 correcto (con signo). Por eso el Excel real muestra "-90" para
-    // Normal (MzTotal=0), no "+90" — el IFERROR de Excel nunca llegó a
-    // activarse ahí, fue un ATAN normal tendiendo a -90°. Solo se necesita
-    // el respaldo a 90 para el caso realmente indeterminado 0/0 (NaN).
-    const anguloRaw = MxTotal/denom;
-    const angulo = isNaN(anguloRaw) ? 90 : Math.atan(anguloRaw)*180/Math.PI;
+    // OJO: el ATAN de una sola rama (portado literal del Excel) solo puede
+    // devolver -90°..+90° — no distingue si el punto de mayor compresión cae
+    // en el cuadrante "espejo" (ej. -135° vs 45°, mismo cociente Mx/Mz pero
+    // signos de Mx y Mz opuestos a los de +45°). Con atan2 se usan los
+    // signos de MxTotal y MzTotal por separado, no solo su cociente, así que
+    // resuelve los 4 cuadrantes de una — incluye gratis el caso Normal
+    // (MzTotal=0 exacto): atan2(-MxTotal,0) ya da -90° sin ningún caso
+    // especial (antes se forzaba con el truco de negar MzTotal a "-0" para
+    // que MxTotal/denom diera -Infinity en vez de +Infinity).
+    const angulo = Math.atan2(-MxTotal, MzTotal)*180/Math.PI;
     const Mact = Math.sqrt(MxTotal*MxTotal + MzTotal*MzTotal);
     return { combo:row.combo, MxTotal, MzTotal, RFYTotal, exT, eyT, angulo, Mact };
   });
@@ -5887,10 +5903,17 @@ function computeCapacidadPortante(props, outerC, rows2, PhiCarga){
     // ver plan "merry-stirring-minsky"): el término de Mx usa signo POSITIVO
     // (no negativo como en la celda G95 del Excel fuente) para ser
     // autoconsistente con cómo se define MxAdic=RFY·ey en computeGeotecnico.
-    // El término de Mz sí queda igual que el Excel (+Mz·x/Iy), ya era
-    // autoconsistente. Este ajuste es solo acá (4.3) — no se toca MxTotal
-    // en computeGeotecnico/4.2, que ya está verificado contra el Excel real.
-    const stresses = outerC.map(p => r.RFYTotal/props.area + r.MxTotal*p.y/props.Ix + r.MzTotal*p.x/props.Iy);
+    // El término de Mz usa signo NEGATIVO (-Mz·x/Iy, al revés que el Excel)
+    // — CONFIRMADO directo con el usuario señalando la esquina real: para
+    // 0.9D+1.0W 45° (MxTotal>0, MzTotal<0) el máximo esfuerzo debe caer en
+    // la esquina de la pata "1", que el usuario marcó arriba-derecha (x,y
+    // positivo,positivo). Con -Mz·x/Iy el gradiente da (-MzTotal/Iy,
+    // +MxTotal/Ix) = (positivo,positivo) ✓. OJO: esto es un ajuste EMPÍRICO
+    // (no una prueba de equilibrio) porque hay un desfase de orientación
+    // entre outerC (contorno importado) y legs (computeLegCenters) que no
+    // se rastreó a su causa raíz — no revertir este signo sin volver a
+    // confirmar contra una esquina real marcada por el usuario.
+    const stresses = outerC.map(p => r.RFYTotal/props.area + r.MxTotal*p.y/props.Ix - r.MzTotal*p.x/props.Iy);
     const maxTau = Math.max(...stresses);
     const eficiencia = QultDesign > 0 ? maxTau/QultDesign : NaN;
     // areaEfectiva/qProm quedan pendientes hasta correr la animación (clic
@@ -7060,7 +7083,10 @@ let mostrarNodosMalla = false;
 // diagrama de Navier — compartido entre las tarjetas de la grilla y el
 // modal de "Ampliar", para no duplicar la lógica del degradado.
 function navierSvgInner(row, gradId, cursorId, ctx){
-  let gx = row.MzTotal/ctx.props.Iy, gy = row.MxTotal/ctx.props.Ix;
+  // gx/gy deben tener el MISMO signo que los términos Mz/Mx de "stresses"
+  // en computeCapacidadPortante (Mz negado, Mx tal cual) para que el eje
+  // del gradiente de color coincida con los números por vértice.
+  let gx = -row.MzTotal/ctx.props.Iy, gy = row.MxTotal/ctx.props.Ix;
   const glen = Math.hypot(gx,gy);
   let pMin = {x:0,y:0}, pMax = {x:0,y:0};
   if(glen > 1e-9){
@@ -7513,12 +7539,10 @@ function renderCapacidadPortante(cap, props, outerC, holeC){
 
   // Mapa de colores por combinación: como τ(x,y) es lineal en (x,y), sus
   // líneas de igual esfuerzo son rectas paralelas, perpendiculares al
-  // gradiente analítico (∂τ/∂x, ∂τ/∂y) = (Mz/Iy, +Mx/Ix) — signo de Mx en
-  // "+" porque la fórmula de Navier de arriba (stresses[]) también usa
-  // "+Mx·y/Ix" desde el Hallazgo 1; este gradiente se había quedado con el
-  // signo viejo (−Mx/Ix) tras ese cambio, y por eso el color quedaba en
-  // espejo respecto a los valores numéricos en combinaciones donde Mx pesa
-  // (ej. 60°) — en 90° casi no se notaba porque ahí Mx≈0. El linearGradient
+  // gradiente analítico (∂τ/∂x, ∂τ/∂y) = (−Mz/Iy, +Mx/Ix) — mismos signos
+  // que la fórmula de Navier de arriba (stresses[]: "+Mx·y/Ix − Mz·x/Iy"),
+  // para que el color coincida con los números por vértice (ver esa nota
+  // de signo para el porqué de "−Mz"). El linearGradient
   // de SVG se construye con extremos SOBRE ese eje (a partir del origen,
   // que es el centroide de la zapata en este sistema de coordenadas), no
   // con dos vértices cualesquiera del polígono: usar vértices reales como
@@ -8631,8 +8655,49 @@ function showPdfImportStatus(kind, html){
 const MEMORIA_STYLES = {
   colorBrand:"1B3A6B", colorText:"242424", colorMuted:"616161",
   colorOK:"0E5C0E", colorFail:"A80000", colorBgOK:"DFF6DD", colorBgFail:"FDE7E9",
-  colorBgHead:"DEF2FF", fontBody:"Calibri", sizeBody:22, sizeSmall:18
+  colorBgHead:"DEF2FF", fontBody:"Segoe UI", sizeBody:22, sizeSmall:18
 };
+
+/* ---------- Fórmulas tipo LaTeX (ecuaciones nativas de Word) ----------
+   docx.js trae soporte de OMML (el mismo motor de "Insertar ecuación" de
+   Word) — MathFraction/MathRadical/MathSuperScript/MathSubScript. Se usa
+   para las fórmulas clave en vez de texto plano, más legibles e igual de
+   editables en Word. */
+function mathRun(texto){ return new docx.MathRun(texto); }
+// num/den aceptan texto plano O un elemento de fórmula ya armado
+// (mathSub/mathSup/mathSqrt) — antes forzaba mathRun(num) siempre, lo que
+// rompía si se le pasaba un objeto ya construido en vez de una cadena.
+function mathFrac(num, den){
+  const n = typeof num==="string" ? mathRun(num) : num;
+  const d = typeof den==="string" ? mathRun(den) : den;
+  return new docx.MathFraction({ numerator:[n], denominator:[d] });
+}
+function mathSqrt(...hijos){
+  return new docx.MathRadical({ children: hijos.map(h => typeof h==="string" ? mathRun(h) : h) });
+}
+function mathSup(base, exp){
+  return new docx.MathSuperScript({ children:[mathRun(base)], superScript:[mathRun(exp)] });
+}
+function mathSub(base, sub){
+  return new docx.MathSubScript({ children:[mathRun(base)], subScript:[mathRun(sub)] });
+}
+// Párrafo centrado con la ecuación — recibe los "hijos" de fórmula ya
+// armados (mathRun/mathFrac/mathSqrt/mathSup/mathSub, mezclados libremente).
+function memoriaFormula(...hijos){
+  return new docx.Paragraph({
+    alignment: docx.AlignmentType.CENTER,
+    spacing:{before:80, after:160},
+    children:[ new docx.Math({ children: hijos.map(h => typeof h==="string" ? mathRun(h) : h) }) ]
+  });
+}
+// Celda de tabla con una ecuación (para la tabla-resumen de la sección 9) —
+// mismos "hijos" que memoriaFormula, pero dentro de un docx.TableCell.
+function memoriaCeldaFormula(...hijos){
+  return new docx.TableCell({
+    children:[ new docx.Paragraph({ children:[ new docx.Math({ children: hijos.map(h => typeof h==="string" ? mathRun(h) : h) }) ] }) ],
+    margins: MEMORIA_CELL_MARGINS
+  });
+}
 
 // Espaciado explícito antes/después: sin esto, un título quedaba pegado
 // directo al punto final del párrafo anterior (reportado por el usuario).
@@ -8645,23 +8710,29 @@ function memoriaNota(text){
 }
 const memoriaPageBreak = () => new docx.Paragraph({ children:[new docx.PageBreak()] });
 
+// Margen interno de celda (arriba/abajo un poco más generoso que el default
+// de docx.js, que deja las filas casi sin aire — reportado como "muy
+// compacta" en la tabla de la sección 9, pero aplica parejo a toda tabla).
+const MEMORIA_CELL_MARGINS = { top:120, bottom:120, left:100, right:100 };
 function memoriaCelda(texto, opts={}){
   return new docx.TableCell({
     children:[ new docx.Paragraph({ children:[new docx.TextRun({ text:String(texto), size:MEMORIA_STYLES.sizeSmall, bold:!!opts.bold })] }) ],
-    shading: opts.fill ? { fill:opts.fill } : undefined
+    shading: opts.fill ? { fill:opts.fill } : undefined,
+    margins: MEMORIA_CELL_MARGINS
   });
 }
 function memoriaBadgeCell(cumple, texto){
   return new docx.TableCell({
     children:[ new docx.Paragraph({ children:[new docx.TextRun({ text: texto || (cumple ? "CUMPLE" : "NO CUMPLE"), bold:true, size:MEMORIA_STYLES.sizeSmall, color: cumple ? MEMORIA_STYLES.colorOK : MEMORIA_STYLES.colorFail })] }) ],
-    shading:{ fill: cumple ? MEMORIA_STYLES.colorBgOK : MEMORIA_STYLES.colorBgFail }
+    shading:{ fill: cumple ? MEMORIA_STYLES.colorBgOK : MEMORIA_STYLES.colorBgFail },
+    margins: MEMORIA_CELL_MARGINS
   });
 }
 // Tabla simple: encabezados (array de texto) + filas (array de arrays de
 // texto o de docx.TableCell ya construidas, ej. memoriaBadgeCell).
 function memoriaTabla(encabezados, filas){
   const header = new docx.TableRow({ tableHeader:true, children: encabezados.map(h=>
-    new docx.TableCell({ children:[new docx.Paragraph({ children:[new docx.TextRun({text:h, bold:true, size:MEMORIA_STYLES.sizeSmall})] })], shading:{fill:MEMORIA_STYLES.colorBgHead} })
+    new docx.TableCell({ children:[new docx.Paragraph({ children:[new docx.TextRun({text:h, bold:true, size:MEMORIA_STYLES.sizeSmall})] })], shading:{fill:MEMORIA_STYLES.colorBgHead}, margins:MEMORIA_CELL_MARGINS })
   )});
   const rows = filas.map(fila => new docx.TableRow({ children: fila.map(c => (c instanceof docx.TableCell) ? c : memoriaCelda(c)) }));
   return new docx.Table({ width:{size:100, type:docx.WidthType.PERCENTAGE}, rows:[header, ...rows] });
@@ -8709,41 +8780,66 @@ function memoriaCaptureCanvas(canvasId){
   });
 }
 
-// Captura del diagrama P-M-M para la memoria — NO reutiliza la vista
-// interactiva tal cual: esa vista sigue el tema (fondo transparente, baja
-// opacidad para verse bien sobre fondo oscuro) y al exportarla a PNG sobre
-// una página de Word blanca, la superficie resistente/nominal queda casi
-// invisible y solo se distinguen los puntos de demanda (reportado por el
-// usuario). Se arma un layout aparte, con fondo blanco y opacidades más
-// altas, SOLO para esta captura, y se restaura la vista normal al final.
+// Captura del diagrama P-M-M para la memoria — confirmado con el propio
+// botón "Exportar PNG" de la app (Plotly.downloadImage, que usa el mismo
+// mecanismo que Plotly.toImage): Plotly NO incluye mallas 3D (mesh3d)
+// semi-transparentes en la imagen estática exportada, aunque se vean bien
+// en la vista interactiva — es una limitación de Plotly.js, no algo de
+// esta app. Forzar opacity:1 en las mallas "arregla" el export pero tapa
+// por completo lo que hay adentro: la superficie Resistente está SIEMPRE
+// geométricamente contenida dentro de la Nominal (Resistente = Nominal
+// reducida por Φ en cada punto), así que una Nominal opaca la tapa entera
+// sin importar el ángulo de cámara — y un punto de demanda que CUMPLE
+// (D/C≤1) está, por definición, dentro de la Resistente, así que una
+// Resistente opaca también lo tapa. No hay ángulo de cámara ni vista 2D
+// que evite esto con superficies sólidas.
+//
+// Solución real: dibujar ambas superficies como MALLA DE ALAMBRE
+// (líneas scatter3d, no mesh3d relleno) en vez de superficies sólidas —
+// las líneas SÍ exportan bien (los puntos de demanda, también scatter3d,
+// siempre se vieron correctamente en todos los intentos anteriores). Con
+// líneas en vez de relleno se ve el contorno de ambas superficies Y lo que
+// hay adentro (el punto de demanda), sin ningún problema de transparencia
+// ni de oclusión.
+function memoriaWireframePMM(traces, puntos, color, nombre, pasoAngulo, pasoProf){
+  if(!puntos || !puntos.length) return;
+  const nAng = PMM_N_ANGULOS, nProf = PMM_N_PROF;
+  let primera = true;
+  for(let ia=0; ia<nAng; ia+=pasoAngulo){
+    const pts = puntos.slice(ia*nProf, ia*nProf+nProf);
+    traces.push({
+      type:"scatter3d", mode:"lines",
+      x:pts.map(p=>p.Mnx), y:pts.map(p=>p.Mny), z:pts.map(p=>p.Pn),
+      line:{color, width:2.5}, hoverinfo:"skip",
+      showlegend:primera, name:nombre
+    });
+    primera = false;
+  }
+  for(let ic=0; ic<nProf; ic+=pasoProf){
+    const pts = [];
+    for(let ia=0; ia<=nAng; ia++) pts.push(puntos[(ia%nAng)*nProf+ic]);
+    traces.push({
+      type:"scatter3d", mode:"lines",
+      x:pts.map(p=>p.Mnx), y:pts.map(p=>p.Mny), z:pts.map(p=>p.Pn),
+      line:{color, width:2.5}, hoverinfo:"skip", showlegend:false
+    });
+  }
+}
+
 async function memoriaCapturePlotlyPMM(){
   const el = document.getElementById("interaccionPlot");
   if(!el || typeof Plotly === "undefined" || !lastPMM) return null;
   const { sup, demandas, dc } = lastPMM;
-  const caras = carasGridPMM(PMM_N_ANGULOS, PMM_N_PROF);
   const traces = [];
-  if(sup && sup.resistente && sup.resistente.length){
-    traces.push({
-      type:"mesh3d", i:caras.i, j:caras.j, k:caras.k,
-      x: sup.resistente.map(p=>p.Mnx), y: sup.resistente.map(p=>p.Mny), z: sup.resistente.map(p=>p.Pn),
-      color:"#1B3A6B", opacity:0.55, flatshading:true, lighting:{ambient:0.85},
-      name:"Resistente ɸPn-ɸMnx-ɸMny", hoverinfo:"skip"
-    });
-  }
-  if(sup && sup.nominal && sup.nominal.length){
-    traces.push({
-      type:"mesh3d", i:caras.i, j:caras.j, k:caras.k,
-      x: sup.nominal.map(p=>p.Mnx), y: sup.nominal.map(p=>p.Mny), z: sup.nominal.map(p=>p.Pn),
-      color:"#4A90D9", opacity:0.22, name:"Nominal Pn-Mnx-Mny", hoverinfo:"skip"
-    });
-  }
+  memoriaWireframePMM(traces, sup.nominal, "#93C5FD", "Nominal Pn-Mnx-Mny", 6, 5);
+  memoriaWireframePMM(traces, sup.resistente, "#1B3A6B", "Resistente ɸPn-ɸMnx-ɸMny", 6, 5);
   if(demandas && demandas.length){
     const colores = demandas.map((d,i)=> (dc[i]<=1 ? "#2E7D32" : "#C62828"));
     traces.push({
       type:"scatter3d", mode:"markers",
       x: demandas.map(d=>d.Mux), y: demandas.map(d=>d.Muy), z: demandas.map(d=>d.Pu),
       marker:{ size:6, color:colores, line:{color:"#000000", width:1}, symbol:"circle" },
-      name:"Demanda por combinación", hoverinfo:"skip"
+      name:"Demanda por combinación"
     });
   }
   function ejeExport(titulo){
@@ -8754,21 +8850,15 @@ async function memoriaCapturePlotlyPMM(){
     scene:{ xaxis:ejeExport("Mx [Tn-m]"), yaxis:ejeExport("My [Tn-m]"), zaxis:ejeExport("P [Tn]"), aspectmode:"auto" },
     showlegend:true, legend:{x:0, y:1, font:{color:"#242424"}}, margin:{l:0, r:0, t:10, b:0}
   };
-  if(!traces.length) return null;
   try{
-    // newPlot (no react): fuerza una reconstrucción completa del gráfico —
-    // react() puede preservar cámara/rango de ejes de la vista interactiva
-    // previa, lo que en pruebas dejaba el encuadre ajustado solo a los
-    // puntos de demanda (escala mucho menor que la superficie) y esta
-    // aparecía fuera de cuadro/sin entrada en la leyenda.
     await Plotly.newPlot(el, traces, layout, {displaylogo:false});
-    await new Promise(r=>setTimeout(r, 400)); // deja pintar el canvas WebGL antes de capturar
-    return await Plotly.toImage(el, { format:"png", width:1200, height:850, scale:2 });
+    await new Promise(r=>setTimeout(r, 600));
+    return (await Plotly.toImage(el, { format:"png", width:1200, height:850, scale:2 })) || null;
   }catch(e){
     console.error(e);
     return null;
   }finally{
-    renderizarPMM(); // restaura la vista interactiva normal (tema/checkboxes/opacidad reales)
+    renderizarPMM(); // restaura la vista interactiva normal (superficies sólidas)
   }
 }
 
@@ -8906,14 +8996,14 @@ async function memoriaConstruirDocumento(imgs){
     new docx.Paragraph({ alignment:docx.AlignmentType.CENTER, spacing:{after:400},
       children:[ new docx.TextRun({ text:"Zapata/Losa General — Análisis geotécnico y estructural", size:24, color:MEMORIA_STYLES.colorMuted }) ] }),
     memoriaTablaProps([
-      ["Asset N°", pr.assetNum||"—"], ["Nombre", pr.assetName||"—"], ["País/Sitio", pr.country||"—"],
-      ["Ingeniero", pr.engineer||"—"], ["Fecha de emisión", pr.date||fecha], ["Solicitud/Revisión", pr.request||"—"],
-      ["Tipo de estructura", state.tipoEstructura]
+      ["Asset N°", (pr.assetNum||"—").toUpperCase()], ["Nombre", (pr.assetName||"—").toUpperCase()], ["País/Sitio", (pr.country||"—").toUpperCase()],
+      ["Ingeniero", (pr.engineer||"—").toUpperCase()], ["Fecha de emisión", (pr.date||fecha).toUpperCase()], ["Solicitud/Revisión", (pr.request||"—").toUpperCase()],
+      ["Tipo de estructura", state.tipoEstructura.toUpperCase()]
     ]),
     new docx.Paragraph({ spacing:{before:300}, children:[ new docx.TextRun({ text:"Norma: ANSI/TIA-222-H  |  Método: LRFD (ACI 318-19)  |  Unidades: kg/cm², Tn, Tn·m, m, cm", italics:true, size:MEMORIA_STYLES.sizeSmall, color:MEMORIA_STYLES.colorMuted }) ] }),
     memoriaPageBreak(),
     new docx.TableOfContents("Índice", { hyperlink:true, headingStyleRange:"1-3" }),
-    memoriaPageBreak()
+    memoriaNota("(En Word: clic derecho sobre el índice → \"Actualizar campo\" → \"Actualizar todo el índice\", para que muestre las secciones y páginas reales.)")
   ];
 
   const cap1 = [
@@ -8982,12 +9072,16 @@ async function memoriaConstruirDocumento(imgs){
       memoriaTabla(["Combinación","Brazo [m]","M resistente [Tn·m]","FSV","Eficiencia"],
         geo.rows2.map(r=>[r.combo, r.brazo!=null?fmt(r.brazo,3):"—", r.MR!=null?fmt(r.MR,3):"—",
           r.FSV!=null?fmt(r.FSV,3):"—", r.eficienciaVolteo!=null&&isFinite(r.eficienciaVolteo)?fmt(r.eficienciaVolteo*100,0)+"%":"—"])),
-      memoriaNota("FSV = M resistente (M_R) / M actuante (M_act), con M_act = √(Mx_Total² + Mz_Total²) el momento resultante en la base de la zapata. Combos revisados: 0.9D + 1.0W (mínima carga muerta, caso crítico ante viento — ANSI/TIA-222-H). Eficiencia = 1/FSV; se considera aceptable FSV ≥ 1.0.")
+      memoriaFormula("FSV = ", mathFrac(mathSub("M","R"), mathSub("M","act"))),
+      memoriaFormula(mathSub("M","act"), " = ", mathSqrt(mathSup("Mx_Total","2"), " + ", mathSup("Mz_Total","2"))),
+      memoriaNota("M_act: momento resultante en la base de la zapata. Combos revisados: 0.9D + 1.0W (mínima carga muerta, caso crítico ante viento — ANSI/TIA-222-H). Eficiencia = 1/FSV; se considera aceptable FSV ≥ 1.0.")
     ] : []),
     ...(cap && cap.rows ? [
       memoriaH2("5.3 Revisión por capacidad de carga — Ley de Navier"),
       memoriaTabla(["Combinación","Eficiencia"], cap.rows.map(r=>[r.combo, isFinite(r.eficiencia)?fmt(r.eficiencia*100,0)+"%":"—"])),
-      memoriaNota("τ(x,y) = RFY_Total/Área + Mx_Total·y/Ix + Mz_Total·x/Iy, evaluado en cada vértice del contorno de la zapata (Ix, Iy respecto al centroide de la sección). El esfuerzo máximo se compara contra Φ·Qult = Φ·QADM·FS, con Φ el factor de reducción de capacidad portante de ANSI/TIA-222-H (0.60 arriostradas, 0.75 autosoportadas/monopolo).")
+      memoriaFormula("τ(x,y) = ", mathFrac("RFY_Total","Área"), " + ", mathFrac("Mx_Total·y","Ix"), " + ", mathFrac("Mz_Total·x","Iy")),
+      memoriaFormula("Φ·Qult = Φ·QADM·FS"),
+      memoriaNota("Evaluada en cada vértice del contorno de la zapata (Ix, Iy respecto al centroide de la sección). El esfuerzo máximo se compara contra Φ·Qult, con Φ el factor de reducción de capacidad portante de ANSI/TIA-222-H (0.60 arriostradas, 0.75 autosoportadas/monopolo).")
     ] : []),
     memoriaH2("5.4 Mallado FEM"),
     ...memoriaImagenOAviso(imgs.pngMallado, 15, 9),
@@ -8996,7 +9090,8 @@ async function memoriaConstruirDocumento(imgs){
     memoriaTablaProps([["Método", state.geom.metodoBalasto||"—", ""], ["K (interno)", fmt(getKBalastoKgm3(),2), "kg/m³"]]),
     memoriaH2("5.6 Propiedades del concreto"),
     memoriaTablaProps([["Ec", fmt(pc.Ec,0), "kg/cm²"], ["G", fmt(pc.G,0), "kg/cm²"], ["ν (relación de Poisson)", fmt(pc.v,3), ""]]),
-    memoriaNota("Ec = 15100·√f'c [kg/cm²] (ACI 318-19 §19.2.2.1 — coeficiente equivalente en kg/cm² a 4700·√f'c en MPa). G = Ec/(2·(1+ν)).")
+    memoriaFormula("Ec = 15100·", mathSqrt("f'c"), "  [kg/cm²]"),
+    memoriaNota("ACI 318-19 §19.2.2.1 — coeficiente equivalente en kg/cm² a 4700·√f'c en MPa. G = Ec/(2·(1+ν)).")
   ];
 
   const cap6 = [
@@ -9016,12 +9111,17 @@ async function memoriaConstruirDocumento(imgs){
     memoriaH3("6.3.1 Lecho inferior"),
     memoriaTablaProps([["Mu", fmt(muInferior,3), "Tn·m/m"], ["As requerido", fmt(flexInf.asReq,2), "cm²/m"],
       ["Varilla propuesta", state.diseno.varInf, ""], ["Separación", fmt(calcularSeparacionVarilla(flexInf.asReq, state.diseno.varInf).separacion,0), "cm"]]),
-    memoriaNota("As = ρ·b·d (b=100 cm), con ρ = (0.85f'c/fy)·(1−√(1−2Rn/(0.85f'c))) y Rn = Mu/(Φ·b·d²) (ACI 318-19 §22.2.2.4.1, bloque equivalente de Whitney; §22.3.2.1, Mn=As·fy(d−a/2), resuelto en forma cerrada para ρ). ρ se acota entre ρmin, por temperatura y contracción (§24.4.3.2/Tabla 7.6.1.1 — no §9.6.1.2, que es para vigas), y ρmax = (εcu/(εcu+εt))·0.85β1·(f'c/fy), con εcu=0.003 y εt=0.005 (§21.2.2, sección controlada por tracción)."),
+    memoriaFormula("As = ρ·b·d          Rn = ", mathFrac("Mu","Φ·b·d²")),
+    memoriaFormula("ρ = ", mathFrac("0.85f'c","fy"), "·(1 − ", mathSqrt("1 − 2", mathFrac("Rn","0.85f'c")), ")"),
+    memoriaFormula("ρmax = ", mathFrac("εcu","εcu + εt"), "·0.85·β1·", mathFrac("f'c","fy")),
+    memoriaNota("b=100 cm (franja de 1 m). ACI 318-19 §22.2.2.4.1 (bloque equivalente de Whitney) y §22.3.2.1 (Mn=As·fy(d−a/2), resuelto en forma cerrada para ρ). ρ se acota entre ρmin, por temperatura y contracción (§24.4.3.2/Tabla 7.6.1.1 — no §9.6.1.2, que es para vigas), y ρmax (arriba), con εcu=0.003 y εt=0.005 (§21.2.2, sección controlada por tracción)."),
     memoriaH3("6.3.2 Comparación con acero existente — lecho inferior"),
     memoriaTablaProps([["As real", fmt(existInf.asReal,2), "cm²/m"], ["ΦMn", fmt(existInf.phiMn,3), "Tn·m/m"],
       ["% Momento (Mu/ΦMn)", isFinite(existInf.effMomento)?fmt(existInf.effMomento*100,0)+"%":"—", ""],
       ["% Acero (As req/As real)", isFinite(existInf.effAcero)?fmt(existInf.effAcero*100,0)+"%":"—", ""]]),
-    memoriaNota("ΦMn = Φ·As_real·fy·(d−a/2), con a = As_real·fy/(0.85f'c·b) — equilibrio real de la sección (ACI 318-19 §22.3.2.1), no la aproximación Mn≈As·fy·d·(1−0.5ρ) de métodos simplificados."),
+    memoriaFormula("ΦMn = Φ·", mathSub("As","real"), "·fy·(d − ", mathFrac("a","2"), ")"),
+    memoriaFormula("a = ", mathFrac("As,real·fy","0.85·f'c·b")),
+    memoriaNota("Equilibrio real de la sección (ACI 318-19 §22.3.2.1), no la aproximación Mn≈As·fy·d·(1−0.5ρ) de métodos simplificados."),
     memoriaH3("6.3.3 Lecho superior"),
     memoriaTablaProps([["Mu", fmt(muSuperior,3), "Tn·m/m"], ["As requerido", fmt(flexSup.asReq,2), "cm²/m"],
       ["Varilla propuesta", state.diseno.varSup, ""], ["Separación", fmt(calcularSeparacionVarilla(flexSup.asReq, state.diseno.varSup).separacion,0), "cm"]]),
@@ -9030,19 +9130,25 @@ async function memoriaConstruirDocumento(imgs){
     memoriaTablaProps([["As real", fmt(existSup.asReal,2), "cm²/m"], ["ΦMn", fmt(existSup.phiMn,3), "Tn·m/m"],
       ["% Momento (Mu/ΦMn)", isFinite(existSup.effMomento)?fmt(existSup.effMomento*100,0)+"%":"—", ""],
       ["% Acero (As req/As real)", isFinite(existSup.effAcero)?fmt(existSup.effAcero*100,0)+"%":"—", ""]]),
-    memoriaNota("ΦMn = Φ·As_real·fy·(d−a/2), misma ecuación de equilibrio de 6.3.2 (ACI 318-19 §22.3.2.1)."),
+    memoriaNota("Misma ecuación de equilibrio de 6.3.2 (ΦMn = Φ·As,real·fy·(d−a/2), ACI 318-19 §22.3.2.1)."),
     memoriaH2("6.4 Revisión por cortante en una dirección"),
     new docx.Table({ width:{size:100,type:docx.WidthType.PERCENTAGE}, rows:[
       new docx.TableRow({tableHeader:true, children:["Eje","Vu [Tn/m²]","ΦVc [Tn/m²]","Eficiencia","Resultado"].map(h=>memoriaCelda(h,{bold:true,fill:MEMORIA_STYLES.colorBgHead}))}),
       new docx.TableRow({children:[memoriaCelda("X"), memoriaCelda(fmt(cort.vux,3)), memoriaCelda(fmt(cort.phiVc,3)), memoriaCelda(isFinite(cort.eficienciaX)?fmt(cort.eficienciaX*100,0)+"%":"—"), memoriaBadgeCell(cort.eficienciaX<=1)]}),
       new docx.TableRow({children:[memoriaCelda("Y"), memoriaCelda(fmt(cort.vuy,3)), memoriaCelda(fmt(cort.phiVc,3)), memoriaCelda(isFinite(cort.eficienciaY)?fmt(cort.eficienciaY*100,0)+"%":"—"), memoriaBadgeCell(cort.eficienciaY<=1)]})
     ]}),
-    memoriaNota("ΦVc = Φ·0.53·λs·λ·√f'c [kg/cm² → Tn/m²] (ACI 318-19 §22.5.5.1 — equivalente a 0.17√f'c en MPa). λs = √(2/(1+0.04d)) ≤ 1, d en cm (§22.5.5.1.3, factor de efecto de tamaño). λ=1.0, concreto de peso normal (§19.2.4.2). Vu = MAX(|SQX|) y MAX(|SQY|) de la malla de placas (6.1), evaluados por eje SEPARADAMENTE (misma ΦVc para ambos, solo cambia la demanda)."),
+    memoriaFormula("ΦVc = Φ·0.53·", mathSub("λ","s"), "·λ·", mathSqrt("f'c"), "   [kg/cm² → Tn/m²]"),
+    memoriaFormula(mathSub("λ","s"), " = ", mathSqrt(mathFrac("2","1 + 0.04·d")), " ≤ 1   (d en cm)"),
+    memoriaNota("ACI 318-19 §22.5.5.1 (equivalente a 0.17√f'c en MPa) y §22.5.5.1.3 (λs, factor de efecto de tamaño). λ=1.0, concreto de peso normal (§19.2.4.2). Vu = MAX(|SQX|) y MAX(|SQY|) de la malla de placas (6.1), evaluados por eje SEPARADAMENTE (misma ΦVc para ambos, solo cambia la demanda)."),
     memoriaH2("6.5 Revisión por punzonamiento"),
     memoriaTablaProps([["Vu", fmt(punz.vu,3), "Tn/m²"], ["ΦVc (gobierna)", fmt(punz.phiVc,3), "Tn/m²"],
       ["Eficiencia", isFinite(punz.eficiencia)?fmt(punz.eficiencia*100,0)+"%":"—", ""]]),
     memoriaBadgeParrafo(isFinite(punz.eficiencia) && punz.eficiencia<=1),
-    memoriaNota("Vu = Pu(dado) − qu·(c1·c2), con qu = presión de suelo promedio (ΣPu de las reacciones/Área de la zapata) para el combo 1.2D+1.0W crítico (ACI 318-19 §22.6.5.1). ΦVc = MIN de tres expresiones [kg/cm²] (§22.6.5.2): (a) Φ·1.06·λs·λ·√f'c; (b) Φ·0.53·(1+2/β)·λs·λ·√f'c, con β=MAX(c1,c2)/MIN(c1,c2) (c1,c2 reales, sin asumir dado cuadrado); (c) Φ·0.265·(2+αs·d/b0)·λs·λ·√f'c, con αs=40 (columna interior). Equivalentes en MPa: 0.33√f'c / 0.17(1+2/β)√f'c / 0.083(2+αsd/b0)√f'c."),
+    memoriaFormula("Vu = Pu(dado) − qu·(c1·c2)"),
+    memoriaFormula("(a)  ΦVc = Φ·1.06·", mathSub("λ","s"), "·λ·", mathSqrt("f'c")),
+    memoriaFormula("(b)  ΦVc = Φ·0.53·(1 + ", mathFrac("2","β"), ")·", mathSub("λ","s"), "·λ·", mathSqrt("f'c")),
+    memoriaFormula("(c)  ΦVc = Φ·0.265·(2 + ", mathSub("α","s"), "·", mathFrac("d","b0"), ")·", mathSub("λ","s"), "·λ·", mathSqrt("f'c")),
+    memoriaNota("ΦVc = MIN(a, b, c) [kg/cm²] (ACI 318-19 §22.6.5.2). qu = presión de suelo promedio (ΣPu de las reacciones/Área de la zapata) para el combo 1.2D+1.0W crítico (§22.6.5.1). β=MAX(c1,c2)/MIN(c1,c2), con c1,c2 reales (sin asumir dado cuadrado). αs=40 (columna interior). Equivalentes en MPa: 0.33√f'c / 0.17(1+2/β)√f'c / 0.083(2+αsd/b0)√f'c."),
     memoriaH2("6.6 Revisión de dados de desplante"),
     memoriaH3("6.6.1 Armado del dado"),
     memoriaTablaProps([["Grupo 1", `${state.diseno.dadoN1}×${state.diseno.dadoVar1}`, ""], ["Grupo 2", `${state.diseno.dadoN2}×${state.diseno.dadoVar2}`, ""],
@@ -9054,12 +9160,14 @@ async function memoriaConstruirDocumento(imgs){
     memoriaTablaProps([["Pu", fmt(compDado.pu,3), "Tn"], ["ΦPn,max", fmt(compDado.phiPnMax,3), "Tn"],
       ["Eficiencia", isFinite(compDado.eficiencia)?fmt(compDado.eficiencia*100,0)+"%":"—", ""]]),
     memoriaBadgeParrafo(isFinite(compDado.eficiencia) && compDado.eficiencia<=1),
-    memoriaNota("ΦPn,max = Φ·0.80·[0.85f'c·(Ag−Ast) + fy·Ast], con Φ=0.65 para miembros con estribos rectangulares (ACI 318-19 §22.4.2.1 y Tabla 21.2.2 — el factor 0.80 limita la excentricidad mínima accidental). Pu = MAX entre los dados físicos y los combos estructurales 1.2D+1.0W (en configuración M4, suma de las 4 reacciones sobre el pedestal único compartido)."),
+    memoriaFormula("Φ", mathSub("P","n,max"), " = Φ·0.80·[0.85·f'c·(Ag − Ast) + fy·Ast]"),
+    memoriaNota("Φ=0.65 para miembros con estribos rectangulares (ACI 318-19 §22.4.2.1 y Tabla 21.2.2 — el factor 0.80 limita la excentricidad mínima accidental). Pu = MAX entre los dados físicos y los combos estructurales 1.2D+1.0W (en configuración M4, suma de las 4 reacciones sobre el pedestal único compartido)."),
     memoriaH3("6.6.3 Revisión por tensión axial"),
     memoriaTablaProps([["Tu", fmt(tenDado.tu,3), "Tn"], ["ΦTn", fmt(tenDado.phiTn,3), "Tn"],
       ["Eficiencia", isFinite(tenDado.eficiencia)?fmt(tenDado.eficiencia*100,0)+"%":"—", ""]]),
     memoriaBadgeParrafo(isFinite(tenDado.eficiencia) && tenDado.eficiencia<=1),
-    memoriaNota("ΦTn = Φ·Ast·fy, con Φ=0.90 (mismo Φ de flexión, comportamiento controlado por tracción, ACI 318-19 §21.2.2) — resistido únicamente por el acero longitudinal del dado, ya que el concreto se agrieta ante tensión. Tu = ABS(MIN) entre los dados físicos y los combos estructurales 1.2D+1.0W (suma de las 4 reacciones en M4).")
+    memoriaFormula("Φ", mathSub("T","n"), " = Φ·Ast·fy"),
+    memoriaNota("Φ=0.90 (mismo Φ de flexión, comportamiento controlado por tracción, ACI 318-19 §21.2.2) — resistido únicamente por el acero longitudinal del dado, ya que el concreto se agrieta ante tensión. Tu = ABS(MIN) entre los dados físicos y los combos estructurales 1.2D+1.0W (suma de las 4 reacciones en M4).")
   ];
 
   const dcMax = lastPMM && lastPMM.dc && lastPMM.dc.length ? Math.max(...lastPMM.dc.filter(isFinite), 0) : NaN;
@@ -9091,46 +9199,89 @@ async function memoriaConstruirDocumento(imgs){
       [state.diseno.dadoVar1, "Dado — grupo 1", fmt(lenDad1.ld_cm,1), fmt(lenDad1.ldh_cm,1)],
       [state.diseno.dadoVar2, "Dado — grupo 2", fmt(lenDad2.ld_cm,1), fmt(lenDad2.ldh_cm,1)]
     ]),
-    memoriaNota("ld = (3/40)·(fy/(λ√f'c))·(ψtψeψsψg/factor_lim)·db (ACI 318-19 §25.4.2.3, en psi/pulgadas; factor_lim=MIN(cb/db, 2.5), cb=r+db/2), con ld ≥ 30 cm (§25.4.2.1b). ldh (gancho estándar en tracción) = 0.02·ψeψg·(fy/(λ√f'c))·db (§25.4.3.2), con ldh ≥ MAX(8db, 15 cm). Gancho estándar a 90° (§25.3.2): extensión = 12db; radio interior del doblez = 3db (#3-#5), 4db (#6-#8), 5db (#9-#11), 6db (#12+).")
+    memoriaFormula("ld = ", mathFrac("3","40"), "·", mathFrac("fy","λ·√f'c"), "·", mathFrac("ψt·ψe·ψs·ψg","factor_lim"), "·db"),
+    memoriaFormula(mathSub("ld","h"), " = 0.02·ψe·ψg·", mathFrac("fy","λ·√f'c"), "·db"),
+    memoriaNota("ACI 318-19 §25.4.2.3 (ld, en psi/pulgadas; factor_lim=MIN(cb/db, 2.5), cb=r+db/2, ld≥30 cm por §25.4.2.1b) y §25.4.3.2 (ldh, gancho estándar en tracción, ldh≥MAX(8db,15 cm)). Gancho estándar a 90° (§25.3.2): extensión = 12db; radio interior del doblez = 3db (#3-#5), 4db (#6-#8), 5db (#9-#11), 6db (#12+).")
   ];
 
   const cap9 = [
     memoriaPageBreak(), memoriaH1("9. Referencias normativas"),
     memoriaP("Resumen de las cláusulas de ACI 318-19 y ANSI/TIA-222-H aplicadas en cada sección de esta memoria, con la fórmula que rige en cada caso."),
     memoriaTabla(["Sección","Verificación","Norma / cláusula","Fórmula"], [
-      ["5.1","Φ de resistencia geotécnica","ANSI/TIA-222-H","Φ carga = 0.60 (arriostradas) / 0.75 (autosoportadas, monopolo)"],
-      ["5.2","Volteo","ANSI/TIA-222-H, combo 0.9D+1.0W","FSV = M_R/M_act ≥ 1.0"],
-      ["5.3","Capacidad de carga (Navier)","Mecánica clásica + Φ ANSI/TIA-222-H","τ = RFY/A + Mx·y/Ix + Mz·x/Iy ≤ Φ·QADM·FS"],
-      ["5.6","Módulo de elasticidad del concreto","ACI 318-19 §19.2.2.1","Ec = 15100·√f'c [kg/cm²]"],
-      ["6.2","Factor β1","ACI 318-19 §22.2.2.4.3","β1 = 0.85 − (f'c−280)·0.05/70, acotado [0.65, 0.85]"],
-      ["6.2","Φ flexión / Φ cortante","ACI 318-19 Tabla 21.2.1 / §21.2.2","Φ = 0.90 / 0.75"],
-      ["6.3","Acero a flexión","ACI 318-19 §22.2.2.4.1 / §22.3.2.1","As = ρbd, ρ = (0.85f'c/fy)(1−√(1−2Rn/0.85f'c))"],
-      ["6.3","Cuantía mínima por temperatura","ACI 318-19 §24.4.3.2 / Tabla 7.6.1.1","ρmin = 0.0020 (fy≤4200) u homólogo"],
-      ["6.3","Cuantía máxima (sección controlada por tracción)","ACI 318-19 §21.2.2","ρmax = (εcu/(εcu+εt))·0.85β1·(f'c/fy)"],
-      ["6.4","Cortante en una dirección","ACI 318-19 §22.5.5.1 / §22.5.5.1.3","ΦVc = Φ·0.53·λs·λ·√f'c"],
-      ["6.5","Punzonamiento","ACI 318-19 §22.6.5.1 / §22.6.5.2","ΦVc = MIN[Φ·1.06·√f'c ; Φ·0.53(1+2/β)√f'c ; Φ·0.265(2+αsd/b0)√f'c]"],
-      ["6.6.1","Cuantía mínima del dado","ANSI/TIA-222-H §9.4.1","Ast/Ag ≥ 0.005"],
-      ["6.6.2","Compresión axial del dado","ACI 318-19 §22.4.2.1 / Tabla 21.2.2","ΦPn,max = Φ·0.80·[0.85f'c(Ag−Ast)+fy·Ast], Φ=0.65"],
-      ["6.6.3","Tensión axial del dado","ACI 318-19 §21.2.2","ΦTn = Φ·Ast·fy, Φ=0.90"],
-      ["7","Interacción P-M-M","ACI 318-19 Cap. 22 (compatibilidad de deformaciones)","εsi=εcu(c−di)/c; Cc=0.85f'c·A_comp"],
-      ["8.2","Longitud de desarrollo / gancho estándar","ACI 318-19 §25.4.2.3 / §25.4.3.2 / §25.3.2","ld, ldh según fórmulas de 8.2"]
+      ["5.1","Φ de resistencia geotécnica","ANSI/TIA-222-H",
+        memoriaCeldaFormula(mathSub("Φ","carga"), " = 0.60 / 0.75")],
+      ["5.2","Volteo","ANSI/TIA-222-H, combo 0.9D+1.0W",
+        memoriaCeldaFormula("FSV = ", mathFrac(mathSub("M","R"), mathSub("M","act")), " ≥ 1.0")],
+      ["5.3","Capacidad de carga (Navier)","Mecánica clásica + Φ ANSI/TIA-222-H",
+        memoriaCeldaFormula("τ = ", mathFrac("RFY","A"), " + ", mathFrac("Mx·y","Ix"), " + ", mathFrac("Mz·x","Iy"), " ≤ Φ·QADM·FS")],
+      ["5.6","Módulo de elasticidad del concreto","ACI 318-19 §19.2.2.1",
+        memoriaCeldaFormula("Ec = 15100·", mathSqrt("f'c"), "  [kg/cm²]")],
+      ["6.2","Factor β1","ACI 318-19 §22.2.2.4.3",
+        memoriaCeldaFormula("β1 = 0.85 − (f'c−280)·", mathFrac("0.05","70"), ",  β1∈[0.65, 0.85]")],
+      ["6.2","Φ flexión / Φ cortante","ACI 318-19 Tabla 21.2.1 / §21.2.2",
+        memoriaCeldaFormula("Φ = 0.90 / 0.75")],
+      ["6.3","Acero a flexión","ACI 318-19 §22.2.2.4.1 / §22.3.2.1",
+        memoriaCeldaFormula("As = ρbd,   ρ = ", mathFrac("0.85f'c","fy"), "·(1 − ", mathSqrt("1 − 2", mathFrac("Rn","0.85f'c")), ")")],
+      ["6.3","Cuantía mínima por temperatura","ACI 318-19 §24.4.3.2 / Tabla 7.6.1.1",
+        memoriaCeldaFormula(mathSub("ρ","min"), " = 0.0020 (fy≤4200) u homólogo")],
+      ["6.3","Cuantía máxima (sección controlada por tracción)","ACI 318-19 §21.2.2",
+        memoriaCeldaFormula(mathSub("ρ","max"), " = ", mathFrac("εcu","εcu + εt"), "·0.85·β1·", mathFrac("f'c","fy"))],
+      ["6.4","Cortante en una dirección","ACI 318-19 §22.5.5.1 / §22.5.5.1.3",
+        memoriaCeldaFormula("ΦVc = Φ·0.53·", mathSub("λ","s"), "·λ·", mathSqrt("f'c"))],
+      ["6.5","Punzonamiento","ACI 318-19 §22.6.5.1 / §22.6.5.2",
+        memoriaCeldaFormula("ΦVc = MIN[ Φ·1.06·", mathSqrt("f'c"), " ;  Φ·0.53(1+", mathFrac("2","β"), ")·", mathSqrt("f'c"), " ;  Φ·0.265(2+", mathSub("α","s"), "·", mathFrac("d","b0"), ")·", mathSqrt("f'c"), " ]")],
+      ["6.6.1","Cuantía mínima del dado","ANSI/TIA-222-H §9.4.1",
+        memoriaCeldaFormula(mathFrac("Ast","Ag"), " ≥ 0.005")],
+      ["6.6.2","Compresión axial del dado","ACI 318-19 §22.4.2.1 / Tabla 21.2.2",
+        memoriaCeldaFormula("Φ", mathSub("P","n,max"), " = Φ·0.80·[0.85f'c(Ag−Ast)+fy·Ast],  Φ=0.65")],
+      ["6.6.3","Tensión axial del dado","ACI 318-19 §21.2.2",
+        memoriaCeldaFormula("Φ", mathSub("T","n"), " = Φ·Ast·fy,  Φ=0.90")],
+      ["7","Interacción P-M-M","ACI 318-19 Cap. 22 (compatibilidad de deformaciones)",
+        memoriaCeldaFormula(mathSub("ε","si"), " = εcu·", mathFrac("c − di","c"), " ;  Cc = 0.85f'c·", mathSub("A","comp"))],
+      ["8.2","Longitud de desarrollo / gancho estándar","ACI 318-19 §25.4.2.3 / §25.4.3.2 / §25.3.2",
+        memoriaCeldaFormula("ld, ", mathSub("ld","h"), " según fórmulas de 8.2")]
     ])
   ];
 
   const header = new docx.Header({ children:[ new docx.Paragraph({ alignment:docx.AlignmentType.RIGHT, children:[
-    new docx.TextRun({ text:`${pr.assetName||""} | ${pr.assetNum||""} | Rev. ${pr.request||"—"} | ${pr.date||fecha}`, size:16, color:MEMORIA_STYLES.colorMuted })
+    new docx.TextRun({ text:`${pr.assetName||""} | ${pr.assetNum||""} | REV. ${pr.request||"—"} | ${pr.date||fecha}`.toUpperCase(), size:16, color:MEMORIA_STYLES.colorMuted })
   ]}) ]});
   const footer = new docx.Footer({ children:[ new docx.Paragraph({ alignment:docx.AlignmentType.CENTER, children:[
     new docx.TextRun({text:"Página ", size:16}), new docx.TextRun({children:[docx.PageNumber.CURRENT], size:16}),
     new docx.TextRun({text:" de ", size:16}), new docx.TextRun({children:[docx.PageNumber.TOTAL_PAGES], size:16})
   ]}) ]});
+  const pageProps = { size:{ width:docx.convertInchesToTwip(8.5), height:docx.convertInchesToTwip(11) }, margin:{top:1440,bottom:1080,left:1440,right:1080} };
 
   return new docx.Document({
-    sections:[{
-      properties:{ page:{ size:{ width:docx.convertInchesToTwip(8.5), height:docx.convertInchesToTwip(11) }, margin:{top:1440,bottom:1080,left:1440,right:1080} } },
-      headers:{ default: header }, footers:{ default: footer },
-      children:[ ...portada, ...cap1, ...cap2, ...cap3, ...cap4, ...cap5, ...cap6, ...cap7, ...cap8, ...cap9 ]
-    }]
+    // Fuente por defecto de TODO el documento (texto normal + títulos) —
+    // sin esto, los títulos (Heading1/2/3) usan la tipografía por defecto
+    // de docx.js, no la del cuerpo del texto.
+    styles:{ default:{
+      document:{ run:{ font:"Segoe UI", size:MEMORIA_STYLES.sizeBody } },
+      heading1:{ run:{ font:"Segoe UI" } },
+      heading2:{ run:{ font:"Segoe UI" } },
+      heading3:{ run:{ font:"Segoe UI" } },
+      title:{ run:{ font:"Segoe UI" } }
+    } },
+    sections:[
+      {
+        // Portada + índice: sin encabezado ni numeración de página (pedido
+        // explícito) — es su propia sección de Word, sin headers/footers.
+        properties:{ page: pageProps },
+        children: portada
+      },
+      {
+        // Cuerpo (1. Información general en adelante): encabezado con los
+        // datos del proyecto y numeración de página que arranca en 1 acá
+        // (físicamente la página 3, después de portada+índice). La
+        // propiedad real de docx.js es page.pageNumbers.start (anidada) —
+        // "pageNumberStart" a nivel de sección no existe en la librería,
+        // por eso no hacía nada.
+        properties:{ page: Object.assign({}, pageProps, { pageNumbers:{ start:1 } }) },
+        headers:{ default: header }, footers:{ default: footer },
+        children:[ ...cap1, ...cap2, ...cap3, ...cap4, ...cap5, ...cap6, ...cap7, ...cap8, ...cap9 ]
+      }
+    ]
   });
 }
 
@@ -9174,7 +9325,7 @@ async function generarMemoriaWord(){
     const blob = await docx.Packer.toBlob(doc);
 
     const nombreBase = `${state.proyecto.assetNum||"cimentacion"}_${state.proyecto.assetName||""}_memoria_${new Date().toISOString().slice(0,10)}`
-      .replace(/\s+/g,"_").replace(/__+/g,"_");
+      .replace(/\s+/g,"_").replace(/__+/g,"_").toUpperCase();
     memoriaDescargarBlob(blob, nombreBase + ".docx");
   }catch(e){
     console.error(e);
@@ -9462,26 +9613,6 @@ function initBindings(){
       if(div && typeof Plotly !== "undefined") Plotly.relayout(div, {"scene.camera.eye": vistasPMM[id]});
     });
   });
-  document.getElementById("btnExportPngPMM").addEventListener("click", ()=>{
-    const div = document.getElementById("interaccionPlot");
-    if(div && typeof Plotly !== "undefined"){
-      Plotly.downloadImage(div, {format:"png", width:1200, height:900, filename:"interaccion_dado"});
-    }
-  });
-  document.getElementById("btnExportCsvPMM").addEventListener("click", ()=>{
-    if(!lastPMM || !lastPMM.demandas.length) return;
-    const filas = ["Combinacion,Pata,Pu_Tn,Mux_Tnm,Muy_Tnm,DC"];
-    lastPMM.demandas.forEach((d,i)=>{
-      filas.push(`"${d.combo}",${d.pata},${d.Pu.toFixed(3)},${d.Mux.toFixed(3)},${d.Muy.toFixed(3)},${isFinite(lastPMM.dc[i])?lastPMM.dc[i].toFixed(3):""}`);
-    });
-    const blob = new Blob([filas.join("\n")], {type:"text/csv"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "interaccion_dado.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  });
-
   // Pestaña "Acero 3D": checkboxes de visibilidad, botones de vista y
   // exportar PNG.
   ["chkAceroLechoInf","chkAceroLechoSup","chkAceroLongDado","chkAceroEstribo","chkAceroConcreto"].forEach(id=>{
