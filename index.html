@@ -638,10 +638,10 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.2 1.5H12.5A1.5 1.5 0 0 1 14 6v5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11V4.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
       Abrir proyecto…
     </button>
-    <input type="file" id="fileImport" accept=".gfem,application/json" class="hidden">
-    <button class="btn" id="btnReset">
-      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13 5.5A5.5 5.5 0 1 0 13.8 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M13.3 2.5v3.3H10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Restaurar ejemplo
+    <input type="file" id="fileImport" accept=".gfem" class="hidden">
+    <button class="btn subtle" id="btnMemoriaWord" title="Exportar memoria de cálculo en Word (.docx)">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9 1H3a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6L9 1z" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M9 1v5h5" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M5 9l1.5 4 1.5-3 1.5 3L11 9" stroke="currentColor" stroke-width="1.1" fill="none"/></svg>
+      Memoria Word
     </button>
     <button class="btn icon-only subtle" id="btnTheme" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
@@ -650,10 +650,6 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.3" stroke="currentColor" stroke-width="1.3"/><path d="M6.1 6.2a1.9 1.9 0 1 1 2.8 1.7c-.6.35-.9.7-.9 1.3v.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.4" r="0.75" fill="currentColor"/></svg>
       Ayuda
     </a>
-    <button class="btn subtle" id="btnMemoriaWord" title="Exportar memoria de cálculo en Word (.docx)">
-      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9 1H3a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6L9 1z" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M9 1v5h5" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M5 9l1.5 4 1.5-3 1.5 3L11 9" stroke="currentColor" stroke-width="1.1" fill="none"/></svg>
-      Memoria Word
-    </button>
   </div>
 </header>
 
@@ -766,6 +762,12 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
             <p class="small" style="margin-top:6px;">El centroide de la sección se recentra automáticamente en el origen (0,0) al importar la geometría.</p>
           </div>
         </section>
+        <div class="row-actions" style="margin-top:8px;">
+          <button class="btn" id="btnReset">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13 5.5A5.5 5.5 0 1 0 13.8 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M13.3 2.5v3.3H10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Ejemplo
+          </button>
+        </div>
       </div>
 
       <div>
@@ -9693,8 +9695,55 @@ function initBindings(){
   bindGeomInput("ang_P1b","angles","P1b");
   bindGeomInput("ang_P1c","angles","P1c");
 
-  document.getElementById("btnExport").addEventListener("click", ()=>{
-    const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/octet-stream"});
+  // Filtro de tipo de archivo para los diálogos nativos de Guardar/Abrir
+  // (File System Access API) — así el explorador muestra "Archivos
+  // GeoCimFEM" en vez de la etiqueta genérica "Custom Files". Solo Chrome/
+  // Edge soportan esta API; en los demás navegadores se cae al método
+  // anterior (<a download> / <input type=file>), que sigue funcionando
+  // igual que antes pero sin ese filtro personalizado.
+  // MIME inventado a propósito ("application/x-geocimfem", no uno estándar
+  // como application/json u octet-stream): en Windows, Chromium mezcla al
+  // filtro del diálogo TODAS las extensiones que el registro de Windows
+  // tenga asociadas al MIME indicado (json→.json; octet-stream→.exe/.com/
+  // .bin, etc.), aunque acá no se pidan. Con un MIME que no existe en el
+  // registro no hay nada que mezclar, así que el filtro queda solo en .gfem.
+  const GFEM_FILE_TYPES = [{ description: "Archivos GeoCimFEM", accept: {"application/x-geocimfem": [".gfem"]} }];
+
+  async function loadProjectFromFile(file){
+    try{
+      const loaded = JSON.parse(await file.text());
+      state = mergeState(defaultState(), loaded);
+      planZoom = 1;
+      renderReaccionesTable();
+      renderAll();
+      // Segunda pasada: al cargar un proyecto con un "Tipo de estructura"
+      // distinto al que estaba activo, la primera pasada quedaba mostrando
+      // la geometría/tablas del tipo VIEJO hasta que el usuario tocaba
+      // cualquier campo (lo que dispara otro renderAll() y ahí sí se ponía
+      // al día) — no se aisló la causa raíz exacta, pero repetir el
+      // renderAll() acá mismo reproduce ese mismo efecto sin depender de
+      // que el usuario toque algo.
+      renderReaccionesTable();
+      renderAll();
+    }catch(err){
+      alert("No se pudo leer el archivo: " + err.message);
+    }
+  }
+
+  document.getElementById("btnExport").addEventListener("click", async ()=>{
+    const json = JSON.stringify(state, null, 2);
+    if(window.showSaveFilePicker){
+      try{
+        const handle = await window.showSaveFilePicker({ suggestedName: "cimentacion.gfem", types: GFEM_FILE_TYPES });
+        const writable = await handle.createWritable();
+        await writable.write(json);
+        await writable.close();
+        return;
+      }catch(err){
+        if(err.name === "AbortError") return; // el usuario cerró el diálogo, no es un error
+      }
+    }
+    const blob = new Blob([json], {type:"application/octet-stream"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = "cimentacion.gfem";
@@ -9704,25 +9753,22 @@ function initBindings(){
 
   document.getElementById("btnMemoriaWord").addEventListener("click", generarMemoriaWord);
 
-  document.getElementById("btnImportTrigger").addEventListener("click", ()=>{
+  document.getElementById("btnImportTrigger").addEventListener("click", async ()=>{
+    if(window.showOpenFilePicker){
+      try{
+        const [handle] = await window.showOpenFilePicker({ types: GFEM_FILE_TYPES });
+        await loadProjectFromFile(await handle.getFile());
+        return;
+      }catch(err){
+        if(err.name === "AbortError") return;
+      }
+    }
     document.getElementById("fileImport").click();
   });
   document.getElementById("fileImport").addEventListener("change", (e)=>{
     const file = e.target.files[0];
     if(!file) return;
-    const reader = new FileReader();
-    reader.onload = ()=>{
-      try{
-        const loaded = JSON.parse(reader.result);
-        state = mergeState(defaultState(), loaded);
-        planZoom = 1;
-        renderAll();
-        renderReaccionesTable();
-      }catch(err){
-        alert("No se pudo leer el archivo: " + err.message);
-      }
-    };
-    reader.readAsText(file);
+    loadProjectFromFile(file);
     e.target.value = "";
   });
 
@@ -9730,8 +9776,13 @@ function initBindings(){
     if(confirm("¿Restaurar la geometría de ejemplo? Se perderán los cambios no exportados.")){
       state = exampleState();
       planZoom = 1;
-      renderAll();
       renderReaccionesTable();
+      renderAll();
+      // Misma segunda pasada que en la carga de proyecto (ver ese comentario)
+      // para que el tipo de estructura del ejemplo quede aplicado sin
+      // necesidad de tocar ningún campo.
+      renderReaccionesTable();
+      renderAll();
     }
   });
 
