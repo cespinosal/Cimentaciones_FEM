@@ -3138,7 +3138,7 @@ function defaultState(){
       dadoN1:14, dadoVar1:"#4", dadoN2:10, dadoVar2:"#4", dadoEstribosRamas:1, dadoEstriboVar:"#3", dadoEstriboSep:15, dadoRecubrimiento:5 },
     // Resultados de las animaciones de Brazo de palanca (4.2.1) y Área
     // efectiva (4.3.2), por combinación — al vivir en state quedan incluidos
-    // en "Guardar como…"/localStorage y ya aparecen al reabrir el proyecto.
+    // en "Guardar como…" y ya aparecen al reabrir ese mismo .gfem.
     brazoCache: {},
     areaEfectivaCache: {}
   };
@@ -3155,16 +3155,15 @@ function exampleState(){
   return s;
 }
 
-const STORAGE_KEY = "cimentacionesFEM.v1";
 const THEME_KEY = "cimentacionesFEM.theme";
-// Merge con defaultState() para completar campos nuevos que no existían cuando
-// se guardó un estado más viejo en localStorage (evita "Cannot read properties
-// of undefined" al agregar features nuevas, ej. state.reaccionesPorTipo). El
-// merge de nivel superior no alcanza para los sub-objetos (geom, materiales,
-// angles, proyecto): si el guardado viejo ya tenía, ej., "geom" pero sin el
-// campo "QADM" agregado después, un Object.assign de nivel superior reemplaza
-// TODO "geom" por el guardado y pierde el default de "QADM" (quedaba
-// "undefined" en el input) — por eso esos 4 sub-objetos se fusionan aparte.
+// Merge con defaultState() para completar campos nuevos que no existían en un
+// proyecto .gfem viejo (evita "Cannot read properties of undefined" al
+// agregar features nuevas, ej. state.reaccionesPorTipo). El merge de nivel
+// superior no alcanza para los sub-objetos (geom, materiales, angles,
+// proyecto): si el guardado viejo ya tenía, ej., "geom" pero sin el campo
+// "QADM" agregado después, un Object.assign de nivel superior reemplaza TODO
+// "geom" por el guardado y pierde el default de "QADM" (quedaba "undefined"
+// en el input) — por eso esos 4 sub-objetos se fusionan aparte.
 function mergeState(defaults, saved){
   const merged = Object.assign({}, defaults, saved || {});
   ["geom","materiales","angles","proyecto","diseno"].forEach(key=>{
@@ -3172,20 +3171,12 @@ function mergeState(defaults, saved){
   });
   return merged;
 }
-let state = mergeState(defaultState(), loadFromStorage());
+// Sin persistencia en localStorage a propósito: cada apertura/refresh de la
+// página arranca en blanco (confirmado con el usuario) — para retomar un
+// proyecto hay que abrirlo con "Abrir proyecto…" (.gfem) o cargar "Ejemplo".
+let state = defaultState();
 let planZoom = 1; // nivel de zoom de la vista en planta (no se persiste)
 let lastPlanArgs = null;
-
-function loadFromStorage(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) return null;
-    return JSON.parse(raw);
-  }catch(e){ return null; }
-}
-function saveToStorage(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
-}
 
 /* ============================================================
    3. VALIDACIÓN DE RANGOS FÍSICOS RAZONABLES
@@ -3613,8 +3604,8 @@ let lastGeoData = null; // {geo, cap, props, outerC, holeC} del último renderAl
 // se reconstruye entero en cada renderAll()) para que NO se pierdan con un
 // renderAll() disparado por un cambio ajeno (otra pestaña, otra tabla); solo
 // se reemplazan al volver a pulsar el botón. Al vivir en "state" quedan
-// incluidos en "Guardar como…"/localStorage, así que al reabrir el proyecto
-// ya aparecen sin tener que rehacer la animación.
+// incluidos en "Guardar como…", así que al reabrir ese mismo .gfem ya
+// aparecen sin tener que rehacer la animación.
 let forceLabelSprites = []; // etiquetas Fx/Fy/Fz activas — se reescalan cada frame en start3DLoop para compensar la perspectiva (ver registerLabel dentro de update3D)
 
 function init3D(){
@@ -6130,7 +6121,6 @@ function finalizeBrazo(resultados){
     aplicarBrazoARow(row, brazo);
   });
   renderGeotecnico(lastGeoData.geo);
-  saveToStorage(); // persiste el brazo ya calculado (state.brazoCache) sin esperar a otro renderAll()
 }
 
 /* ============================================================
@@ -6232,8 +6222,12 @@ async function openAreaEfectivaModal(combo){
   document.getElementById("areaEfectivaModalTitle").textContent = `Área efectiva — ${combo}`;
   areaEfectivaCancelado = false;
 
+  // exT en x se usa NEGADO acá (mismo criterio que el término de Mz en la
+  // fórmula de Navier de 4.3, ver esa nota de signo): la copia debe
+  // desplazarse hacia el lado de máxima compresión, que en x queda en
+  // -exT, no +exT. eyT (eje Mx) sí se usa tal cual, sin negar.
   const exT = row.exT || 0, eyT = row.eyT || 0;
-  const shiftedFinal = outerC.map(p=>({ x:p.x+exT, y:p.y+eyT }));
+  const shiftedFinal = outerC.map(p=>({ x:p.x-exT, y:p.y+eyT }));
 
   let xmin=Infinity, xmax=-Infinity, ymin=Infinity, ymax=-Infinity;
   outerC.concat(shiftedFinal).forEach(p=>{ xmin=Math.min(xmin,p.x); xmax=Math.max(xmax,p.x); ymin=Math.min(ymin,p.y); ymax=Math.max(ymax,p.y); });
@@ -6258,10 +6252,10 @@ async function openAreaEfectivaModal(combo){
   // Fase 1: la copia se desplaza desde su posición original hasta (exT,eyT).
   const moveMs = 2200;
   await animateAreaEfectivaStep(moveMs, t=>{
-    copyEl.setAttribute("transform", `translate(${exT*t},${-eyT*t})`);
+    copyEl.setAttribute("transform", `translate(${-exT*t},${-eyT*t})`);
   });
   if(areaEfectivaCancelado) return;
-  copyEl.setAttribute("transform", `translate(${exT},${-eyT})`);
+  copyEl.setAttribute("transform", `translate(${-exT},${-eyT})`);
 
   // Fase 2: se calcula y resalta el traslape (Sutherland-Hodgman).
   const overlap = clipPolygon(outerC, shiftedFinal);
@@ -6293,7 +6287,6 @@ function finalizeAreaEfectiva(combo, areaEfectiva){
   state.areaEfectivaCache[combo] = areaEfectiva;
   aplicarAreaEfectivaARow(row, areaEfectiva, lastGeoData.cap.QultDesign);
   renderCapacidadPortante(lastGeoData.cap, lastGeoData.props, lastGeoData.outerC, lastGeoData.holeC);
-  saveToStorage(); // persiste el área efectiva ya calculada (state.areaEfectivaCache) sin esperar a otro renderAll()
 }
 
 /* ============================================================
@@ -8029,12 +8022,10 @@ function renderAll(){
   // pestaña está visible.
   const panelAcero = document.querySelector('.tab-panel[data-tab="acero3d"]');
   if(panelAcero && panelAcero.classList.contains("active") && sceneAcero) updateAcero3D();
-
-  saveToStorage();
 }
 
 // Re-dibuja solo la vista en planta (usado por el zoom) sin recalcular todo
-// el estado ni volver a escribir en localStorage en cada evento de scroll.
+// el estado en cada evento de scroll.
 function rerenderPlan(){
   if(!lastPlanArgs) return;
   renderPlan(lastPlanArgs.props, lastPlanArgs.legs, lastPlanArgs.dados, lastPlanArgs.outerC, lastPlanArgs.holeC);
@@ -8334,7 +8325,7 @@ function renderReaccionesLegsTable(cfg){
       const v = parseDecimal(inp.value);
       reacciones[ci][leg][f] = isNaN(v) ? 0 : v;
       renderElementosMecanicos();
-      renderAll(); // refresca también Diseño Geotécnico (4.2/4.3, ya incluye su propio saveToStorage) — antes solo se recalculaba al cambiar de tipo de estructura o importar un PDF
+      renderAll(); // refresca también Diseño Geotécnico (4.2/4.3) — antes solo se recalculaba al cambiar de tipo de estructura o importar un PDF
     });
   });
 }
@@ -9433,7 +9424,6 @@ function initBindings(){
         }
         const {matched, unmatched} = applyParsedBaseRows(rows, cfg);
         renderReaccionesTable();
-        saveToStorage();
         if(matched===0){
           showPdfImportStatus("error", `Se encontró la sección de reacciones pero no se pudo interpretar ninguna fila. Cargalas a mano.`);
         } else {
@@ -9454,7 +9444,6 @@ function initBindings(){
       }
       const {matched, unmatched} = applyParsedReactionRows(rows);
       renderReaccionesTable();
-      saveToStorage();
       if(matched===0){
         showPdfImportStatus("error", `Se encontró la sección de reacciones pero no se pudo interpretar ninguna fila. Cargalas a mano.`);
       } else {
@@ -9475,7 +9464,6 @@ function initBindings(){
       const tipoKey = reactionTypeKey(state.tipoEstructura);
       state.reaccionesPorTipo[tipoKey] = defaultReacciones(tipoKey);
       renderReaccionesTable();
-      saveToStorage();
       showPdfImportStatus("info", "Se limpiaron todos los valores de la tabla de Reacciones.");
     }
   });
@@ -9515,19 +9503,16 @@ function initBindings(){
   document.getElementById("tipoEstructura").addEventListener("change", (e)=>{
     state.tipoEstructura = e.target.value;
     renderReaccionesTable();
-    saveToStorage();
   });
 
   ["assetNum","assetName","engineer","date","request"].forEach(field=>{
     document.getElementById("proy_"+field).addEventListener("input", (e)=>{
       state.proyecto[field] = e.target.value;
-      saveToStorage();
     });
   });
   document.getElementById("proy_country").addEventListener("change", (e)=>{
     state.proyecto.country = e.target.value;
     document.getElementById("calcHeaderFlag").innerHTML = flagSvgMarkup(state.proyecto.country);
-    saveToStorage();
   });
 
   ["fc","gc","gr","fy","espesorCiclopeo","gcc","pesoAdicional"].forEach(field=>{
