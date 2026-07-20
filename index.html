@@ -763,6 +763,24 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
             <p class="small" style="margin-top:6px;">El centroide de la sección se recentra automáticamente en el origen (0,0) al importar la geometría.</p>
           </div>
         </section>
+
+        <div class="switch-row" style="margin-top:14px;">
+          <span class="switch">
+            <input type="checkbox" id="chkAutosave" aria-label="Autoguardado automático del archivo .gfem">
+            <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+          </span>
+          <span>Autoguardado automático (.gfem)</span>
+        </div>
+        <div id="autosaveFreqBlock" class="hidden" style="margin-top:10px;">
+          <div class="small" style="margin-bottom:6px;">Frecuencia:</div>
+          <div class="row-actions" id="autosaveFreqButtons" role="group" aria-label="Frecuencia de autoguardado" style="margin-top:0;">
+            <button type="button" class="btn" data-min="3">3 min</button>
+            <button type="button" class="btn primary" data-min="5">5 min</button>
+            <button type="button" class="btn" data-min="10">10 min</button>
+          </div>
+        </div>
+        <p class="small" id="autosaveStatus" style="margin-top:4px; display:none;"></p>
+
         <div class="row-actions" style="margin-top:8px;">
           <button class="btn" id="btnReset">
             <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13 5.5A5.5 5.5 0 1 0 13.8 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M13.3 2.5v3.3H10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -3178,6 +3196,80 @@ function mergeState(defaults, saved){
 let state = defaultState();
 let planZoom = 1; // nivel de zoom de la vista en planta (no se persiste)
 let lastPlanArgs = null;
+
+// Filtro de tipo de archivo para los diálogos nativos de Guardar/Abrir
+// (File System Access API) — así el explorador muestra "Archivos
+// GeoCimFEM" en vez de la etiqueta genérica "Custom Files". Solo Chrome/
+// Edge soportan esta API; en los demás navegadores se cae al método
+// anterior (<a download> / <input type=file>), que sigue funcionando
+// igual que antes pero sin ese filtro personalizado.
+// MIME inventado a propósito ("application/x-geocimfem", no uno estándar
+// como application/json u octet-stream): en Windows, Chromium mezcla al
+// filtro del diálogo TODAS las extensiones que el registro de Windows
+// tenga asociadas al MIME indicado (json→.json; octet-stream→.exe/.com/
+// .bin, etc.), aunque acá no se pidan. Con un MIME que no existe en el
+// registro no hay nada que mezclar, así que el filtro queda solo en .gfem.
+const GFEM_FILE_TYPES = [{ description: "Archivos GeoCimFEM", accept: {"application/x-geocimfem": [".gfem"]} }];
+
+// Autoguardado automático del proyecto (.gfem): opt-in vía checkbox en
+// "Definición de la zapata". No usa localStorage (ver nota arriba sobre por
+// qué no hay persistencia automática al recargar) — en cambio, mientras
+// está activo, reescribe periódicamente (cada autosaveIntervalMin minutos,
+// elegido por el usuario con los botones "Frecuencia") el MISMO archivo
+// .gfem que ya eligió (con "Guardar como…", "Abrir proyecto…", o al activar
+// el autoguardado sin haber elegido ninguno todavía), vía File System
+// Access API. Solo funciona en navegadores con esa API (Chrome/Edge); en
+// los demás el checkbox queda deshabilitado.
+const AUTOSAVE_SUPPORTED = !!(window.showSaveFilePicker);
+let autosaveEnabled = false;
+let autosaveHandle = null;
+let autosaveIntervalMin = 5;
+let autosaveTimer = null; // id de setInterval mientras el autoguardado está activo
+
+async function ensureReadWritePermission(handle){
+  if(!handle.queryPermission) return true; // API de permisos no disponible: se asume ok
+  const opts = {mode:"readwrite"};
+  if((await handle.queryPermission(opts)) === "granted") return true;
+  return (await handle.requestPermission(opts)) === "granted";
+}
+
+function setAutosaveStatus(text){
+  const el = document.getElementById("autosaveStatus");
+  if(!el) return;
+  el.textContent = text;
+  el.style.display = text ? "" : "none";
+}
+
+// Timer periódico (no debounce): reescribe el archivo cada
+// autosaveIntervalMin minutos mientras el autoguardado está activo, sin
+// importar cuántas ediciones haya en el medio.
+function stopAutosaveTimer(){
+  if(autosaveTimer){ clearInterval(autosaveTimer); autosaveTimer = null; }
+}
+function startAutosaveTimer(){
+  stopAutosaveTimer();
+  autosaveTimer = setInterval(doAutosave, autosaveIntervalMin * 60000);
+}
+
+async function doAutosave(){
+  if(!autosaveEnabled || !autosaveHandle) return;
+  try{
+    const ok = await ensureReadWritePermission(autosaveHandle);
+    if(!ok) throw new Error("Permiso de escritura denegado");
+    const writable = await autosaveHandle.createWritable();
+    await writable.write(JSON.stringify(state, null, 2));
+    await writable.close();
+    setAutosaveStatus(`Autoguardado activo cada ${autosaveIntervalMin} min — último guardado ${new Date().toLocaleTimeString()} en "${autosaveHandle.name}".`);
+  }catch(err){
+    autosaveEnabled = false;
+    stopAutosaveTimer();
+    const chk = document.getElementById("chkAutosave");
+    if(chk) chk.checked = false;
+    const freqBlock = document.getElementById("autosaveFreqBlock");
+    if(freqBlock) freqBlock.classList.add("hidden");
+    setAutosaveStatus("Autoguardado desactivado: " + err.message);
+  }
+}
 
 /* ============================================================
    3. VALIDACIÓN DE RANGOS FÍSICOS RAZONABLES
@@ -9681,20 +9773,6 @@ function initBindings(){
   bindGeomInput("ang_P1b","angles","P1b");
   bindGeomInput("ang_P1c","angles","P1c");
 
-  // Filtro de tipo de archivo para los diálogos nativos de Guardar/Abrir
-  // (File System Access API) — así el explorador muestra "Archivos
-  // GeoCimFEM" en vez de la etiqueta genérica "Custom Files". Solo Chrome/
-  // Edge soportan esta API; en los demás navegadores se cae al método
-  // anterior (<a download> / <input type=file>), que sigue funcionando
-  // igual que antes pero sin ese filtro personalizado.
-  // MIME inventado a propósito ("application/x-geocimfem", no uno estándar
-  // como application/json u octet-stream): en Windows, Chromium mezcla al
-  // filtro del diálogo TODAS las extensiones que el registro de Windows
-  // tenga asociadas al MIME indicado (json→.json; octet-stream→.exe/.com/
-  // .bin, etc.), aunque acá no se pidan. Con un MIME que no existe en el
-  // registro no hay nada que mezclar, así que el filtro queda solo en .gfem.
-  const GFEM_FILE_TYPES = [{ description: "Archivos GeoCimFEM", accept: {"application/x-geocimfem": [".gfem"]} }];
-
   async function loadProjectFromFile(file){
     try{
       const loaded = JSON.parse(await file.text());
@@ -9724,6 +9802,11 @@ function initBindings(){
         const writable = await handle.createWritable();
         await writable.write(json);
         await writable.close();
+        // El archivo recién elegido pasa a ser el destino del autoguardado
+        // (si está activo) — sin esto, "Guardar como…" con autoguardado ya
+        // activo seguiría escribiendo sobre el archivo viejo.
+        autosaveHandle = handle;
+        if(autosaveEnabled) setAutosaveStatus(`Autoguardado activo cada ${autosaveIntervalMin} min en "${handle.name}".`);
         return;
       }catch(err){
         if(err.name === "AbortError") return; // el usuario cerró el diálogo, no es un error
@@ -9744,6 +9827,11 @@ function initBindings(){
       try{
         const [handle] = await window.showOpenFilePicker({ types: GFEM_FILE_TYPES });
         await loadProjectFromFile(await handle.getFile());
+        // El proyecto recién abierto pasa a ser el destino del autoguardado
+        // (si está activo); showOpenFilePicker solo da permiso de lectura,
+        // así que el próximo autoguardado va a pedir permiso de escritura.
+        autosaveHandle = handle;
+        if(autosaveEnabled) setAutosaveStatus(`Autoguardado activo cada ${autosaveIntervalMin} min en "${handle.name}".`);
         return;
       }catch(err){
         if(err.name === "AbortError") return;
@@ -9756,12 +9844,17 @@ function initBindings(){
     if(!file) return;
     loadProjectFromFile(file);
     e.target.value = "";
+    // El <input type=file> no da un handle escribible (fallback para
+    // navegadores sin File System Access API) — si había autoguardado
+    // activo apuntando a otro archivo, ya no aplica a este proyecto nuevo.
+    if(autosaveEnabled) disableAutosave("Autoguardado desactivado: este navegador no permite reescribir el archivo importado.");
   });
 
   document.getElementById("btnReset").addEventListener("click", ()=>{
     if(confirm("¿Restaurar la geometría de ejemplo? Se perderán los cambios no exportados.")){
       state = exampleState();
       planZoom = 1;
+      if(autosaveEnabled) disableAutosave("Autoguardado desactivado al cargar el ejemplo.");
       renderReaccionesTable();
       renderAll();
       // Misma segunda pasada que en la carga de proyecto (ver ese comentario)
@@ -9770,6 +9863,64 @@ function initBindings(){
       renderReaccionesTable();
       renderAll();
     }
+  });
+
+  const chkAutosave = document.getElementById("chkAutosave");
+  const autosaveFreqBlock = document.getElementById("autosaveFreqBlock");
+  if(!AUTOSAVE_SUPPORTED){
+    chkAutosave.disabled = true;
+    chkAutosave.closest(".switch-row").title = "No soportado en este navegador (requiere Chrome o Edge)";
+  }
+
+  function disableAutosave(statusText){
+    autosaveEnabled = false;
+    autosaveHandle = null;
+    stopAutosaveTimer();
+    chkAutosave.checked = false;
+    autosaveFreqBlock.classList.add("hidden");
+    setAutosaveStatus(statusText);
+  }
+
+  chkAutosave.addEventListener("change", async ()=>{
+    if(chkAutosave.checked){
+      try{
+        if(!AUTOSAVE_SUPPORTED) throw new Error("navegador sin soporte");
+        if(!autosaveHandle){
+          autosaveHandle = await window.showSaveFilePicker({ suggestedName: "cimentacion.gfem", types: GFEM_FILE_TYPES });
+          const writable = await autosaveHandle.createWritable();
+          await writable.write(JSON.stringify(state, null, 2));
+          await writable.close();
+        }
+        const ok = await ensureReadWritePermission(autosaveHandle);
+        if(!ok) throw new Error("permiso de escritura denegado");
+        autosaveEnabled = true;
+        autosaveFreqBlock.classList.remove("hidden");
+        startAutosaveTimer();
+        setAutosaveStatus(`Autoguardado activo cada ${autosaveIntervalMin} min en "${autosaveHandle.name}".`);
+      }catch(err){
+        autosaveEnabled = false;
+        chkAutosave.checked = false;
+        if(err.name !== "AbortError") alert("No se pudo activar el autoguardado: " + err.message);
+      }
+    }else{
+      autosaveEnabled = false;
+      stopAutosaveTimer();
+      autosaveFreqBlock.classList.add("hidden");
+      setAutosaveStatus("");
+    }
+  });
+
+  document.querySelectorAll("#autosaveFreqButtons .btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      autosaveIntervalMin = Number(btn.dataset.min);
+      document.querySelectorAll("#autosaveFreqButtons .btn").forEach(b=>{
+        b.classList.toggle("primary", b === btn);
+      });
+      if(autosaveEnabled){
+        startAutosaveTimer();
+        setAutosaveStatus(`Autoguardado activo cada ${autosaveIntervalMin} min en "${autosaveHandle.name}".`);
+      }
+    });
   });
 
   initTheme();
