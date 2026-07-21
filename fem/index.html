@@ -9928,6 +9928,121 @@ function initBindings(){
   initCalcSideNav();
 }
 
+/* ============================================================
+   10. MOTOR FEM INTERNO (en construcción — ver fem/roadmap.html)
+   Solver propio de losas de cimentación: elemento DKT (Discrete Kirchhoff
+   Triangle, formulación de placa delgada — Bathe, "Finite Element
+   Procedures") + interacción con el suelo por resortes Winkler
+   compression-only. Objetivo: correr el análisis dentro de la app usando
+   la malla "Urdimbre Mesh" (sección 4.4) en vez de exportar a STAAD.Pro
+   (pestaña "Motor FEM", hoy solo documentación).
+   Implementación progresiva por fases, ver fem/roadmap.html. Namespace
+   FEM_* / fem* para no chocar con el resto de la app. Fase 00: solo
+   andamiaje — ninguna función de este bloque se llama todavía desde
+   renderAll() ni desde la UI.
+   ============================================================ */
+const FEM_MOTOR = { VERSION: "0.0.0-fase00" };
+
+// Fase 01 — adaptador de malla: "Urdimbre Mesh" -> {nodos, elementos} DKT.
+// Recibe el mismo objeto que devuelve generateMallaFEM()/lastMallaMesh:
+// {points:[{x,y},...], elements:[{poly:[{x,y},...], cls, dadoIndex},...]}.
+// No lee estado global ni toca el DOM — función pura, testeable aparte.
+//
+// Cada elemento "good"/"pedestal" de la Urdimbre Mesh es un cuadrilátero
+// (salvo los "leftoverTris" de umRecombineToQuads, que ya vienen como
+// triángulo). Los cuadriláteros se parten en 2 triángulos eligiendo la
+// diagonal que minimiza el ángulo interior máximo resultante (criterio
+// tipo Delaunay, evita triángulos "sliver"). La identificación de nodo
+// por elemento replica la técnica ya usada en generarStaadModel() (línea
+// ~7394): los puntos de element.poly son la MISMA referencia de objeto
+// que los de mesh.points (generateMallaFEM los arma así), así que se
+// puede indexar por identidad en vez de por coordenada.
+function femAnguloDeg(pAnt, pCentro, pSig){
+  const v1x = pAnt.x - pCentro.x, v1y = pAnt.y - pCentro.y;
+  const v2x = pSig.x - pCentro.x, v2y = pSig.y - pCentro.y;
+  const dot = v1x*v2x + v1y*v2y, cruz = v1x*v2y - v1y*v2x;
+  return Math.atan2(Math.abs(cruz), dot) * 180/Math.PI;
+}
+function femAnguloMaxTriangulo(a, b, c){
+  return Math.max(femAnguloDeg(c,a,b), femAnguloDeg(a,b,c), femAnguloDeg(b,c,a));
+}
+// Reordena un polígono (3 o 4 puntos) para que quede en sentido CCW en el
+// plano (x,y) de la app — mismo criterio de área con signo que ya usa
+// orientarNormalArribaStaad() para el export a STAAD.
+function femAsegurarCCW(poly){
+  return polygonSignedArea2D(poly) < 0 ? poly.slice().reverse() : poly;
+}
+// Divide un cuadrilátero CCW [p0,p1,p2,p3] en 2 triángulos, probando las
+// 2 diagonales posibles y quedándose con la que da menor ángulo máximo
+// entre los 6 ángulos interiores resultantes.
+function femDividirCuadEnTriangulos(poly){
+  const [p0,p1,p2,p3] = poly;
+  const splitA = [[p0,p1,p2],[p0,p2,p3]];
+  const splitB = [[p1,p2,p3],[p1,p3,p0]];
+  const maxA = Math.max(femAnguloMaxTriangulo(...splitA[0]), femAnguloMaxTriangulo(...splitA[1]));
+  const maxB = Math.max(femAnguloMaxTriangulo(...splitB[0]), femAnguloMaxTriangulo(...splitB[1]));
+  return maxA <= maxB ? splitA : splitB;
+}
+function femBuildMeshAdapter(mesh){
+  if(!mesh || !mesh.points || !mesh.elements){
+    return {nodos:[], elementos:[], stats:{nCuad:0, nTriPartidos:0, nTriDirectos:0}};
+  }
+  const idxPorNodo = new Map();
+  mesh.points.forEach((pt, i) => idxPorNodo.set(pt, i));
+  const nodos = mesh.points.map(pt => ({x:pt.x, y:pt.y}));
+
+  const elementos = [];
+  let nCuad = 0, nTriPartidos = 0, nTriDirectos = 0;
+  mesh.elements.forEach((el, elIdx) => {
+    const poly = femAsegurarCCW(el.poly);
+    const tris = poly.length === 4 ? femDividirCuadEnTriangulos(poly) : [poly];
+    if(poly.length === 4){ nCuad++; nTriPartidos += tris.length; } else { nTriDirectos++; }
+    tris.forEach((tri, triIdx) => {
+      const n = tri.map(pt => idxPorNodo.get(pt));
+      if(n.some(i => i === undefined)){
+        throw new Error(`FEM: nodo no encontrado por identidad en elemento origen #${elIdx} (¿mesh.points/elements de corridas distintas?)`);
+      }
+      elementos.push({ n, cls: el.cls, dadoIndex: el.dadoIndex, origenId: elIdx, origenSub: triIdx });
+    });
+  });
+
+  return { nodos, elementos, stats:{ nCuad, nTriPartidos, nTriDirectos, nNodos: nodos.length, nElementos: elementos.length } };
+}
+
+// Fase 02 — rigidez local del elemento DKT (3 nodos, 9 GDL: w, thetaX, thetaY).
+function femDktStiffness(nodosTriangulo, espesor, E, nu){
+  throw new Error("FEM: femDktStiffness no implementado (fase 02)");
+}
+
+// Fase 03 — ensamblaje global sparse + solver directo (Cholesky/skyline).
+function femSolveLineal(malla, cargas){
+  throw new Error("FEM: femSolveLineal no implementado (fase 03)");
+}
+
+// Fase 04 — resortes Winkler lineales: K_nodo = ks_kgm3 * A_tributaria.
+function femResortesWinkler(malla, ksKgm3){
+  throw new Error("FEM: femResortesWinkler no implementado (fase 04)");
+}
+
+// Fase 05 — no linealidad compression-only (loop tipo ENT, con límite de
+// iteraciones y detección de ciclos en el set de resortes activos).
+function femSolveNoLineal(malla, cargas, ksKgm3){
+  throw new Error("FEM: femSolveNoLineal no implementado (fase 05)");
+}
+
+// Fase 07 — rotación del tensor de momentos [Mx,My,Mxy] de ejes locales del
+// triángulo a ejes globales fijos X-Y (transformación de Mohr), previo a
+// aplicar Wood-Armer.
+function femRotarMomentosAGlobal(momentosElemento, thetaLocal){
+  throw new Error("FEM: femRotarMomentosAGlobal no implementado (fase 07)");
+}
+
+// Fase 08 — Wood-Armer sobre los momentos ya rotados a global y suavizados
+// por nodo, como alternativa/complemento a la carga manual de 5.3.
+function femWoodArmerGlobal(momentosGlobalesPorNodo){
+  throw new Error("FEM: femWoodArmerGlobal no implementado (fase 08)");
+}
+
 initBindings();
 renderAll();
 renderReaccionesTable();
