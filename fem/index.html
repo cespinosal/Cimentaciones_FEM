@@ -1694,6 +1694,24 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
         </div>
       </div>
     </section>
+    <section class="card" id="sec-fem-preview" aria-labelledby="h-fem-preview">
+      <div class="head"><span id="h-fem-preview">Vista previa del solver (fases 00–04)</span></div>
+      <div class="body">
+        <div class="message-bar warning" role="status" style="margin-bottom:16px;">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span><b>Preview adelantado, no oficial.</b> Corre las fases ya hechas (00–04: malla, rigidez de placa, solver lineal, resortes de Winkler) sobre la geometría real de esta zapata, pero todavía sin corte por tracción del suelo (fase 05), sin recuperar momentos de diseño (07/08) ni optimizar rendimiento (09). Solo sirve para <i>ver</i> la deformada — no reemplaza el diseño de la sección 5.</span>
+        </div>
+        <div id="femPreviewNoSoportado" class="message-bar error hidden" role="alert">
+          <span>Esta vista previa solo corre para Autosoportada 3P/4P (necesita la tabla de reacciones por pata). Para Monopolo falta repartir momento/cortante del apoyo único en cargas nodales — eso queda para cuando se conecte de verdad en la fase 06.</span>
+        </div>
+        <div id="femPreviewControles" class="row-actions" style="flex-wrap:wrap; align-items:center; gap:12px;">
+          <span class="small" style="color:var(--muted);">Combo: <b id="femPreviewCombo">—</b> (el mismo elegido en 4.2 Volteo)</span>
+          <button class="btn primary" id="btnFemPreviewRun" type="button">Correr análisis (preview)</button>
+        </div>
+        <div id="femPreviewResumen" style="margin-top:12px;"></div>
+        <div id="femPreviewSvgWrap" style="margin-top:12px;"></div>
+      </div>
+    </section>
     </div>
   </div>
 </main>
@@ -5840,6 +5858,8 @@ function populateGeoComboSelector(){
   sel.innerHTML = cfg.combos.map(c=>
     `<option value="${c}"${c===selectedVolteoCombo ? " selected" : ""}>${c}</option>`
   ).join("");
+  const femLbl = document.getElementById("femPreviewCombo");
+  if(femLbl) femLbl.textContent = selectedVolteoCombo || "—";
 }
 
 function computeGeotecnico(props, legs){
@@ -10332,6 +10352,167 @@ function femResortesWinkler(malla, ksKgm3){
   return K;
 }
 
+// ---- Vista previa fuera de orden (pestaña "Motor FEM", tarjeta nueva) ----
+// Adelanto informal pedido antes de llegar a la fase 06/10 del roadmap: corre
+// las fases 00-04 (ya hechas y validadas) sobre la geometría REAL de la
+// zapata actual, en vez de las placas sintéticas usadas para validar. No es
+// la fase 06 (esa exige comparar contra STAAD antes de darse por buena) ni
+// la 10 (esa es la UI oficial con Three.js) — solo deja *ver* la deformada
+// para no esperar a las 6 fases que faltan. Limitaciones deliberadas:
+//  - Resortes siempre activos (sin corte por tracción, fase 05 pendiente).
+//  - Carga = solo Fz de cada pata, repartida por área tributaria entre los
+//    nodos del dado correspondiente — Fx/Fy y cualquier momento de vuelco no
+//    se aplican todavía (eso requeriría repartir momento en cargas nodales
+//    sobre el dado, que es justamente parte del trabajo de la fase 06).
+//  - Solo Autosoportada 3P/4P (incluida M4, que colapsa sus 4 patas al mismo
+//    pedestal — dadosFisicos ya lo maneja así). Monopolo queda pendiente.
+function femPreviewRamp(t){
+  const c0=[238,243,246], c1=[111,163,196], c2=[28,61,94];
+  let a,b,tt;
+  if(t<0.5){ a=c0; b=c1; tt=t/0.5; } else { a=c1; b=c2; tt=(t-0.5)/0.5; }
+  const r=Math.round(a[0]+(b[0]-a[0])*tt), g=Math.round(a[1]+(b[1]-a[1])*tt), bl=Math.round(a[2]+(b[2]-a[2])*tt);
+  return `rgb(${r},${g},${bl})`;
+}
+function femPreviewSvg(u, maxW, outerC){
+  const idxByPointRef = new Map();
+  lastMallaMesh.points.forEach((p,i)=>idxByPointRef.set(p,i));
+  const pad = 0.4;
+  let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
+  outerC.forEach(p=>{ xmin=Math.min(xmin,p.x); xmax=Math.max(xmax,p.x); ymin=Math.min(ymin,p.y); ymax=Math.max(ymax,p.y); });
+  xmin-=pad; xmax+=pad; ymin-=pad; ymax+=pad;
+  const w = xmax-xmin, h = ymax-ymin;
+  const strokeW = Math.max(w,h)/450;
+  const cellsMarkup = lastMallaMesh.elements.map(el=>{
+    const ws = el.poly.map(p => -u[3*idxByPointRef.get(p)+0]);
+    const avg = ws.reduce((a,b)=>a+b,0)/ws.length;
+    const t = maxW>0 ? Math.max(0, Math.min(1, avg/maxW)) : 0;
+    const col = femPreviewRamp(t);
+    return `<polygon points="${el.poly.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="${col}" stroke="${col}" stroke-width="${strokeW}"/>`;
+  }).join("");
+  const outerPts = outerC.map(p=>`${p.x},${-p.y}`).join(" ");
+  return `<svg viewBox="${xmin} ${-ymax} ${w} ${h}" style="width:100%; height:520px; display:block; background:var(--panel);">
+    ${cellsMarkup}
+    <polygon points="${outerPts}" fill="none" stroke="var(--accent)" stroke-width="${strokeW*2.5}"/>
+  </svg>
+  <p class="small" style="color:var(--muted); margin-top:6px;">Escala de flecha: 0 (blanco) → ${fmt(maxW*100,3)} cm hacia abajo (azul oscuro).</p>`;
+}
+function femRunPreview(){
+  const noSoportado = document.getElementById("femPreviewNoSoportado");
+  const controles = document.getElementById("femPreviewControles");
+  const resumenEl = document.getElementById("femPreviewResumen");
+  const svgWrapEl = document.getElementById("femPreviewSvgWrap");
+  const tipoKey = reactionTypeKey(state.tipoEstructura);
+  const cfg = TOWER_TYPES[tipoKey];
+  if(!cfg || cfg.kind !== "legs" || !lastMallaMesh || !lastMallaMesh.elements.length || !lastPlanArgs){
+    noSoportado.classList.remove("hidden");
+    controles.classList.add("hidden");
+    resumenEl.innerHTML = ""; svgWrapEl.innerHTML = "";
+    return;
+  }
+  noSoportado.classList.add("hidden");
+  controles.classList.remove("hidden");
+
+  const malla = femBuildMeshAdapter(lastMallaMesh);
+  if(!malla.nodos.length){
+    resumenEl.innerHTML = `<div class="message-bar error"><span>La malla (sección 4.4) está vacía — revisá la geometría.</span></div>`;
+    svgWrapEl.innerHTML = "";
+    return;
+  }
+
+  const pc = getPropsConcreto();
+  const E = pc.Ec * 1e4;          // kg/cm² -> kg/m² (mismo factor que usa el export STAAD)
+  const nu = pc.v;
+  const espesor = state.geom.PZ; // m
+  const ks = getKBalastoKgm3();  // kg/m³
+
+  const areaTrib = femAreaTributariaNodos(malla);
+  const resortes = femResortesWinkler(malla, ks);
+
+  const dadoNames = Object.keys(lastPlanArgs.dados || {});
+  const comboIdx = cfg.combos.indexOf(selectedVolteoCombo);
+  const reacciones = getCurrentReacciones();
+  if(comboIdx < 0 || !reacciones){
+    resumenEl.innerHTML = `<div class="message-bar error"><span>No hay combo/reacciones configuradas para "${state.tipoEstructura}".</span></div>`;
+    svgWrapEl.innerHTML = "";
+    return;
+  }
+  const filaCombo = reacciones[comboIdx];
+  // M4 colapsa las 4 patas a un único pedestal físico (dadosFisicos) — en
+  // ese caso dadoNames solo tiene "PEDESTAL" y todas las patas comparten
+  // dadoIndex 0 en la malla.
+  const colapsado = dadoNames.length === 1 && cfg.legs.length > 1;
+
+  const cargas = [];
+  let cargaTotalAplicada = 0;
+  const avisos = [];
+  cfg.legs.forEach(legKey=>{
+    const row = filaCombo[legKey];
+    if(!row) return;
+    const P = -row.fz; // kg, positivo hacia abajo — misma convención que computeGeotecnico (fzCorregido = -row.fz)
+    // cfg.legs usa claves sin prefijo ("1","1a","1b"), pero dadosFisicos()
+    // nombra los dados con las claves de legKeysFor() ("P1","P1a","P1b") —
+    // dos espacios de nombres distintos para la misma pata (ver TOWER_TYPES
+    // vs. legKeysFor/computeLegCenters/state.angles, todos con prefijo "P").
+    const dadoIdx = colapsado ? 0 : dadoNames.indexOf("P"+legKey);
+    if(dadoIdx < 0){ avisos.push(`Pata ${legKey}: no se encontró su dado en la malla.`); return; }
+    const nodosDado = new Set();
+    malla.elementos.forEach(el=>{
+      if(el.cls === "pedestal" && el.dadoIndex === dadoIdx) el.n.forEach(ni=>nodosDado.add(ni));
+    });
+    if(nodosDado.size === 0){ avisos.push(`Pata ${legKey}: sin nodos de dado en la malla.`); return; }
+    let areaTotal = 0;
+    nodosDado.forEach(ni=>{ areaTotal += areaTrib[ni]; });
+    if(!(areaTotal>0)){ avisos.push(`Pata ${legKey}: área tributaria nula.`); return; }
+    nodosDado.forEach(ni=>{
+      cargas.push({ nodo: ni, dof:0, valor: -P*(areaTrib[ni]/areaTotal) });
+    });
+    cargaTotalAplicada += P;
+  });
+
+  if(!cargas.length){
+    resumenEl.innerHTML = `<div class="message-bar error"><span>No se pudo aplicar ninguna carga. ${avisos.join(" ")}</span></div>`;
+    svgWrapEl.innerHTML = "";
+    return;
+  }
+
+  let resultado;
+  try{
+    resultado = femSolveLineal(malla, { espesor, E, nu, restringidos:[], cargas, resortes });
+  } catch(err){
+    resumenEl.innerHTML = `<div class="message-bar error"><span>El solver falló: ${err.message}</span></div>`;
+    svgWrapEl.innerHTML = "";
+    return;
+  }
+  const u = resultado.u;
+
+  let maxW = 0;
+  for(let i=0;i<malla.nodos.length;i++){
+    const w = -u[3*i+0];
+    if(w>maxW) maxW = w;
+  }
+  let sumReacciones = 0;
+  for(let i=0;i<malla.nodos.length;i++) sumReacciones += resortes[i]*(-u[3*i+0]);
+  const diffEquilibrio = sumReacciones - cargaTotalAplicada;
+
+  resumenEl.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "props-grid";
+  propRow(grid, "Nodos / ecuaciones", `${malla.nodos.length} / ${resultado.nEq}`, "");
+  propRow(grid, "Flecha máxima", fmt(maxW*100,4), "cm");
+  propRow(grid, "Carga total aplicada", fmt(cargaTotalAplicada,0), "kg");
+  propRow(grid, "Equilibrio (ΣReacciones − ΣCargas)", fmt(diffEquilibrio,6), "kg");
+  resumenEl.appendChild(grid);
+  if(avisos.length){
+    const av = document.createElement("div");
+    av.className = "message-bar warning";
+    av.style.marginTop = "8px";
+    av.innerHTML = `<span>${avisos.join(" ")}</span>`;
+    resumenEl.appendChild(av);
+  }
+
+  svgWrapEl.innerHTML = femPreviewSvg(u, maxW, lastPlanArgs.outerC);
+}
+
 // Fase 05 — no linealidad compression-only (loop tipo ENT, con límite de
 // iteraciones y detección de ciclos en el set de resortes activos).
 function femSolveNoLineal(malla, cargas, ksKgm3){
@@ -10350,6 +10531,8 @@ function femRotarMomentosAGlobal(momentosElemento, thetaLocal){
 function femWoodArmerGlobal(momentosGlobalesPorNodo){
   throw new Error("FEM: femWoodArmerGlobal no implementado (fase 08)");
 }
+
+document.getElementById("btnFemPreviewRun").addEventListener("click", femRunPreview);
 
 initBindings();
 renderAll();
