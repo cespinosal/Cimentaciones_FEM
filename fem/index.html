@@ -1705,7 +1705,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           <span>Esta vista previa solo corre para Autosoportada 3P/4P (necesita la tabla de reacciones por pata). Para Monopolo falta repartir momento/cortante del apoyo único en cargas nodales — eso queda para cuando se conecte de verdad en la fase 06.</span>
         </div>
         <div id="femPreviewControles" class="row-actions" style="flex-wrap:wrap; align-items:center; gap:12px;">
-          <span class="small" style="color:var(--muted);">Combo: <b id="femPreviewCombo">—</b> (el mismo elegido en 4.2 Volteo)</span>
+          <label class="field" style="margin:0;"><span class="lbl">Caso de carga (combo)</span><select id="femPreviewComboSelect"></select></label>
           <button class="btn primary" id="btnFemPreviewRun" type="button">Correr análisis (preview)</button>
         </div>
         <div id="femPreviewResumen" style="margin-top:12px;"></div>
@@ -3709,6 +3709,7 @@ let anim3dRunning = false;
 let last3dArgs = null;
 let viewMode3d = "3d";
 let selectedVolteoCombo = null; // combinación elegida en el selector "Combinación" del header de Vista 3D
+let femPreviewSelectedCombo = null; // combo elegido en el selector propio de la vista previa del Motor FEM (independiente del de 4.2 Volteo)
 let lastGeoData = null; // {geo, cap, props, outerC, holeC} del último renderAll() — usado por los modales de animación del Brazo y del Área efectiva
 // Resultados de las animaciones de Brazo/Área efectiva, por combinación —
 // viven en state.brazoCache/state.areaEfectivaCache (no en lastGeoData, que
@@ -5858,8 +5859,32 @@ function populateGeoComboSelector(){
   sel.innerHTML = cfg.combos.map(c=>
     `<option value="${c}"${c===selectedVolteoCombo ? " selected" : ""}>${c}</option>`
   ).join("");
-  const femLbl = document.getElementById("femPreviewCombo");
-  if(femLbl) femLbl.textContent = selectedVolteoCombo || "—";
+  femPreviewPoblarCombos(cfg);
+}
+
+// Selector propio de la vista previa del Motor FEM — independiente del de
+// 4.2 Volteo (geoComboSelector) para que el usuario elija a propósito qué
+// caso de carga analizar antes de tocar "Correr análisis", en vez de heredar
+// la combinación que haya quedado seleccionada en otra pestaña. Solo se
+// listan los combos estructurales (1.2D + 1.0W, TIA-222-H) — mismo filtro
+// que ya usan getCriteriosDisenoRevision()/computeCortante()/etc. para
+// "combosEstructurales" — porque acá interesa la carga última, no la de
+// servicio (0.9D/1.0D) que se usa para volteo/geotécnico en 4.2/4.3.
+function femPreviewPoblarCombos(cfg){
+  const sel = document.getElementById("femPreviewComboSelect");
+  if(!sel) return;
+  if(!cfg || cfg.kind !== "legs"){
+    sel.innerHTML = "";
+    femPreviewSelectedCombo = null;
+    return;
+  }
+  const combosEstructurales = cfg.combos.filter(c => /1\.2\s*d/i.test(c));
+  if(!femPreviewSelectedCombo || !combosEstructurales.includes(femPreviewSelectedCombo)){
+    femPreviewSelectedCombo = combosEstructurales[0] || null;
+  }
+  sel.innerHTML = combosEstructurales.map(c=>
+    `<option value="${c}"${c===femPreviewSelectedCombo ? " selected" : ""}>${c}</option>`
+  ).join("");
 }
 
 function computeGeotecnico(props, legs){
@@ -10429,10 +10454,11 @@ function femRunPreview(){
   const resortes = femResortesWinkler(malla, ks);
 
   const dadoNames = Object.keys(lastPlanArgs.dados || {});
-  const comboIdx = cfg.combos.indexOf(selectedVolteoCombo);
+  const comboElegido = document.getElementById("femPreviewComboSelect").value;
+  const comboIdx = cfg.combos.indexOf(comboElegido);
   const reacciones = getCurrentReacciones();
   if(comboIdx < 0 || !reacciones){
-    resumenEl.innerHTML = `<div class="message-bar error"><span>No hay combo/reacciones configuradas para "${state.tipoEstructura}".</span></div>`;
+    resumenEl.innerHTML = `<div class="message-bar error"><span>Elegí un caso de carga (combo 1.2D) antes de correr el análisis.</span></div>`;
     svgWrapEl.innerHTML = "";
     return;
   }
@@ -10533,6 +10559,9 @@ function femWoodArmerGlobal(momentosGlobalesPorNodo){
 }
 
 document.getElementById("btnFemPreviewRun").addEventListener("click", femRunPreview);
+document.getElementById("femPreviewComboSelect").addEventListener("change", (e)=>{
+  femPreviewSelectedCombo = e.target.value;
+});
 
 initBindings();
 renderAll();
