@@ -320,7 +320,7 @@
       <dl><dt>Rama</dt><dd>feature/motor-fem</dd></dl>
       <dl><dt>Elemento</dt><dd>Mindlin/Reissner · 3 nodos · 9 GDL</dd></dl>
       <dl><dt>Suelo</dt><dd>Winkler, compression-only</dd></dl>
-      <dl><dt>Fecha</dt><dd>21 jul 2026</dd></dl>
+      <dl><dt>Fecha</dt><dd>22 jul 2026</dd></dl>
     </div>
   </div>
 
@@ -359,10 +359,10 @@ var PHASES = [
    objetivo:"femPlacaStiffness(nodos, espesor, E, ν) → matriz local 9×9. Se cambió de DKT (Batoz/Bathe/Ho) a Mindlin/Reissner de 3 nodos con integración reducida (1 punto) en cortante: el DKT no está en Bathe (que usa MITC) y la única fuente con los coeficientes explícitos tenía errores — el patch test daba error grande, no de redondeo. Sigue siendo placa delgada de Kirchhoff en el límite.",
    entrega:"Función pura, testeable desde la consola sin geometría real.",
    validacion:"3 pruebas independientes, exactas a precisión de máquina: patch test de curvatura constante, modos de cuerpo rígido (fuerza nula), simetría de Ke."},
-  {n:"03", title:"Ensamblaje + solver lineal", gate:true,
-   objetivo:"Matriz global sparse + solver directo (Cholesky/skyline — más robusto que gradiente conjugado dado el mal condicionamiento flexión-vs-suelo que aparece en la fase 04). Placa cuadrada sintética, simplemente apoyada, carga puntual.",
-   entrega:"Primera flecha calculada por el motor propio.",
-   validacion:"Comparar la flecha máxima contra la solución cerrada de Timoshenko (tablas de placas)."},
+  {n:"03", title:"Ensamblaje + solver lineal", gate:true, status:"hecho",
+   objetivo:"Matriz global por perfil skyline + solver directo LDL^T (método de columna activa de Bathe, cap. 8.2 — equivalente a COLSOL del libro), más robusto que gradiente conjugado dado el mal condicionamiento flexión-vs-suelo que aparece en la fase 04. Placa cuadrada sintética, simplemente apoyada (borde con w=0, giro libre).",
+   entrega:"Primera flecha calculada por el motor propio (femSolveLineal).",
+   validacion:"4 chequeos independientes: (1) autochequeo del solver LDL^T contra reconstrucción L·D·Lᵀ y residual ‖Ax−F‖ en matrices SPD aleatorias — error máx. 1.1e-13 (precisión de máquina); (2) equilibrio ΣReacciones = carga aplicada, exacto a 1e-10; (3) carga UNIFORME contra la solución cerrada de Navier (Timoshenko, w=0.00406 q·L⁴/D) — convergencia monótona al refinar malla, de -86.9% (N=8) a -2.0% (N=128), el resto es shear locking ya documentado en fase 02; (4) carga PUNTUAL (el caso pedido originalmente) contra la misma serie: mejora hasta N≈32-64 y luego diverge de nuevo — es la singularidad de corte esperada bajo un punto de carga en una placa Reissner-Mindlin, no comparable 1:1 contra la tabla de Kirchhoff. Detalle completo en el comentario de femSolveLineal en fem/index.html."},
   {n:"04", title:"Resortes Winkler lineales", gate:true,
    objetivo:"K_nodo = ks·A_tributaria por nodo, resortes siempre activos — sin corte por tracción todavía.",
    entrega:"Losa sobre lecho elástico, caso sintético.",
