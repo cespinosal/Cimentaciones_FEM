@@ -318,9 +318,9 @@
     <p class="tb-sub">Implementación <em>progresiva</em> del solver de losas de cimentación dentro de <code>fem/index.html</code> — sin tocar <code>index.html</code>. Cada fase entrega algo verificable antes de habilitar la siguiente.</p>
     <div class="tb-meta">
       <dl><dt>Rama</dt><dd>feature/motor-fem</dd></dl>
-      <dl><dt>Elemento</dt><dd>DKT · 3 nodos · 9 GDL</dd></dl>
+      <dl><dt>Elemento</dt><dd>Mindlin/Reissner · 3 nodos · 9 GDL</dd></dl>
       <dl><dt>Suelo</dt><dd>Winkler, compression-only</dd></dl>
-      <dl><dt>Fecha</dt><dd>21 jul 2026</dd></dl>
+      <dl><dt>Fecha</dt><dd>22 jul 2026</dd></dl>
     </div>
   </div>
 
@@ -347,26 +347,26 @@
 "use strict";
 
 var PHASES = [
-  {n:"00", title:"Andamiaje", gate:false,
+  {n:"00", title:"Andamiaje", gate:false, status:"hecho",
    objetivo:"Rama feature/motor-fem sobre fem/index.html. Nueva sección numerada (== N. MOTOR FEM ==) con funciones vacías, sin enganchar a renderAll().",
    entrega:"Esqueleto de código aislado.",
    validacion:"Cero cambios visibles en la UI — la app se comporta idéntica a index.html."},
-  {n:"01", title:"Adaptador de malla", gate:false,
+  {n:"01", title:"Adaptador de malla", gate:false, status:"hecho",
    objetivo:"Extraer de “Urdimbre Mesh” (4.4) una estructura {nodos, elementos}: cada cuadrilátero partido en 2 triángulos (diagonal que minimiza el ángulo máximo), CCW verificado.",
    entrega:"Función pura de conversión, sin dependencia de UI.",
    validacion:"El dibujo de la malla adaptada calca el preview actual — mismo conteo de nodos y elementos."},
-  {n:"02", title:"Rigidez local DKT", gate:true,
-   objetivo:"dktStiffness(nodos, espesor, E, ν) → matriz local 9×9, formulación estándar de placa delgada (Bathe).",
+  {n:"02", title:"Rigidez local de placa (Mindlin/Reissner)", gate:true, status:"hecho",
+   objetivo:"femPlacaStiffness(nodos, espesor, E, ν) → matriz local 9×9. Se cambió de DKT (Batoz/Bathe/Ho) a Mindlin/Reissner de 3 nodos con integración reducida (1 punto) en cortante: el DKT no está en Bathe (que usa MITC) y la única fuente con los coeficientes explícitos tenía errores — el patch test daba error grande, no de redondeo. Sigue siendo placa delgada de Kirchhoff en el límite.",
    entrega:"Función pura, testeable desde la consola sin geometría real.",
-   validacion:"Patch test clásico: estado de curvatura constante se reproduce exacto en 1–2 triángulos de coordenadas fijas."},
-  {n:"03", title:"Ensamblaje + solver lineal", gate:true,
-   objetivo:"Matriz global sparse + solver directo (Cholesky/skyline — más robusto que gradiente conjugado dado el mal condicionamiento flexión-vs-suelo que aparece en la fase 04). Placa cuadrada sintética, simplemente apoyada, carga puntual.",
-   entrega:"Primera flecha calculada por el motor propio.",
-   validacion:"Comparar la flecha máxima contra la solución cerrada de Timoshenko (tablas de placas)."},
-  {n:"04", title:"Resortes Winkler lineales", gate:true,
-   objetivo:"K_nodo = ks·A_tributaria por nodo, resortes siempre activos — sin corte por tracción todavía.",
-   entrega:"Losa sobre lecho elástico, caso sintético.",
-   validacion:"(a) equilibrio: ΣReacciones = carga total aplicada. (b) viga sobre fundación elástica (Hetényi, 1D) como segundo caso cerrado."},
+   validacion:"3 pruebas independientes, exactas a precisión de máquina: patch test de curvatura constante, modos de cuerpo rígido (fuerza nula), simetría de Ke."},
+  {n:"03", title:"Ensamblaje + solver lineal", gate:true, status:"hecho",
+   objetivo:"Matriz global por perfil skyline + solver directo LDL^T (método de columna activa de Bathe, cap. 8.2 — equivalente a COLSOL del libro), más robusto que gradiente conjugado dado el mal condicionamiento flexión-vs-suelo que aparece en la fase 04. Placa cuadrada sintética, simplemente apoyada (borde con w=0, giro libre).",
+   entrega:"Primera flecha calculada por el motor propio (femSolveLineal).",
+   validacion:"4 chequeos independientes: (1) autochequeo del solver LDL^T contra reconstrucción L·D·Lᵀ y residual ‖Ax−F‖ en matrices SPD aleatorias — error máx. 1.1e-13 (precisión de máquina); (2) equilibrio ΣReacciones = carga aplicada, exacto a 1e-10; (3) carga UNIFORME contra la solución cerrada de Navier (Timoshenko, w=0.00406 q·L⁴/D) — convergencia monótona al refinar malla, de -86.9% (N=8) a -2.0% (N=128), el resto es shear locking ya documentado en fase 02; (4) carga PUNTUAL (el caso pedido originalmente) contra la misma serie: mejora hasta N≈32-64 y luego diverge de nuevo — es la singularidad de corte esperada bajo un punto de carga en una placa Reissner-Mindlin, no comparable 1:1 contra la tabla de Kirchhoff. Detalle completo en el comentario de femSolveLineal en fem/index.html."},
+  {n:"04", title:"Resortes Winkler lineales", gate:true, status:"hecho",
+   objetivo:"K_nodo = ks·A_tributaria por nodo (femResortesWinkler), resortes siempre activos — sin corte por tracción todavía (fase 05). Placa flotante sostenida solo por los resortes, sin restricciones explícitas: los 3 modos de cuerpo rígido de la fase 02 quedan resistidos porque todos producen w≠0 en algún nodo.",
+   entrega:"Losa sobre lecho elástico, caso sintético (femSolveLineal con el parámetro opcional resortes).",
+   validacion:"(a) equilibrio ΣReacciones=carga aplicada, exacto a 1e-9 en placa cuadrada flotante bajo carga puntual; (b) franja larga con ν=0 (para que D=EI exacto, sin la corrección de flexión cilíndrica) bajo carga lineal, contra la viga infinita sobre fundación de Winkler de Hetényi: error en el centro −0.13% (malla 240×8, β·L/2≈6), −1.43% en malla más gruesa (120×4) — convergencia confirmada, más equilibrio exacto a 2.3e-8 en el mismo caso."},
   {n:"05", title:"No linealidad compression-only", gate:false,
    objetivo:"Loop resolver → desactivar resortes en tracción → repetir, con límite de iteraciones y detección de ciclos (si el set de resortes activos se repite, cortar en vez de loopear infinito).",
    entrega:"Solver no lineal tipo ENT (elastic-no-tension).",
@@ -376,7 +376,7 @@ var PHASES = [
    entrega:"Primer análisis FEM sobre geometría real de Cimentaciones FEM.",
    validacion:"Exportar el mismo modelo a .STD (sección 4.7) y correrlo en STAAD.Pro para comparar reacciones y deflexiones — paso manual, no automatizable."},
   {n:"07", title:"Rotación de momentos a ejes globales", gate:false,
-   objetivo:"Transformación de Mohr sobre [Mx, My, Mxy] de cada triángulo (θ = atan2(y₂−y₁, x₂−x₁)) + promedio/suavizado nodal entre elementos vecinos — el DKT da momento constante por elemento, no nodal.",
+   objetivo:"Transformación de Mohr sobre [Mx, My, Mxy] de cada triángulo (θ = atan2(y₂−y₁, x₂−x₁)) + promedio/suavizado nodal entre elementos vecinos — el elemento da momento constante por elemento, no nodal.",
    entrega:"Campo de momentos continuo, alineado a la parrilla de acero X-Y global.",
    validacion:"Momentos rotados coinciden con un cálculo manual en un nodo de prueba con triángulos en orientaciones distintas."},
   {n:"08", title:"Wood-Armer sobre momentos globales", gate:false,
@@ -398,10 +398,11 @@ PHASES.forEach(function(p, i){
   var row = document.createElement("div");
   row.className = "phase" + (p.gate ? " is-gate" : "");
   row.style.animationDelay = (i*45) + "ms";
+  var status = p.status || "pendiente";
   row.innerHTML =
     '<div class="ph-idx">' + p.n + '</div>' +
     '<div class="ph-body">' +
-      '<h2>' + p.title + '<span class="status">pendiente</span></h2>' +
+      '<h2>' + p.title + '<span class="status' + (status === "hecho" ? " done" : "") + '">' + status + '</span></h2>' +
       '<div class="ph-grid">' +
         '<div class="ph-field"><dt>Objetivo</dt><dd>' + p.objetivo + '</dd></div>' +
         '<div class="ph-field"><dt>Entrega</dt><dd>' + p.entrega + '</dd></div>' +
