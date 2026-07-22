@@ -9941,7 +9941,7 @@ function initBindings(){
    andamiaje — ninguna función de este bloque se llama todavía desde
    renderAll() ni desde la UI.
    ============================================================ */
-const FEM_MOTOR = { VERSION: "0.3.0-fase03" };
+const FEM_MOTOR = { VERSION: "0.4.0-fase04" };
 
 // Fase 01 — adaptador de malla: "Urdimbre Mesh" -> {nodos, elementos} DKT.
 // Recibe el mismo objeto que devuelve generateMallaFEM()/lastMallaMesh:
@@ -10102,11 +10102,15 @@ function femPlacaStiffness(nodosTriangulo, espesor, E, nu){
 // apoyo elastico en ordenes de magnitud muy distintos).
 //
 // DOF por nodo: [w, bx, by] -> dof global = 3*nodo+comp (comp 0=w,1=bx,2=by).
-// opts = { espesor, E, nu, restringidos:[{nodo,dof}], cargas:[{nodo,dof,valor}] }.
-// "restringidos" fija w/bx/by en 0 (soporte simple = solo dof 0 en el borde);
-// "cargas" son fuerzas nodales directas (sin repartir area tributaria, eso
-// es responsabilidad del llamador). Devuelve {u, nEq, stats}: u es el vector
-// de GDL completo (tamaño nNodos*3, con 0 en los dof restringidos).
+// opts = { espesor, E, nu, restringidos:[{nodo,dof}], cargas:[{nodo,dof,valor}],
+// resortes:Float64Array opcional (fase 04) }. "restringidos" fija w/bx/by en 0
+// (soporte simple = solo dof 0 en el borde); "cargas" son fuerzas nodales
+// directas (sin repartir area tributaria, eso es responsabilidad del
+// llamador); "resortes[nodo]" es la rigidez de Winkler de ese nodo (kg/cm),
+// sumada a la diagonal de su dof w — ver femResortesWinkler mas abajo. Sin
+// "resortes" el comportamiento es identico al de la fase 03. Devuelve
+// {u, nEq, stats}: u es el vector de GDL completo (tamaño nNodos*3, con 0 en
+// los dof restringidos).
 //
 // Validacion (fuera de la app — resultados documentados aqui y en
 // fem/roadmap.html, mismo criterio de la fase 02 de dejar constancia del
@@ -10184,7 +10188,7 @@ function femIdx(colStart, minEq, i, j){
   // entrada (fila i, columna j), i<=j, i>=minEq[j]
   return colStart[j] + (i - minEq[j]);
 }
-function femEnsamblarSkyline(malla, espesor, E, nu, eqNum, perfil){
+function femEnsamblarSkyline(malla, espesor, E, nu, eqNum, perfil, resortes){
   const { minEq, colStart, total } = perfil;
   const A = new Float64Array(total);
   for(const el of malla.elementos){
@@ -10200,6 +10204,15 @@ function femEnsamblarSkyline(malla, espesor, E, nu, eqNum, perfil){
         if(eqA>eqB) continue; // solo triangulo superior (fila<=col)
         A[femIdx(colStart, minEq, eqA, eqB)] += Ke[a][b];
       }
+    }
+  }
+  // Fase 04 — resortes de Winkler: rigidez K_nodo sumada directo a la
+  // diagonal del GDL w de cada nodo (resorte a tierra, no acopla nodos
+  // entre si, por eso no cambia el perfil skyline calculado sin resortes).
+  if(resortes){
+    for(let nodo=0; nodo<malla.nodos.length; nodo++){
+      const eq = eqNum[3*nodo];
+      if(eq>=0) A[femIdx(colStart,minEq,eq,eq)] += resortes[nodo];
     }
   }
   return A;
@@ -10248,13 +10261,13 @@ function femResolverSkyline(A, minEq, colStart, nEq, F){
   return x;
 }
 function femSolveLineal(malla, opts){
-  const { espesor, E, nu, restringidos, cargas } = opts;
+  const { espesor, E, nu, restringidos, cargas, resortes } = opts;
   const nNodos = malla.nodos.length;
   const restrSet = new Set();
-  for(const r of restringidos) restrSet.add(3*r.nodo + r.dof);
+  for(const r of (restringidos||[])) restrSet.add(3*r.nodo + r.dof);
   const { eqNum, nEq } = femMapaEcuaciones(nNodos, restrSet);
   const perfil = femPerfilSkyline(malla.elementos, eqNum, nEq);
-  const A = femEnsamblarSkyline(malla, espesor, E, nu, eqNum, perfil);
+  const A = femEnsamblarSkyline(malla, espesor, E, nu, eqNum, perfil, resortes);
   const F = new Float64Array(nEq);
   for(const c of cargas){
     const eq = eqNum[3*c.nodo + c.dof];
@@ -10270,9 +10283,53 @@ function femSolveLineal(malla, opts){
   return { u, nEq, stats: perfil };
 }
 
-// Fase 04 — resortes Winkler lineales: K_nodo = ks_kgm3 * A_tributaria.
+// Fase 04 — resortes de Winkler lineales (siempre activos, sin corte por
+// tracción todavía — eso es la fase 05). Cada nodo recibe un resorte a
+// tierra K_nodo = ks_kgm3 · A_tributaria, con A_tributaria = suma de área/3
+// de cada triángulo adyacente (mismo criterio de reparto que usa
+// generarStaadModel() para las reacciones por nodo). El resorte solo actúa
+// sobre el dof w (vertical); no acopla nodos entre sí, por eso se suma
+// directo a la diagonal en femEnsamblarSkyline sin tocar el perfil skyline.
+//
+// Validación (fuera de la app, mismo criterio que fases 02/03 — resultados
+// documentados aquí y en fem/roadmap.html):
+//  1) Equilibrio en una placa cuadrada CUADRADA FLOTANTE (sin ningún
+//     "restringidos", solo los resortes sosteniéndola — el caso real de una
+//     losa apoyada en el suelo) bajo carga puntual: suma de reacciones de
+//     resorte (Σ ks·w_nodo·A_tributaria) == carga aplicada, exacto a 1e-9.
+//     Esto también confirma que el sistema es definido positivo sin
+//     restricciones explícitas: el propio resorte impide los 3 posibles
+//     modos de cuerpo rígido de una placa Mindlin (traslación vertical
+//     uniforme y los 2 giros — ver patch test de la fase 02), porque
+//     cualquiera de esos 3 modos produce w≠0 en algún nodo.
+//  2) Franja larga y angosta (viga sobre fundación elástica) con ν=0 —así
+//     la rigidez de placa D=E·t³/12 coincide exactamente con la EI de una
+//     viga, sin la corrección (1-ν²) de flexión cilíndrica, evitando la
+//     ambigüedad franja-angosta-vs-ancha—, bajo una carga lineal (repartida
+//     por ancho tributario en una sola sección transversal), contra la
+//     solución cerrada de Hetényi para una viga infinita sobre fundación de
+//     Winkler: w(x)=(P·β)/(2·k')·e^(−β|x|)·(cos(β|x|)+sin(β|x|)), con
+//     β=(k'/(4·EI))^(1/4) y k'=ks·ancho. Con β·(L/2)≈6 (extremos libres lo
+//     bastante lejos del centro para no contaminar la comparación) y malla
+//     de 240×8 elementos: error en el centro −0.13%, error máximo dentro de
+//     ±300 cm del centro (~1.2 longitudes características 1/β) de 0.32% —
+//     con malla más gruesa (120×4) el error en el centro ya es −1.43%,
+//     confirmando convergencia. También se confirmó equilibrio en este
+//     caso (diferencia 2.3e-8 sobre la carga total).
+function femAreaTributariaNodos(malla){
+  const A = new Float64Array(malla.nodos.length);
+  for(const el of malla.elementos){
+    const [p1,p2,p3] = el.n.map(i => malla.nodos[i]);
+    const area = Math.abs((p2.x-p1.x)*(p3.y-p1.y) - (p3.x-p1.x)*(p2.y-p1.y))/2;
+    for(const ni of el.n) A[ni] += area/3;
+  }
+  return A;
+}
 function femResortesWinkler(malla, ksKgm3){
-  throw new Error("FEM: femResortesWinkler no implementado (fase 04)");
+  const areaTrib = femAreaTributariaNodos(malla);
+  const K = new Float64Array(malla.nodos.length);
+  for(let i=0;i<K.length;i++) K[i] = ksKgm3*areaTrib[i];
+  return K;
 }
 
 // Fase 05 — no linealidad compression-only (loop tipo ENT, con límite de
