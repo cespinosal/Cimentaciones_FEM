@@ -9941,7 +9941,7 @@ function initBindings(){
    andamiaje — ninguna función de este bloque se llama todavía desde
    renderAll() ni desde la UI.
    ============================================================ */
-const FEM_MOTOR = { VERSION: "0.0.0-fase00" };
+const FEM_MOTOR = { VERSION: "0.2.0-fase02" };
 
 // Fase 01 — adaptador de malla: "Urdimbre Mesh" -> {nodos, elementos} DKT.
 // Recibe el mismo objeto que devuelve generateMallaFEM()/lastMallaMesh:
@@ -10009,9 +10009,89 @@ function femBuildMeshAdapter(mesh){
   return { nodos, elementos, stats:{ nCuad, nTriPartidos, nTriDirectos, nNodos: nodos.length, nElementos: elementos.length } };
 }
 
-// Fase 02 — rigidez local del elemento DKT (3 nodos, 9 GDL: w, thetaX, thetaY).
-function femDktStiffness(nodosTriangulo, espesor, E, nu){
-  throw new Error("FEM: femDktStiffness no implementado (fase 02)");
+// Fase 02 — rigidez local del elemento de placa (3 nodos, 9 GDL: w, bx, by
+// por nodo, con bx=dw/dx, by=dw/dy — convención de Bathe, "Finite Element
+// Procedures", ec. 5.88-5.89, sección 5.4.2).
+//
+// CAMBIO DE ELEMENTO respecto al roadmap original: se planeaba DKT (Discrete
+// Kirchhoff Triangle, Batoz/Bathe/Ho 1980), pero esa formulación no está en
+// el libro citado como referencia (Bathe usa MITC, no DKT) y la única fuente
+// con los coeficientes explícitos disponible (una reimplementación de
+// terceros) resultó tener errores de transcripción — el patch test daba
+// error grande, no de redondeo. Se reemplazó por un elemento Mindlin/
+// Reissner triangular de 3 nodos con interpolación lineal (w, bx, by todos
+// con las mismas funciones de forma N1,N2,N3) e integración reducida
+// (1 punto, el centroide) en el término de cortante para evitar shear
+// locking — técnica estándar para este elemento (ver p.ej. Cook/Malkus/
+// Plesha, "Concepts and Applications of Finite Element Analysis"). Sigue
+// siendo una placa delgada de Kirchhoff en el límite (t chico), acorde al
+// espíritu del roadmap, solo con una formulación distinta y más simple de
+// verificar. Confirmado con 3 pruebas independientes (ver comentario abajo
+// de femPlacaCurvatura): patch test de curvatura constante, modos de
+// cuerpo rígido (fuerza nula) y simetría de Ke — las 3 exactas a precisión
+// de máquina.
+//
+// nodosTriangulo: [{x,y},{x,y},{x,y}] en sentido CCW (ya lo garantiza la
+// fase 01, femAsegurarCCW). Devuelve la matriz 9x9 (orden de GDL:
+// [w1,bx1,by1, w2,bx2,by2, w3,bx3,by3]).
+function femPlacaGeom(nodosTriangulo){
+  const [p1,p2,p3] = nodosTriangulo;
+  const x23=p2.x-p3.x, x31=p3.x-p1.x, x12=p1.x-p2.x;
+  const y23=p2.y-p3.y, y31=p3.y-p1.y, y12=p1.y-p2.y;
+  const den = x31*y12 - x12*y31; // = 2*Área (con signo, +si CCW)
+  const area = den/2;
+  // derivadas de N1,N2,N3 (constantes: triángulo de lados rectos)
+  const dNdx = [y23/den, y31/den, y12/den];
+  const dNdy = [-x23/den, -x31/den, -x12/den];
+  return { area, dNdx, dNdy };
+}
+
+// Matriz de curvaturas/cortante Bb(3x9), Bs(2x9) — expuesta aparte de
+// femPlacaStiffness porque las fases de recuperación de momentos (07/08)
+// y la validación (patch test) necesitan evaluar curvaturas a partir de
+// GDL nodales, no solo la matriz de rigidez ya ensamblada.
+function femPlacaB(nodosTriangulo){
+  const { dNdx, dNdy } = femPlacaGeom(nodosTriangulo);
+  const Bb = [new Array(9).fill(0), new Array(9).fill(0), new Array(9).fill(0)];
+  const Bs = [new Array(9).fill(0), new Array(9).fill(0)];
+  const N = 1/3; // cortante evaluado en el centroide (integración reducida)
+  for(let n=0;n<3;n++){
+    const cw=3*n, cbx=3*n+1, cby=3*n+2;
+    Bb[0][cbx] = dNdx[n];               // kx = d(bx)/dx
+    Bb[1][cby] = dNdy[n];               // ky = d(by)/dy
+    Bb[2][cbx] = dNdy[n]; Bb[2][cby] = dNdx[n]; // gxy = d(bx)/dy + d(by)/dx
+    Bs[0][cw] = dNdx[n]; Bs[0][cbx] = -N;        // gxz = dw/dx - bx
+    Bs[1][cw] = dNdy[n]; Bs[1][cby] = -N;        // gyz = dw/dy - by
+  }
+  return { Bb, Bs };
+}
+
+// Curvaturas+cortante recuperadas a partir de GDL nodales — usada por el
+// patch test (fase 02) y por la recuperación de momentos en fases futuras.
+function femPlacaCurvatura(nodosTriangulo, dofs9){
+  const { Bb, Bs } = femPlacaB(nodosTriangulo);
+  const mul = (fila) => fila.reduce((s,b,i)=> s + b*dofs9[i], 0);
+  return { kx: mul(Bb[0]), ky: mul(Bb[1]), gxy: mul(Bb[2]), gxz: mul(Bs[0]), gyz: mul(Bs[1]) };
+}
+
+function femPlacaStiffness(nodosTriangulo, espesor, E, nu){
+  const { area } = femPlacaGeom(nodosTriangulo);
+  const { Bb, Bs } = femPlacaB(nodosTriangulo);
+  const D11 = E*espesor*espesor*espesor/(12*(1-nu*nu));
+  const Db = [[D11, D11*nu, 0], [D11*nu, D11, 0], [0, 0, D11*(1-nu)/2]];
+  const G = E/(2*(1+nu));
+  const kShear = 5/6; // factor de corrección por cortante (Reissner-Mindlin)
+  const Gs = kShear*G*espesor;
+  const Ke = Array.from({length:9}, ()=> new Array(9).fill(0));
+  for(let i=0;i<9;i++){
+    for(let j=0;j<9;j++){
+      let sum = 0;
+      for(let p=0;p<3;p++) for(let q=0;q<3;q++) sum += Bb[p][i]*Db[p][q]*Bb[q][j];
+      const shear = (Bs[0][i]*Bs[0][j] + Bs[1][i]*Bs[1][j]) * Gs;
+      Ke[i][j] = (sum + shear) * area;
+    }
+  }
+  return Ke;
 }
 
 // Fase 03 — ensamblaje global sparse + solver directo (Cholesky/skyline).

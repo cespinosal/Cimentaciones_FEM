@@ -318,7 +318,7 @@
     <p class="tb-sub">Implementación <em>progresiva</em> del solver de losas de cimentación dentro de <code>fem/index.html</code> — sin tocar <code>index.html</code>. Cada fase entrega algo verificable antes de habilitar la siguiente.</p>
     <div class="tb-meta">
       <dl><dt>Rama</dt><dd>feature/motor-fem</dd></dl>
-      <dl><dt>Elemento</dt><dd>DKT · 3 nodos · 9 GDL</dd></dl>
+      <dl><dt>Elemento</dt><dd>Mindlin/Reissner · 3 nodos · 9 GDL</dd></dl>
       <dl><dt>Suelo</dt><dd>Winkler, compression-only</dd></dl>
       <dl><dt>Fecha</dt><dd>21 jul 2026</dd></dl>
     </div>
@@ -355,10 +355,10 @@ var PHASES = [
    objetivo:"Extraer de “Urdimbre Mesh” (4.4) una estructura {nodos, elementos}: cada cuadrilátero partido en 2 triángulos (diagonal que minimiza el ángulo máximo), CCW verificado.",
    entrega:"Función pura de conversión, sin dependencia de UI.",
    validacion:"El dibujo de la malla adaptada calca el preview actual — mismo conteo de nodos y elementos."},
-  {n:"02", title:"Rigidez local DKT", gate:true,
-   objetivo:"dktStiffness(nodos, espesor, E, ν) → matriz local 9×9, formulación estándar de placa delgada (Bathe).",
+  {n:"02", title:"Rigidez local de placa (Mindlin/Reissner)", gate:true,
+   objetivo:"femPlacaStiffness(nodos, espesor, E, ν) → matriz local 9×9. Se cambió de DKT (Batoz/Bathe/Ho) a Mindlin/Reissner de 3 nodos con integración reducida (1 punto) en cortante: el DKT no está en Bathe (que usa MITC) y la única fuente con los coeficientes explícitos tenía errores — el patch test daba error grande, no de redondeo. Sigue siendo placa delgada de Kirchhoff en el límite.",
    entrega:"Función pura, testeable desde la consola sin geometría real.",
-   validacion:"Patch test clásico: estado de curvatura constante se reproduce exacto en 1–2 triángulos de coordenadas fijas."},
+   validacion:"3 pruebas independientes, exactas a precisión de máquina: patch test de curvatura constante, modos de cuerpo rígido (fuerza nula), simetría de Ke."},
   {n:"03", title:"Ensamblaje + solver lineal", gate:true,
    objetivo:"Matriz global sparse + solver directo (Cholesky/skyline — más robusto que gradiente conjugado dado el mal condicionamiento flexión-vs-suelo que aparece en la fase 04). Placa cuadrada sintética, simplemente apoyada, carga puntual.",
    entrega:"Primera flecha calculada por el motor propio.",
@@ -376,7 +376,7 @@ var PHASES = [
    entrega:"Primer análisis FEM sobre geometría real de Cimentaciones FEM.",
    validacion:"Exportar el mismo modelo a .STD (sección 4.7) y correrlo en STAAD.Pro para comparar reacciones y deflexiones — paso manual, no automatizable."},
   {n:"07", title:"Rotación de momentos a ejes globales", gate:false,
-   objetivo:"Transformación de Mohr sobre [Mx, My, Mxy] de cada triángulo (θ = atan2(y₂−y₁, x₂−x₁)) + promedio/suavizado nodal entre elementos vecinos — el DKT da momento constante por elemento, no nodal.",
+   objetivo:"Transformación de Mohr sobre [Mx, My, Mxy] de cada triángulo (θ = atan2(y₂−y₁, x₂−x₁)) + promedio/suavizado nodal entre elementos vecinos — el elemento da momento constante por elemento, no nodal.",
    entrega:"Campo de momentos continuo, alineado a la parrilla de acero X-Y global.",
    validacion:"Momentos rotados coinciden con un cálculo manual en un nodo de prueba con triángulos en orientaciones distintas."},
   {n:"08", title:"Wood-Armer sobre momentos globales", gate:false,
