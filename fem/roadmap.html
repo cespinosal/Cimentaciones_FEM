@@ -347,15 +347,15 @@
 "use strict";
 
 var PHASES = [
-  {n:"00", title:"Andamiaje", gate:false,
+  {n:"00", title:"Andamiaje", gate:false, status:"hecho",
    objetivo:"Rama feature/motor-fem sobre fem/index.html. Nueva sección numerada (== N. MOTOR FEM ==) con funciones vacías, sin enganchar a renderAll().",
    entrega:"Esqueleto de código aislado.",
    validacion:"Cero cambios visibles en la UI — la app se comporta idéntica a index.html."},
-  {n:"01", title:"Adaptador de malla", gate:false,
+  {n:"01", title:"Adaptador de malla", gate:false, status:"hecho",
    objetivo:"Extraer de “Urdimbre Mesh” (4.4) una estructura {nodos, elementos}: cada cuadrilátero partido en 2 triángulos (diagonal que minimiza el ángulo máximo), CCW verificado.",
    entrega:"Función pura de conversión, sin dependencia de UI.",
    validacion:"El dibujo de la malla adaptada calca el preview actual — mismo conteo de nodos y elementos."},
-  {n:"02", title:"Rigidez local de placa (Mindlin/Reissner)", gate:true,
+  {n:"02", title:"Rigidez local de placa (Mindlin/Reissner)", gate:true, status:"hecho",
    objetivo:"femPlacaStiffness(nodos, espesor, E, ν) → matriz local 9×9. Se cambió de DKT (Batoz/Bathe/Ho) a Mindlin/Reissner de 3 nodos con integración reducida (1 punto) en cortante: el DKT no está en Bathe (que usa MITC) y la única fuente con los coeficientes explícitos tenía errores — el patch test daba error grande, no de redondeo. Sigue siendo placa delgada de Kirchhoff en el límite.",
    entrega:"Función pura, testeable desde la consola sin geometría real.",
    validacion:"3 pruebas independientes, exactas a precisión de máquina: patch test de curvatura constante, modos de cuerpo rígido (fuerza nula), simetría de Ke."},
@@ -398,10 +398,11 @@ PHASES.forEach(function(p, i){
   var row = document.createElement("div");
   row.className = "phase" + (p.gate ? " is-gate" : "");
   row.style.animationDelay = (i*45) + "ms";
+  var status = p.status || "pendiente";
   row.innerHTML =
     '<div class="ph-idx">' + p.n + '</div>' +
     '<div class="ph-body">' +
-      '<h2>' + p.title + '<span class="status">pendiente</span></h2>' +
+      '<h2>' + p.title + '<span class="status' + (status === "hecho" ? " done" : "") + '">' + status + '</span></h2>' +
       '<div class="ph-grid">' +
         '<div class="ph-field"><dt>Objetivo</dt><dd>' + p.objetivo + '</dd></div>' +
         '<div class="ph-field"><dt>Entrega</dt><dd>' + p.entrega + '</dd></div>' +
