@@ -2374,7 +2374,7 @@ document.addEventListener("click", (e) => {
       <div class="body">
         <div class="message-bar warning" role="status" style="margin-bottom:16px;">
           <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span><b>Sin validar todavía contra STAAD.</b> Corre las fases ya hechas (00–05: malla, rigidez de placa, solver lineal, resortes de Winkler, no linealidad compression-only) sobre la geometría real de esta zapata, con la carga axial (Fy) real de cada pata y el peso propio+relleno+ciclópeo+adicional (sección 4.-, con el factor 1.2 del ANSI/TIA-222-H §9.4 aplicado a todo el peso en combos 1.2D), todo repartido por área tributaria. Todavía sin aplicar el cortante horizontal (Fx/Fz) ni el momento local que genera en cada dado, sin recuperar momentos de diseño (07/08) ni optimizar rendimiento (09) — con malla fina el loop de la fase 05 puede tardar unos segundos (barra de progreso abajo). Solo sirve para <i>ver</i> la deformada y qué zona queda sin contacto con el suelo — no reemplaza el diseño de la sección 5.</span>
+          <span><b>Validado contra STAAD (fase 06, ver fem/roadmap.html):</b> flecha máxima con 0.06% de diferencia contra un modelo real corrido en STAAD.Pro. Corre las fases ya hechas (00–05: malla, rigidez de placa, solver lineal, resortes de Winkler, no linealidad compression-only) sobre la geometría real de esta zapata, con la carga axial (Fy) real de cada pata y el peso propio+relleno+ciclópeo+adicional (sección 4.-, con el factor 1.2 del ANSI/TIA-222-H §9.4 aplicado a todo el peso en combos 1.2D), todo repartido por área tributaria. Todavía sin aplicar el cortante horizontal (Fx/Fz) ni el momento local que genera en cada dado (ver Mejoras futuras en el roadmap), sin recuperar momentos de diseño (07/08) ni optimizar rendimiento (09) — con malla fina el loop de la fase 05 puede tardar unos segundos (barra de progreso abajo). Todavía no reemplaza el diseño de la sección 5.</span>
         </div>
         <div id="femPreviewNoSoportado" class="message-bar error hidden" role="alert">
           <span>Este análisis solo corre para Autosoportada 3P/4P (necesita la tabla de reacciones por pata). Para Monopolo falta repartir momento/cortante del apoyo único en cargas nodales.</span>
@@ -11293,7 +11293,18 @@ async function femRunPreview(){
   const cargas = [];
   let cargaTotalAplicada = 0;
   const avisos = [];
-  const dadoNodosPorPata = {}; // legKey -> {nodos:[idx...], P} — para el resumen por dado (comparación contra STAAD)
+  // legKey -> {nodosAnillo:[idx...], P} — para el resumen por dado
+  // (comparación contra STAAD). nodosAnillo es SOLO el perímetro (mismos
+  // nodos que el grupo con nombre _P1/_P1a/_P1b del export STAAD, sección
+  // 4.7) — confirmado con el usuario que al comparar contra STAAD selecciona
+  // por ese grupo, que NO incluye la sub-grilla interior del dado (ver
+  // pedestalRingsByName en generateMallaFEM). La carga sigue repartiéndose
+  // por área tributaria sobre el dado COMPLETO (nodosDado más abajo, ring +
+  // interior) — eso no cambia, es física aparte de esta tabla de comparación.
+  // Sumar reacción sobre el dado completo contra una Summation de STAAD hecha
+  // por grupo daba un factor ~1.78x sistemático que no era un error del
+  // solver, sino comparar dos conjuntos de nodos distintos.
+  const dadoNodosPorPata = {};
   cfg.legs.forEach(legKey=>{
     const row = filaCombo[legKey];
     if(!row) return;
@@ -11326,7 +11337,10 @@ async function femRunPreview(){
       cargas.push({ nodo: ni, dof:0, valor: -P*(areaTrib[ni]/areaTotal) });
     });
     cargaTotalAplicada += P;
-    dadoNodosPorPata[legKey] = { nodos: [...nodosDado], P };
+    const nombreDado = dadoNames[dadoIdx];
+    const anilloStaadIds = (lastMallaMesh && lastMallaMesh.pedestalRingsByName) ? (lastMallaMesh.pedestalRingsByName[nombreDado] || []) : [];
+    const nodosAnillo = anilloStaadIds.map(id => id - 1);
+    dadoNodosPorPata[legKey] = { nodosAnillo, P };
   });
 
   // Peso propio + relleno + ciclópeo + adicional (mismo pesoTotal que ya
@@ -11429,28 +11443,31 @@ async function femRunPreview(){
   // nuestro FEM sobre la malla ya triangulada (femBuildMeshAdapter) — la
   // suma total por dado debería coincidir razonablemente aunque el reparto
   // nodo-por-nodo no coincida exacto.
-  // "Carga total" incluye la porción de peso propio+relleno que cae sobre
-  // los MISMOS nodos del dado (por área tributaria, presionKgM2 ya
-  // calculada arriba) — sin esto, comparar "Fy de la pata" a secas contra
-  // "Reacción FEM" da una diferencia enorme que no es un error: gran parte
-  // de esa diferencia es peso propio+relleno que también cae ahí, más la
-  // redistribución normal de una losa flexible (una carga puntual se
-  // reparte sobre un área bastante más grande que la huella del dado).
+  // Se suma SOLO sobre el anillo (nodosAnillo, mismos nodos que el grupo
+  // _P1/_P1a/_P1b del export STAAD) y no sobre el dado completo — validado
+  // contra una corrida real: comparar el dado completo contra una Summation
+  // de STAAD hecha por ese grupo (que no trae la sub-grilla interior) daba
+  // un factor ~1.78x que no era el solver, era comparar dos conjuntos de
+  // nodos distintos. "Carga total" usa "P" completo (toda la reacción de la
+  // pata, no solo la parte del anillo) porque es el dato de entrada tal cual
+  // viene de la tabla de Reacciones — la gran diferencia contra "Reacción
+  // FEM" es esperable y es redistribución por flexión de la losa, no un
+  // hueco de esta tabla.
   const filasDado = Object.keys(dadoNodosPorPata).map(legKey=>{
-    const { nodos, P } = dadoNodosPorPata[legKey];
+    const { nodosAnillo, P } = dadoNodosPorPata[legKey];
     let reaccionDado = 0, pesoDado = 0;
-    nodos.forEach(ni=>{
+    nodosAnillo.forEach(ni=>{
       if(activos[ni]) reaccionDado += resortesBase[ni]*(-u[3*ni+0]);
       pesoDado += presionKgM2*areaTrib[ni];
     });
     const cargaTotalDado = P + pesoDado;
-    const staadJoints = comprimirRangosStaad(nodos.map(ni=>ni+1)).join(", ");
+    const staadJoints = comprimirRangosStaad(nodosAnillo.map(ni=>ni+1)).join(", ");
     return { legKey, P, pesoDado, cargaTotalDado, reaccionDado, staadJoints };
   });
   if(filasDado.length){
     const wrap = document.createElement("div");
     wrap.style.marginTop = "12px";
-    wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:6px;">Reacción total por dado (para comparar contra la <b>Summation</b> de reacciones de STAAD sobre esos mismos números de nodo — sección 4.7). La diferencia restante es redistribución por flexión de la losa, no un hueco de esta tabla:</p>
+    wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:6px;">Reacción total por dado, solo anillo (para comparar contra la <b>Summation</b> de reacciones de STAAD seleccionando por el grupo Dados / _P1-_P1a-_P1b, sección 4.7 — no incluye la sub-grilla interior del dado). La diferencia restante es redistribución por flexión de la losa, no un hueco de esta tabla:</p>
       <div style="overflow-x:auto;"><table class="em-table">
         <thead><tr><th>Pata</th><th>Nodos STAAD</th><th>Fy pata</th><th>+ Peso propio/relleno (área trib.)</th><th>Carga total</th><th>Reacción FEM</th><th>Diferencia</th></tr></thead>
         <tbody>${filasDado.map(f=>`<tr><td>${f.legKey}</td><td>${f.staadJoints}</td><td>${fmt(f.P,2)} kg</td><td>${fmt(f.pesoDado,2)} kg</td><td>${fmt(f.cargaTotalDado,2)} kg</td><td>${fmt(f.reaccionDado,2)} kg</td><td>${fmt(f.reaccionDado-f.cargaTotalDado,4)} kg</td></tr>`).join("")}</tbody>
