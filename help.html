@@ -228,7 +228,7 @@
   </ul>
   <div class="alert alert-warning">
     <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#DC3545" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div><b>Limitación actual importante:</b> la geometría de vértices y la carga de reacciones funcionan para los 4 tipos, pero la revisión geotécnica (secciones 4.1 a 4.4: criterios, volteo, capacidad portante y mallado) <b>solo está calculada para "Autosoportada 3P"</b>. Para 4P/M4/Monopolo, esas tarjetas muestran el aviso: <i>"El diseño geotécnico todavía solo está implementado para 'Autosoportada 3P' (y su alias M4/4P aún no tiene la geometría de patas de esta sección)."</i></div>
+    <div><b>Limitación actual importante:</b> la geometría de vértices y la carga de reacciones funcionan para los 4 tipos, y la revisión geotécnica (secciones 4.1 a 4.4: criterios, volteo, capacidad portante y mallado) <b>ya está calculada para "Autosoportada 3P" y "Autosoportada 4P"</b> (M4 usa la misma revisión que 4P, con sus 4 patas embebidas en un solo pedestal). Para <b>Monopolo</b> esas tarjetas siguen mostrando el aviso de "todavía no implementado" — falta la geometría de un único apoyo central en vez de patas.</div>
   </div>
 
   <h3>Qué SÍ hace hoy la herramienta</h3>
@@ -236,7 +236,7 @@
     <li>Importar la geometría de la zapata/losa (y su hueco opcional) desde archivos <code>.txt</code>.</li>
     <li>Calcular propiedades de la sección (área, centroide, Ix, Iy) directamente de esos vértices.</li>
     <li>Importar reacciones de patas por combinación de carga desde el PDF del software de análisis de la torre, o cargarlas a mano.</li>
-    <li>Calcular la revisión geotécnica por <b>volteo</b> (TIA-222-H) y por <b>capacidad portante</b> (Ley de Navier) para Autosoportada 3P.</li>
+    <li>Calcular la revisión geotécnica por <b>volteo</b> (TIA-222-H) y por <b>capacidad portante</b> (Ley de Navier) para Autosoportada 3P y 4P (incl. M4).</li>
     <li>Generar una previsualización visual del <b>mallado FEM</b> de la losa (algoritmo "Urdimbre Mesh") — geometría del mallado, no un análisis de esfuerzos.</li>
     <li>Diseñar el refuerzo por <b>ACI 318-19</b> (sección 5): flexión (lecho superior/inferior, bloque de Whitney), cortante en una dirección, punzonamiento y revisión de dados de desplante (compresión/tensión axial, superficie de interacción por compatibilidad de deformaciones).</li>
     <li>Exportar el modelo completo a un archivo <code>.STD</code> para STAAD.Pro (sección 4.7): malla real de la losa, apoyos elásticos (coeficiente de balasto), peso propio + relleno/ciclópeo/dados (con el factor 1.2 de ANSI/TIA-222-H §9.4 para los combos 1.2D+viento) y las reacciones de cada pata, ya combinados en <code>LOAD</code> listos para correr.</li>
@@ -475,7 +475,7 @@ const FAQ = [
   },
   {
     q: "② ¿La herramienta soporta torres de 4 patas o solo de 3?",
-    a: "El selector \"Tipo de estructura\" incluye Autosoportada 4P (y su alias M4), y podés cargar su geometría y sus reacciones sin problema. Lo que todavía no está implementado para 4P/M4 (ni para Monopolo) es la revisión geotécnica completa — volteo, capacidad portante y mallado (secciones 4.1-4.4) solo calculan hoy para Autosoportada 3P."
+    a: "Sí. El selector \"Tipo de estructura\" incluye Autosoportada 4P (y su alias M4, que embebe las 4 patas en un solo pedestal), y la revisión geotécnica completa — volteo, capacidad portante y mallado (secciones 4.1-4.4) — ya está calculada para 3P y 4P/M4 por igual. Lo único que todavía no está implementado es Monopolo (un solo apoyo central, sin patas)."
   },
   {
     q: "③ ¿Puedo ingresar las reacciones manualmente si no tengo el PDF?",

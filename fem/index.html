@@ -954,7 +954,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
   </ul>
   <div class="alert alert-warning">
     <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#DC3545" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div><b>Limitación actual importante:</b> la geometría de vértices y la carga de reacciones funcionan para los 4 tipos, pero la revisión geotécnica (secciones 4.1 a 4.4: criterios, volteo, capacidad portante y mallado) <b>solo está calculada para "Autosoportada 3P"</b>. Para 4P/M4/Monopolo, esas tarjetas muestran el aviso: <i>"El diseño geotécnico todavía solo está implementado para 'Autosoportada 3P' (y su alias M4/4P aún no tiene la geometría de patas de esta sección)."</i></div>
+    <div><b>Limitación actual importante:</b> la geometría de vértices y la carga de reacciones funcionan para los 4 tipos, y la revisión geotécnica (secciones 4.1 a 4.4: criterios, volteo, capacidad portante y mallado) <b>ya está calculada para "Autosoportada 3P" y "Autosoportada 4P"</b> (M4 usa la misma revisión que 4P, con sus 4 patas embebidas en un solo pedestal). Para <b>Monopolo</b> esas tarjetas siguen mostrando el aviso de "todavía no implementado" — falta la geometría de un único apoyo central en vez de patas.</div>
   </div>
 
   <h3>Qué SÍ hace hoy la herramienta</h3>
@@ -962,7 +962,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <li>Importar la geometría de la zapata/losa (y su hueco opcional) desde archivos <code>.txt</code>.</li>
     <li>Calcular propiedades de la sección (área, centroide, Ix, Iy) directamente de esos vértices.</li>
     <li>Importar reacciones de patas por combinación de carga desde el PDF del software de análisis de la torre, o cargarlas a mano.</li>
-    <li>Calcular la revisión geotécnica por <b>volteo</b> (TIA-222-H) y por <b>capacidad portante</b> (Ley de Navier) para Autosoportada 3P.</li>
+    <li>Calcular la revisión geotécnica por <b>volteo</b> (TIA-222-H) y por <b>capacidad portante</b> (Ley de Navier) para Autosoportada 3P y 4P (incl. M4).</li>
     <li>Generar una previsualización visual del <b>mallado FEM</b> de la losa (algoritmo "Urdimbre Mesh") — geometría del mallado, no un análisis de esfuerzos.</li>
     <li>Diseñar el refuerzo por <b>ACI 318-19</b> (sección 5): flexión (lecho superior/inferior, bloque de Whitney), cortante en una dirección, punzonamiento y revisión de dados de desplante (compresión/tensión axial, superficie de interacción por compatibilidad de deformaciones).</li>
     <li>Exportar el modelo completo a un archivo <code>.STD</code> para STAAD.Pro (sección 4.7): malla real de la losa, apoyos elásticos (coeficiente de balasto), peso propio + relleno/ciclópeo/dados (con el factor 1.2 de ANSI/TIA-222-H §9.4 para los combos 1.2D+viento) y las reacciones de cada pata, ya combinados en <code>LOAD</code> listos para correr.</li>
@@ -974,7 +974,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
   <div class="alert alert-info">
     <svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-13v5m0 3h.01" stroke="#0C7B93" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <div>
-      No hay un botón de "Generar reporte": el único guardado disponible es <b>Guardar como…</b>, que exporta el estado completo del proyecto como JSON (<code>.gfem</code>), no una memoria de cálculo imprimible. El motor FEM propio (pestaña Motor FEM) todavía no está validado formalmente contra STAAD.Pro — tratalo como orientativo, no como reemplazo del export a STAAD (sección 4.7).
+      No hay un botón de "Generar reporte": el único guardado disponible es <b>Guardar como…</b>, que exporta el estado completo del proyecto como JSON (<code>.gfem</code>), no una memoria de cálculo imprimible. El motor FEM propio (pestaña Motor FEM) ya está validado contra STAAD.Pro en flecha y reacciones (ver Anexo, sección 9), pero todavía no cubre cortante/momento local por dado ni tiene una UI final — no reemplaza todavía el export a STAAD (sección 4.7) para el diseño oficial.
     </div>
   </div>
 </section>
@@ -1165,7 +1165,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <dd>Software externo de análisis estructural (Bentley) al que esta app exporta el modelo FEM completo de la losa (sección 4.7, archivo <code>.STD</code>): malla real, apoyos elásticos, peso propio+relleno y reacciones de cada pata, ya combinados en <code>LOAD</code> por combinación de viento.</dd>
 
     <dt>Motor FEM (interno)</dt>
-    <dd>Solver de elementos finitos propio, en desarrollo dentro de esta copia (<code>fem/index.html</code>): placa Mindlin/Reissner triangular + resortes de Winkler + no linealidad compression-only, corriendo sobre la geometría real de la zapata. Ver Anexo, sección 9.</dd>
+    <dd>Solver de elementos finitos propio, en desarrollo dentro de esta copia (<code>fem/index.html</code>): placa Mindlin/Reissner triangular + resortes de Winkler + no linealidad compression-only, corriendo sobre la geometría real de la zapata, con recuperación de momentos (Mx, My, Mxy) y Wood-Armer por nodo. Ver Anexo, sección 9.</dd>
   </dl>
 </section>
 
@@ -1185,7 +1185,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
       <tr><td>V1.6</td><td>15/12/2025</td><td>Reacciones unitarias + procedimiento de automallado.</td></tr>
       <tr><td>V1.7</td><td>12/05/2026</td><td>Rotar dados sobre ejes locales + discretizar carga axial en el perímetro del dado.</td></tr>
       <tr><td>V2.0</td><td>15/07/2026</td><td><b>Desarrollo en aplicación web</b> — geometría, propiedades de sección, reacciones (con importación desde PDF), revisión geotécnica por volteo y capacidad portante para Autosoportada 3P, diseño estructural ACI 318-19 (sección 5), previsualización de mallado FEM "Urdimbre Mesh" y exportación de modelo a STAAD.Pro (sección 4.7).</td></tr>
-      <tr><td><b>V2.1</b></td><td>23/07/2026</td><td><b>Esta versión.</b> Export a STAAD: peso propio+relleno+dados con el factor 1.2 de ANSI/TIA-222-H §9.4 combinado con las reacciones en un solo <code>LOAD</code> por combinación 1.2D+viento. Autoguardado reubicado a la pestaña Cálculos (antes en Definición de la zapata), con nombre de archivo por default <code>&lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem</code>. Corrección de mallado en el automallado (dados no seguían el refinamiento del resto de la losa; transición dado-losa mejorada). Motor FEM interno: fases 00-06 (malla, rigidez de placa, solver lineal, resortes de Winkler, no linealidad compression-only, geometría real) — ver Anexo, sección 9. Ayuda embebida en la propia app (ya no depende de <code>help.html</code> aparte).</td></tr>
+      <tr><td><b>V2.1</b></td><td>23/07/2026</td><td><b>Esta versión.</b> Export a STAAD: peso propio+relleno+dados con el factor 1.2 de ANSI/TIA-222-H §9.4 combinado con las reacciones en un solo <code>LOAD</code> por combinación 1.2D+viento. Autoguardado reubicado a la pestaña Cálculos (antes en Definición de la zapata), con nombre de archivo por default <code>&lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem</code>. Corrección de mallado en el automallado (dados no seguían el refinamiento del resto de la losa; transición dado-losa mejorada). Motor FEM interno: fases 00-08 (malla, rigidez de placa, solver lineal, resortes de Winkler, no linealidad compression-only, geometría real —<b>validada contra STAAD.Pro: flecha 0.06%, reacciones ~1%</b>—, recuperación de momentos Mx/My/Mxy por nodo y Wood-Armer) — ver Anexo, sección 9. Ayuda embebida en la propia app (ya no depende de <code>help.html</code> aparte) y corregida: la revisión geotécnica (4.1-4.4) ya cubre 3P y 4P/M4, no solo 3P.</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -1195,19 +1195,33 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
   <h2>9. Anexo: Motor FEM (interno, en desarrollo)</h2>
   <div class="alert alert-warning">
     <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#DC3545" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div><b>Solo en esta copia de trabajo.</b> La pestaña <b>Motor FEM</b> no existe en la versión de producción de la app — es una rama de desarrollo (<code>fem/index.html</code>) para construir un solver de elementos finitos propio, pensado para eventualmente dejar de depender de exportar a STAAD.Pro. Todavía <b>no está validado formalmente</b> contra un modelo real corrido en STAAD — tratá sus resultados como orientativos.</div>
+    <div><b>Solo en esta copia de trabajo.</b> La pestaña <b>Motor FEM</b> no existe en la versión de producción de la app — es una rama de desarrollo (<code>fem/index.html</code>) para construir un solver de elementos finitos propio, pensado para eventualmente dejar de depender de exportar a STAAD.Pro. La flecha y las reacciones YA están validadas contra un modelo real corrido en STAAD.Pro (ver más abajo); el motor todavía no cubre todo lo necesario para reemplazar el flujo actual (falta cortante/momento local por dado, ver Limitaciones).</div>
   </div>
   <p>El motor resuelve la losa como una placa de <b>Mindlin/Reissner</b> (elemento triangular de 3 nodos) apoyada en <b>resortes de Winkler</b> (coeficiente de balasto de la sección 4.5), con un loop de no linealidad tipo <b>ENT</b> (elastic-no-tension) que desactiva los resortes que salen en tracción — así el % de área en contacto con el suelo sale de la propia física del modelo, no de una fórmula cerrada como Meyerhof.</p>
   <p>Dentro de la pestaña, la tarjeta <b>"Análisis del solver sobre geometría real"</b> corre este motor sobre la malla real de la zapata actual (la misma de la sección 4.4), con la carga axial de cada pata más el peso propio+relleno (con el factor 1.2 de ANSI/TIA-222-H §9.4 para los combos 1.2D+viento) — el selector de combo solo lista las variantes "+ Relleno" porque son las únicas con sentido físico completo (las reacciones solas, sin peso propio, no sostienen la zapata en la realidad).</p>
-  <div class="alert alert-info">
-    <svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-13v5m0 3h.01" stroke="#0C7B93" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div>La tabla de "Reacción total por dado" del preview está pensada justamente para comparar contra la <b>Summation</b> de reacciones de STAAD.Pro sobre esos mismos números de nodo (mostrados en la propia tabla) — es el mecanismo de validación mientras el motor no tenga un cierre formal.</div>
-  </div>
+
+  <h3>Validado contra STAAD.Pro (Ejemplo, combo Normal, malla 10cm)</h3>
+  <ul>
+    <li><b>Flecha máxima:</b> 7.2733cm (motor propio) vs. 7.278cm (STAAD, nodo del asentamiento máximo) — diferencia de <b>0.06%</b>.</li>
+    <li><b>Reacción por dado</b> (comparando contra la <b>Summation</b> de STAAD seleccionando por el grupo "Dados" — solo el anillo/perímetro, no la sub-grilla interior de cada dado): dentro de <b>~1%</b> en las 3 patas. La primera comparación (dado completo contra ese mismo grupo de STAAD) daba un desajuste de ~1.78× que no era un error del solver, sino comparar dos conjuntos de nodos distintos — corregido sumando la tabla de comparación solo sobre el anillo.</li>
+  </ul>
+  <p>La tarjeta del preview muestra la tabla "Reacción total por dado, solo anillo" para repetir esta misma comparación con cualquier otro modelo/combinación: seleccioná el grupo "Dados" en STAAD, sacá la Summation de reacciones para el mismo L/C, y compará contra la columna "Reacción del solver" de esa tabla.</p>
+
+  <h3>Momentos de diseño (Mx, My, Mxy, Wood-Armer)</h3>
+  <p>Además de la flecha y las reacciones, el preview recupera el campo de momentos de la losa y lo combina con <b>Wood-Armer</b> para dar momentos de diseño listos para armar la parrilla de refuerzo:</p>
+  <ul>
+    <li><b>Mx, My, Mxy por nodo:</b> se recuperan de la curvatura de cada triángulo y se promedian por nodo, ponderado por área, entre los elementos vecinos que lo comparten — un campo continuo, no un valor suelto por elemento.</li>
+    <li><b>Mu inferior / Mu superior (Wood-Armer):</b> misma fórmula que ya usa la sección 5.3 (Mu_inferior=MAX(Mx+|Mxy|, My+|Mxy|), Mu_superior=|MIN(Mx−|Mxy|, My−|Mxy|)|), aplicada nodo por nodo en vez de un único peor caso para toda la zapata.</li>
+    <li><b>Signo verificado:</b> se confirmó con un caso físico inequívoco (placa sobre resortes de Winkler, carga puntual hacia abajo en el nodo central — ese nodo necesariamente se hunde localmente, sagging, sin depender de ninguna convención de signos) que el momento positivo de este solver YA coincide con la convención de la sección 5.3 ("positivo = tracción abajo = refuerzo inferior"). No hizo falta invertir ningún signo.</li>
+  </ul>
+  <p>El selector "Mapa de momento" de la tarjeta permite elegir entre Mx/My/Mxy/Mu inferior/Mu superior — se colorea con la misma escala tipo "jet" (azul→cian→verde→amarillo→rojo) que usa STAAD.Pro para sus contornos, normalizada sobre el mínimo-máximo real de cada campo. Pasando el cursor sobre la losa (solo dentro del contorno, igual que en la sección 4.3) aparece el valor exacto del nodo más cercano, junto al propio cursor.</p>
+
   <h3>Limitaciones conocidas</h3>
   <ul>
-    <li>Solo aplica la carga axial (Fy) de cada pata — el cortante horizontal (Fx/Fz) y el momento local que genera en el dado todavía no se modelan.</li>
+    <li>Solo aplica la carga axial (Fy) de cada pata — el cortante horizontal (Fx/Fz) y el momento local que genera en el dado (Fx·brazo, Fz·brazo) todavía no se modelan. La forma más realista de resolverlo sería un vínculo rígido (nodo maestro por dado), que requeriría agregar ecuaciones de restricción al solver — no implementado.</li>
     <li>Solo corre para Autosoportada 3P/4P (necesita la tabla de reacciones por pata); Monopolo queda pendiente.</li>
-    <li>No recupera todavía momentos de diseño (flexión) a partir de la deformada — eso es trabajo de fases posteriores del roadmap interno.</li>
+    <li>Sin optimizar rendimiento todavía: con malla muy fina, el loop de no linealidad puede tardar varios segundos (barra de progreso en la propia tarjeta).</li>
+    <li>Sin UI final (visor 3D, exportación de resultados) — hoy es una tarjeta de preview dentro de la pestaña, no un flujo completo de punta a punta.</li>
   </ul>
 </section>
 
@@ -1226,7 +1240,7 @@ const FAQ = [
   },
   {
     q: "② ¿La herramienta soporta torres de 4 patas o solo de 3?",
-    a: "El selector \"Tipo de estructura\" incluye Autosoportada 4P (y su alias M4), y podés cargar su geometría y sus reacciones sin problema. Lo que todavía no está implementado para 4P/M4 (ni para Monopolo) es la revisión geotécnica completa — volteo, capacidad portante y mallado (secciones 4.1-4.4) solo calculan hoy para Autosoportada 3P."
+    a: "Sí. El selector \"Tipo de estructura\" incluye Autosoportada 4P (y su alias M4, que embebe las 4 patas en un solo pedestal), y la revisión geotécnica completa — volteo, capacidad portante y mallado (secciones 4.1-4.4) — ya está calculada para 3P y 4P/M4 por igual. Lo único que todavía no está implementado es Monopolo (un solo apoyo central, sin patas)."
   },
   {
     q: "③ ¿Puedo ingresar las reacciones manualmente si no tengo el PDF?",
@@ -1234,7 +1248,7 @@ const FAQ = [
   },
   {
     q: "④ ¿Qué precisión tiene el mallado FEM respecto a un análisis con software especializado?",
-    a: "La sección 4.4 en sí es solo la geometría de la malla (tamaño y forma de los elementos) — el análisis de esfuerzos sobre esa malla se hace exportando a STAAD.Pro (sección 4.7), que resuelve el modelo de placas sobre resortes de suelo con el peso propio, el relleno y las reacciones ya combinados en los LOAD listos para correr. Esta copia además tiene un motor de elementos finitos propio (pestaña \"Motor FEM\") que corre ese mismo análisis dentro de la app — todavía sin validar formalmente contra STAAD.Pro, tratalo como orientativo hasta que esa validación se complete (ver Anexo, sección 9)."
+    a: "La sección 4.4 en sí es solo la geometría de la malla (tamaño y forma de los elementos) — el análisis de esfuerzos sobre esa malla se hace exportando a STAAD.Pro (sección 4.7), que resuelve el modelo de placas sobre resortes de suelo con el peso propio, el relleno y las reacciones ya combinados en los LOAD listos para correr. Esta copia además tiene un motor de elementos finitos propio (pestaña \"Motor FEM\") que corre ese mismo análisis dentro de la app — la flecha máxima y las reacciones ya están validadas contra un modelo real de STAAD.Pro (0.06% y ~1% de diferencia respectivamente), aunque todavía le falta modelar el cortante/momento local por dado (ver Anexo, sección 9)."
   },
   {
     q: "⑤ ¿Cómo interpreto los colores del diagrama de esfuerzo de contacto (4.3)?",
@@ -11195,6 +11209,17 @@ function femPreviewRamp(t){
 // validado contra una convención física (qué cara queda traccionada) — eso
 // se valida al conectar esto con el diseño a flexión (fase 08).
 const FEM_MOMENTO_STOPS = [[0,[0,0,143]],[0.25,[0,255,255]],[0.5,[0,255,0]],[0.75,[255,255,0]],[1,[255,0,0]]];
+// Componentes seleccionables en el mapa/tabla del preview: Mx/My/Mxy (fase
+// 07) + Mu inferior/superior de Wood-Armer (fase 08) — mismo objeto por
+// nodo (femRunPreview les agrega muInferior/muSuperior a momentosPorNodo),
+// así que el resto del código los trata todos igual, sin casos especiales.
+const FEM_MOMENTO_COMPONENTES = [
+  { key:"Mx", label:"Mx" },
+  { key:"My", label:"My" },
+  { key:"Mxy", label:"Mxy" },
+  { key:"muInferior", label:"Mu inferior (Wood-Armer)" },
+  { key:"muSuperior", label:"Mu superior (Wood-Armer)" }
+];
 function femMomentoRamp(t){ // t en [0,1]
   const tt = Math.max(0, Math.min(1, t));
   let i=0; while(i<FEM_MOMENTO_STOPS.length-2 && tt>FEM_MOMENTO_STOPS[i+1][0]) i++;
@@ -11231,6 +11256,7 @@ function femMomentosSvg(outerC, holeC, momentosPorNodo, componente){
   const holePts = (holeC && holeC.length>=3) ? holeC.map(p=>`${p.x},${-p.y}`).join(" ") : "";
   const r = Math.max(w,h)/70;
   const fs = Math.max(w,h)/38;
+  const label = FEM_MOMENTO_COMPONENTES.find(c=>c.key===componente).label;
   // Cursor + lectura por nodo: mismo patrón que navierSvgInner/4.3
   // (svgEventToPlan + pointInPolygon para recortar fuera del contorno/hueco),
   // pero acá se reporta el nodo más cercano en vez de evaluar una fórmula
@@ -11244,7 +11270,7 @@ function femMomentosSvg(outerC, holeC, momentosPorNodo, componente){
     <circle id="femPreviewMomentoCursor" class="hidden" r="${r*0.7}" fill="none" stroke="var(--danger-fg)" stroke-width="${strokeW*2}"/>
     <text id="femPreviewMomentoTexto" class="hidden" font-size="${fs}" font-weight="600" fill="#000" stroke="#fff" stroke-width="${fs/6}" paint-order="stroke" text-anchor="start"></text>
   </svg>
-  <p class="small" style="color:var(--muted); margin-top:6px;">Escala ${componente} (mín. → máx. del campo, tipo STAAD.Pro): ${fmt(minVal/1000,2)} <span style="color:rgb(0,0,143);">■</span> ${fmt((minVal+rango*0.25)/1000,2)} <span style="color:rgb(0,255,255);">■</span> ${fmt((minVal+rango*0.5)/1000,2)} <span style="color:rgb(0,255,0);">■</span> ${fmt((minVal+rango*0.75)/1000,2)} <span style="color:rgb(255,255,0);">■</span> ${fmt(maxVal/1000,2)} <span style="color:rgb(255,0,0);">■</span> Tn·m/m. Signo crudo del solver, sin validar todavía contra qué cara queda traccionada (se valida en fase 08).</p>`;
+  <p class="small" style="color:var(--muted); margin-top:6px;">Escala ${label} (mín. → máx. del campo, tipo STAAD.Pro): ${fmt(minVal/1000,2)} <span style="color:rgb(0,0,143);">■</span> ${fmt((minVal+rango*0.25)/1000,2)} <span style="color:rgb(0,255,255);">■</span> ${fmt((minVal+rango*0.5)/1000,2)} <span style="color:rgb(0,255,0);">■</span> ${fmt((minVal+rango*0.75)/1000,2)} <span style="color:rgb(255,255,0);">■</span> ${fmt(maxVal/1000,2)} <span style="color:rgb(255,0,0);">■</span> Tn·m/m. ${componente==="Mxy" ? "Mxy entra al diseño solo como |Mxy| (Wood-Armer, fase 08) — su signo no afecta el resultado." : "Signo verificado (fase 08, caso físico de carga puntual sobre resortes): positivo = tracción abajo = refuerzo inferior."}</p>`;
 }
 // Arma el resumen (tabla max/min) + selector de componente + mapa de color,
 // a partir de la última corrida guardada en lastMomentosPreview — separado
@@ -11254,19 +11280,17 @@ function femPreviewRenderMomentos(){
   const wrap = document.getElementById("femPreviewMomentosWrap");
   if(!lastMomentosPreview){ wrap.innerHTML = ""; return; }
   const { momentosPorNodo, outerC, holeC } = lastMomentosPreview;
-  let maxMx=-Infinity, minMx=Infinity, maxMy=-Infinity, minMy=Infinity, maxMxy=-Infinity, minMxy=Infinity;
-  momentosPorNodo.forEach(m=>{
-    if(m.Mx>maxMx) maxMx=m.Mx; if(m.Mx<minMx) minMx=m.Mx;
-    if(m.My>maxMy) maxMy=m.My; if(m.My<minMy) minMy=m.My;
-    if(m.Mxy>maxMxy) maxMxy=m.Mxy; if(m.Mxy<minMxy) minMxy=m.Mxy;
+  const filas = FEM_MOMENTO_COMPONENTES.map(({key,label})=>{
+    let mx=-Infinity, mn=Infinity;
+    momentosPorNodo.forEach(m=>{ if(m[key]>mx) mx=m[key]; if(m[key]<mn) mn=m[key]; });
+    return [label, mx, mn];
   });
-  const filas = [["Mx",maxMx,minMx],["My",maxMy,minMy],["Mxy",maxMxy,minMxy]];
-  wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:6px;">Momentos por nodo (fase 07, promedio ponderado por área entre los elementos vecinos — ver comentario de femMomentosPorNodo):</p>
+  wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:6px;">Momentos por nodo (fase 07, promedio ponderado por área entre los elementos vecinos) + Mu de diseño por Wood-Armer (fase 08, mismo criterio que la sección 5.3):</p>
     <div style="overflow-x:auto; margin-bottom:12px;"><table class="em-table">
       <thead><tr><th>Componente</th><th>Máximo</th><th>Mínimo</th></tr></thead>
-      <tbody>${filas.map(([c,mx,mn])=>`<tr><td>${c}</td><td>${fmt(mx/1000,3)} Tn·m/m</td><td>${fmt(mn/1000,3)} Tn·m/m</td></tr>`).join("")}</tbody>
+      <tbody>${filas.map(([label,mx,mn])=>`<tr><td>${label}</td><td>${fmt(mx/1000,3)} Tn·m/m</td><td>${fmt(mn/1000,3)} Tn·m/m</td></tr>`).join("")}</tbody>
     </table></div>
-    <label class="field" style="max-width:220px; margin-bottom:8px;"><span class="lbl">Mapa de momento</span><select id="femPreviewMomentoSelect"><option value="Mx"${femPreviewMomentosComponente==="Mx"?" selected":""}>Mx</option><option value="My"${femPreviewMomentosComponente==="My"?" selected":""}>My</option><option value="Mxy"${femPreviewMomentosComponente==="Mxy"?" selected":""}>Mxy</option></select></label>
+    <label class="field" style="max-width:320px; margin-bottom:8px;"><span class="lbl">Mapa de momento</span><select id="femPreviewMomentoSelect">${FEM_MOMENTO_COMPONENTES.map(({key,label})=>`<option value="${key}"${femPreviewMomentosComponente===key?" selected":""}>${label}</option>`).join("")}</select></label>
     <div id="femPreviewMomentoSvg"></div>`;
   const dibujarSvg = ()=>{
     document.getElementById("femPreviewMomentoSvg").innerHTML = femMomentosSvg(outerC, holeC, momentosPorNodo, femPreviewMomentosComponente);
@@ -11274,6 +11298,7 @@ function femPreviewRenderMomentos(){
     const cursor = document.getElementById("femPreviewMomentoCursor");
     const texto = document.getElementById("femPreviewMomentoTexto");
     const off = svg.viewBox.baseVal.width/45; // desplazamiento del texto respecto al cursor, en unidades del propio viewBox
+    const labelSel = FEM_MOMENTO_COMPONENTES.find(c=>c.key===femPreviewMomentosComponente).label;
     svg.addEventListener("mousemove", (e)=>{
       const p = svgEventToPlan(svg, e);
       const dentro = pointInPolygon(p, outerC) && !(holeC && holeC.length>=3 && pointInPolygon(p, holeC));
@@ -11287,7 +11312,7 @@ function femPreviewRenderMomentos(){
       cursor.setAttribute("cx", p.x); cursor.setAttribute("cy", -p.y);
       cursor.classList.remove("hidden");
       texto.setAttribute("x", p.x + off); texto.setAttribute("y", -p.y - off);
-      texto.textContent = `${femPreviewMomentosComponente}: ${fmt(valor/1000,3)} Tn·m/m`;
+      texto.textContent = `${labelSel}: ${fmt(valor/1000,3)} Tn·m/m`;
       texto.classList.remove("hidden");
     });
     svg.addEventListener("mouseleave", ()=>{
@@ -11608,10 +11633,17 @@ async function femRunPreview(){
     resumenEl.appendChild(wrap);
   }
 
-  // Momentos por nodo (fase 07) — se recalculan siempre que corre el
-  // preview; el selector de componente (Mx/My/Mxy) solo redibuja el SVG,
-  // sin volver a resolver el sistema (femPreviewRenderMomentos).
-  lastMomentosPreview = { momentosPorNodo: femMomentosPorNodo(malla, u, espesor, E, nu), outerC: lastPlanArgs.outerC, holeC: state.holeEnabled ? lastPlanArgs.holeC : null };
+  // Momentos por nodo (fase 07) + Wood-Armer por nodo (fase 08) — se
+  // recalculan siempre que corre el preview; el selector de componente
+  // (Mx/My/Mxy/MuInferior/MuSuperior) solo redibuja el SVG, sin volver a
+  // resolver el sistema (femPreviewRenderMomentos). muInferior/muSuperior
+  // se agregan como campos extra del mismo objeto por nodo para que el
+  // resto del código (tabla, mapa de color, hover) los trate igual que
+  // Mx/My/Mxy, sin casos especiales.
+  const momentosPorNodo = femMomentosPorNodo(malla, u, espesor, E, nu);
+  const woodArmerPorNodo = femWoodArmerGlobal(momentosPorNodo);
+  momentosPorNodo.forEach((m,i)=>{ m.muInferior = woodArmerPorNodo[i].muInferior; m.muSuperior = woodArmerPorNodo[i].muSuperior; });
+  lastMomentosPreview = { momentosPorNodo, outerC: lastPlanArgs.outerC, holeC: state.holeEnabled ? lastPlanArgs.holeC : null };
   femPreviewRenderMomentos();
 
   if(resultado.estado !== "convergio"){
@@ -11824,10 +11856,26 @@ function femMomentosPorNodo(malla, u, espesor, E, nu){
   return out;
 }
 
-// Fase 08 — Wood-Armer sobre los momentos ya rotados a global y suavizados
-// por nodo, como alternativa/complemento a la carga manual de 5.3.
+// Fase 08 — Wood-Armer sobre los momentos ya suavizados por nodo (fase 07),
+// como alternativa/complemento a la carga manual de 5.3. Misma fórmula que
+// getMomentosDisenoFlexion (Mu_inferior=MAX(Mx+|Mxy|,My+|Mxy|),
+// Mu_superior=|MIN(Mx-|Mxy|,My-|Mxy|)|) — NO hace falta invertir signo:
+// verificado con un caso físico inequívoco (placa sobre resortes de
+// Winkler, carga puntual hacia abajo en el nodo central) que Mx/My positivo
+// en este solver YA es "tensión abajo" — misma convención confirmada en
+// getMomentosDisenoFlexion (comentario junto a esa función). A diferencia
+// de esa función (que da un único par de valores, el peor caso entre TODAS
+// las filas de la tabla 5.1), acá se da un valor POR NODO — un campo
+// continuo, porque el momento de la fase 07 también lo es.
+function femWoodArmerNodo(m){
+  const absMxy = Math.abs(m.Mxy);
+  return {
+    muInferior: Math.max(0, m.Mx + absMxy, m.My + absMxy),
+    muSuperior: Math.abs(Math.min(0, m.Mx - absMxy, m.My - absMxy))
+  };
+}
 function femWoodArmerGlobal(momentosGlobalesPorNodo){
-  throw new Error("FEM: femWoodArmerGlobal no implementado (fase 08)");
+  return momentosGlobalesPorNodo.map(femWoodArmerNodo);
 }
 
 document.getElementById("btnFemPreviewRun").addEventListener("click", femRunPreview);
