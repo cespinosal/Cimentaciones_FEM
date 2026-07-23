@@ -970,7 +970,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <li>(Solo esta copia, pestaña <b>Motor FEM</b>) Correr un análisis de elementos finitos propio sobre la geometría real de la zapata — ver Anexo, sección 9.</li>
   </ul>
 
-  <h3>Qué NO hace todavía (honesto)</h3>
+  <h3>Qué NO hace todavía</h3>
   <div class="alert alert-info">
     <svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-13v5m0 3h.01" stroke="#0C7B93" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <div>
@@ -1027,10 +1027,10 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <li><kbd class="step">②</kbd><b>Abrir <code>index.html</code></b> con doble clic — no requiere servidor.</li>
     <li><kbd class="step">③</kbd>En la pestaña <b>Definición de la zapata</b>, elige el <b>Tipo de estructura</b>, haz clic en <b>Importar Contorno Exterior…</b> y elige tu archivo. Si tu losa tiene hueco, activa <b>Incluir hueco en la zapata</b> y haz clic en <b>Importar Hueco…</b>.</li>
     <li><kbd class="step">④</kbd>Revisa la <b>Vista en planta</b> y las <b>Propiedades de sección calculadas</b> (misma pestaña, más abajo) — confirma que el polígono se vea como esperas y que el área/centroide sean razonables.</li>
-    <li><kbd class="step">⑤</kbd>En la pestaña <b>Reacciones</b>, haz clic en <b>Cargar desde PDF…</b> y selecciona el reporte de tu torre (o completa la tabla a mano si preferís). Revisa los valores importados antes de seguir.</li>
+    <li><kbd class="step">⑤</kbd>En la pestaña <b>Reacciones</b>, haz clic en <b>Cargar desde PDF…</b> y selecciona el reporte de tu torre (o completa la tabla a mano si prefieres). Revisa los valores importados antes de seguir.</li>
     <li><kbd class="step">⑥</kbd>En la pestaña <b>Cálculos</b>, completa <b>2.- Características de los materiales</b> (f'c, Fy, pesos volumétricos) y <b>3.- Datos geométricos de la cimentación</b> (peralte, profundidad de desplante, dados, capacidad admisible del suelo, factor de seguridad).</li>
     <li><kbd class="step">⑦</kbd>Revisa los resultados que se recalculan automáticamente al completar los datos anteriores: <b>4.1 Criterios de resistencia</b>, <b>4.2 Revisión por volteo</b>, <b>4.3 Revisión por capacidad de carga</b> (diagramas de esfuerzo), <b>4.4 Mallado FEM</b> (previsualización), <b>4.7 Exportación de modelo</b> (.STD para STAAD.Pro) y <b>5.- Diseño estructural</b> (ACI 318-19).</li>
-    <li><kbd class="step">⑧</kbd>Guarda tu avance con <b>Guardar como…</b> (descarga un archivo <code>.gfem</code> con todo el proyecto) para poder retomarlo después con <b>Abrir proyecto…</b>, o activá el <b>Autoguardado</b> (pestaña Cálculos) para que se guarde solo cada 3/5/10 minutos.</li>
+    <li><kbd class="step">⑧</kbd>Guarda tu avance con <b>Guardar como…</b> (descarga un archivo <code>.gfem</code> con todo el proyecto) para poder retomarlo después con <b>Abrir proyecto…</b>, o activa el <b>Autoguardado</b> (pestaña Cálculos) para que se guarde solo cada 3/5/10 minutos.</li>
   </ol>
   <div class="alert alert-note">
     <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#FFC107" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1097,7 +1097,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
   <p>En la pestaña <b>Reacciones</b>, cada fila es una combinación de carga y cada columna una pata (o, para Monopolo, el único punto de apoyo). Las columnas <code>FX</code>, <code>FY</code>, <code>FZ</code> están en toneladas; <code>Radius</code>/<code>Elevation</code> en metros, <code>Azimuth</code> en grados.</p>
 
   <h3>5.3 — Revisión por volteo (sección 4.2)</h3>
-  <p>La tabla <b>4.2.2 Eficiencias a volteo</b> muestra, por combinación, el <b>FSV</b> (factor de seguridad al volteo) y la <b>Eficiencia</b>, junto con una columna <b>Resultado</b> que indica <b>CUMPLE</b> o <b>NO CUMPLE</b> directamente — no hace falta interpretar el número vos mismo, la herramienta ya aplica el criterio de aceptación.</p>
+  <p>La tabla <b>4.2.2 Eficiencias a volteo</b> muestra, por combinación, el <b>FSV</b> (factor de seguridad al volteo) y la <b>Eficiencia</b>, junto con una columna <b>Resultado</b> que indica <b>CUMPLE</b> o <b>NO CUMPLE</b> directamente — no hace falta interpretar el número tú mismo, la herramienta ya aplica el criterio de aceptación.</p>
 
   <h3>5.4 — Mallado FEM (sección 4.4)</h3>
   <div class="alert alert-warning">
@@ -1205,7 +1205,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <li><b>Flecha máxima:</b> 7.2733cm (motor propio) vs. 7.278cm (STAAD, nodo del asentamiento máximo) — diferencia de <b>0.06%</b>.</li>
     <li><b>Reacción por dado</b> (comparando contra la <b>Summation</b> de STAAD seleccionando por el grupo "Dados" — solo el anillo/perímetro, no la sub-grilla interior de cada dado): dentro de <b>~1%</b> en las 3 patas. La primera comparación (dado completo contra ese mismo grupo de STAAD) daba un desajuste de ~1.78× que no era un error del solver, sino comparar dos conjuntos de nodos distintos — corregido sumando la tabla de comparación solo sobre el anillo.</li>
   </ul>
-  <p>La tarjeta del preview muestra la tabla "Reacción total por dado, solo anillo" para repetir esta misma comparación con cualquier otro modelo/combinación: seleccioná el grupo "Dados" en STAAD, sacá la Summation de reacciones para el mismo L/C, y compará contra la columna "Reacción del solver" de esa tabla.</p>
+  <p>La tarjeta del preview muestra la tabla "Reacción total por dado, solo anillo" para repetir esta misma comparación con cualquier otro modelo/combinación: selecciona el grupo "Dados" en STAAD, saca la Summation de reacciones para el mismo L/C, y compara contra la columna "Reacción del solver" de esa tabla.</p>
 
   <h3>Momentos de diseño (Mx, My, Mxy, Wood-Armer)</h3>
   <p>Además de la flecha y las reacciones, el preview recupera el campo de momentos de la losa y lo combina con <b>Wood-Armer</b> para dar momentos de diseño listos para armar la parrilla de refuerzo:</p>
@@ -1236,7 +1236,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
 const FAQ = [
   {
     q: "① ¿En qué sistema de coordenadas deben estar las coordenadas de Zapata.txt?",
-    a: "En el sistema propio de tu dibujo de AutoCAD (X,Y en metros, cualquier origen). No hace falta centrarlas vos: la app recentra automáticamente el polígono en el origen (0,0) al importarlo, usando el centroide calculado — las coordenadas crudas que cargaste no se modifican en el archivo, solo se ajusta el despliegue interno."
+    a: "En el sistema propio de tu dibujo de AutoCAD (X,Y en metros, cualquier origen). No hace falta centrarlas manualmente: la app recentra automáticamente el polígono en el origen (0,0) al importarlo, usando el centroide calculado — las coordenadas crudas que cargaste no se modifican en el archivo, solo se ajusta el despliegue interno."
   },
   {
     q: "② ¿La herramienta soporta torres de 4 patas o solo de 3?",
@@ -1244,7 +1244,7 @@ const FAQ = [
   },
   {
     q: "③ ¿Puedo ingresar las reacciones manualmente si no tengo el PDF?",
-    a: "Sí. La tabla de Reacciones es editable a mano en todas sus celdas — el botón \"Cargar desde PDF…\" es un atajo para no tipear todo, no un requisito. Si el PDF no tiene el formato esperado, simplemente completá la tabla vos mismo."
+    a: "Sí. La tabla de Reacciones es editable a mano en todas sus celdas — el botón \"Cargar desde PDF…\" es un atajo para no tipear todo, no un requisito. Si el PDF no tiene el formato esperado, simplemente completa la tabla tú mismo."
   },
   {
     q: "④ ¿Qué precisión tiene el mallado FEM respecto a un análisis con software especializado?",
@@ -1256,7 +1256,7 @@ const FAQ = [
   },
   {
     q: "⑥ ¿Qué hago si el archivo PDF de reacciones no es reconocido?",
-    a: "La app busca literalmente el título \"Resumen de Reacciones\" / \"Support Forces Summary\" (patas) o \"Analysis Summary\" (Monopolo) dentro del texto del PDF. Si tu reporte usa otro formato o esas secciones no existen, vas a ver el mensaje \"No se encontró la sección de reacciones… en <archivo>.\" — en ese caso, cargá los valores a mano en la tabla."
+    a: "La app busca literalmente el título \"Resumen de Reacciones\" / \"Support Forces Summary\" (patas) o \"Analysis Summary\" (Monopolo) dentro del texto del PDF. Si tu reporte usa otro formato o esas secciones no existen, vas a ver el mensaje \"No se encontró la sección de reacciones… en <archivo>.\" — en ese caso, carga los valores a mano en la tabla."
   },
   {
     q: "⑦ ¿Las verificaciones de diseño cubren acero de refuerzo o solo el concreto/geotecnia?",
@@ -1272,11 +1272,11 @@ const FAQ = [
   },
   {
     q: "⑩ ¿Cómo guardo mi avance para retomarlo después?",
-    a: "Con el botón \"Guardar como…\" de la barra superior, que descarga un archivo .gfem con todo el estado del proyecto (geometría, reacciones, materiales, parámetros). El nombre por default es &lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem, tomado de los datos de proyecto en la pestaña Cálculos. Para continuar después, usá \"Abrir proyecto…\" y elegí ese mismo archivo."
+    a: "Con el botón \"Guardar como…\" de la barra superior, que descarga un archivo .gfem con todo el estado del proyecto (geometría, reacciones, materiales, parámetros). El nombre por default es &lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem, tomado de los datos de proyecto en la pestaña Cálculos. Para continuar después, usa \"Abrir proyecto…\" y elige ese mismo archivo."
   },
   {
     q: "⑪ ¿Puedo hacer que la app guarde sola mientras trabajo?",
-    a: "Sí — en la pestaña Cálculos, debajo de la tabla de datos del proyecto, activá \"Autoguardado\" y elegí la frecuencia (3/5/10 min). La primera vez te va a pedir elegir dónde guardar el archivo; a partir de ahí reescribe ese mismo archivo automáticamente. Requiere un navegador con soporte para File System Access API (Chrome o Edge) — en otros navegadores el control queda deshabilitado."
+    a: "Sí — en la pestaña Cálculos, debajo de la tabla de datos del proyecto, activa \"Autoguardado\" y elige la frecuencia (3/5/10 min). La primera vez te va a pedir elegir dónde guardar el archivo; a partir de ahí reescribe ese mismo archivo automáticamente. Requiere un navegador con soporte para File System Access API (Chrome o Edge) — en otros navegadores el control queda deshabilitado."
   },
 ];
 
@@ -1424,7 +1424,7 @@ document.addEventListener("click", (e) => {
               <input type="file" id="fileOuterTxt" accept=".txt" class="hidden">
             </div>
             <p class="small" style="margin-top:6px;">
-              En AutoCAD: cargá <code>SHAPEPTS.lsp</code> (comando <b>APPLOAD</b>) y ejecutá <code>SHAPEPTS</code> (clic a clic en los vértices) o <code>SHAPEPLINE</code> (selecciona una polilínea ya dibujada) — exporta un <code>.txt</code> con una línea <code>x,y</code> por vértice. Importalo con el botón de arriba. Las coordenadas no se editan a mano; para corregir un punto, volvé a importar.
+              En AutoCAD: carga <code>SHAPEPTS.lsp</code> (comando <b>APPLOAD</b>) y ejecuta <code>SHAPEPTS</code> (clic a clic en los vértices) o <code>SHAPEPLINE</code> (selecciona una polilínea ya dibujada) — exporta un <code>.txt</code> con una línea <code>x,y</code> por vértice. Impórtalo con el botón de arriba. Las coordenadas no se editan a mano; para corregir un punto, vuelve a importar.
               <a href="#" id="btnDownloadLsp">Descargar SHAPEPTS.lsp</a>
             </p>
 
@@ -11404,7 +11404,7 @@ async function femRunPreview(){
 
   const malla = femBuildMeshAdapter(lastMallaMesh);
   if(!malla.nodos.length){
-    resumenEl.innerHTML = `<div class="message-bar error"><span>La malla (sección 4.4) está vacía — revisá la geometría.</span></div>`;
+    resumenEl.innerHTML = `<div class="message-bar error"><span>La malla (sección 4.4) está vacía — revisa la geometría.</span></div>`;
     svgWrapEl.innerHTML = ""; document.getElementById("femPreviewMomentosWrap").innerHTML = ""; lastMomentosPreview = null;
     return;
   }
@@ -11611,7 +11611,7 @@ async function femRunPreview(){
     const wrap = document.createElement("div");
     wrap.style.marginTop = "12px";
     wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:2px;">Reacción por dado, <b>solo anillo</b> — mismos nodos que el grupo "Dados" (<code>_P1</code>/<code>_P1a</code>/<code>_P1b</code>) del export STAAD, sección 4.7.</p>
-      <p class="small" style="color:var(--muted); margin-bottom:8px;">Para validar: en STAAD, seleccioná ese mismo grupo y sacá la <b>Summation</b> de reacciones (L/C del combo elegido acá) — ese número es el que se compara contra la columna <b>"Reacción del solver"</b>. Las 3 primeras columnas son la carga aplicada, no lo que hay que comparar contra STAAD; la diferencia entre "Carga total" y "Reacción del solver" es redistribución por flexión de la losa (la carga puntual se reparte a un área más grande que el anillo), no un error de esta tabla.</p>
+      <p class="small" style="color:var(--muted); margin-bottom:8px;">Para validar: en STAAD, selecciona ese mismo grupo y saca la <b>Summation</b> de reacciones (L/C del combo elegido aquí) — ese número es el que se compara contra la columna <b>"Reacción del solver"</b>. Las 3 primeras columnas son la carga aplicada, no lo que hay que comparar contra STAAD; la diferencia entre "Carga total" y "Reacción del solver" es redistribución por flexión de la losa (la carga puntual se reparte a un área más grande que el anillo), no un error de esta tabla.</p>
       <div style="overflow-x:auto;"><table class="em-table">
         <thead>
           <tr>

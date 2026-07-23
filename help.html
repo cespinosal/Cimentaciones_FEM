@@ -243,7 +243,7 @@
     <li>Guardar y volver a abrir el proyecto completo como archivo <code>.gfem</code> (JSON), con autoguardado periódico opcional (pestaña Cálculos) y nombre de archivo por default <code>&lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem</code>.</li>
   </ul>
 
-  <h3>Qué NO hace todavía (honesto)</h3>
+  <h3>Qué NO hace todavía</h3>
   <div class="alert alert-info">
     <svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-13v5m0 3h.01" stroke="#0C7B93" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <div>
@@ -471,7 +471,7 @@
 const FAQ = [
   {
     q: "① ¿En qué sistema de coordenadas deben estar las coordenadas de Zapata.txt?",
-    a: "En el sistema propio de tu dibujo de AutoCAD (X,Y en metros, cualquier origen). No hace falta centrarlas vos: la app recentra automáticamente el polígono en el origen (0,0) al importarlo, usando el centroide calculado — las coordenadas crudas que cargaste no se modifican en el archivo, solo se ajusta el despliegue interno."
+    a: "En el sistema propio de tu dibujo de AutoCAD (X,Y en metros, cualquier origen). No hace falta centrarlas manualmente: la app recentra automáticamente el polígono en el origen (0,0) al importarlo, usando el centroide calculado — las coordenadas crudas que cargaste no se modifican en el archivo, solo se ajusta el despliegue interno."
   },
   {
     q: "② ¿La herramienta soporta torres de 4 patas o solo de 3?",
@@ -479,7 +479,7 @@ const FAQ = [
   },
   {
     q: "③ ¿Puedo ingresar las reacciones manualmente si no tengo el PDF?",
-    a: "Sí. La tabla de Reacciones es editable a mano en todas sus celdas — el botón \"Cargar desde PDF…\" es un atajo para no tipear todo, no un requisito. Si el PDF no tiene el formato esperado, simplemente completá la tabla vos mismo."
+    a: "Sí. La tabla de Reacciones es editable a mano en todas sus celdas — el botón \"Cargar desde PDF…\" es un atajo para no tipear todo, no un requisito. Si el PDF no tiene el formato esperado, simplemente completa la tabla tú mismo."
   },
   {
     q: "④ ¿Qué precisión tiene el mallado FEM respecto a un análisis con software especializado?",
@@ -491,7 +491,7 @@ const FAQ = [
   },
   {
     q: "⑥ ¿Qué hago si el archivo PDF de reacciones no es reconocido?",
-    a: "La app busca literalmente el título \"Resumen de Reacciones\" / \"Support Forces Summary\" (patas) o \"Analysis Summary\" (Monopolo) dentro del texto del PDF. Si tu reporte usa otro formato o esas secciones no existen, vas a ver el mensaje \"No se encontró la sección de reacciones… en <archivo>.\" — en ese caso, cargá los valores a mano en la tabla."
+    a: "La app busca literalmente el título \"Resumen de Reacciones\" / \"Support Forces Summary\" (patas) o \"Analysis Summary\" (Monopolo) dentro del texto del PDF. Si tu reporte usa otro formato o esas secciones no existen, vas a ver el mensaje \"No se encontró la sección de reacciones… en <archivo>.\" — en ese caso, carga los valores a mano en la tabla."
   },
   {
     q: "⑦ ¿Las verificaciones de diseño cubren acero de refuerzo o solo el concreto/geotecnia?",
@@ -507,11 +507,11 @@ const FAQ = [
   },
   {
     q: "⑩ ¿Cómo guardo mi avance para retomarlo después?",
-    a: "Con el botón \"Guardar como…\" de la barra superior, que descarga un archivo .gfem con todo el estado del proyecto (geometría, reacciones, materiales, parámetros). El nombre por default es &lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem, tomado de los datos de proyecto en la pestaña Cálculos. Para continuar después, usá \"Abrir proyecto…\" y elegí ese mismo archivo."
+    a: "Con el botón \"Guardar como…\" de la barra superior, que descarga un archivo .gfem con todo el estado del proyecto (geometría, reacciones, materiales, parámetros). El nombre por default es &lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem, tomado de los datos de proyecto en la pestaña Cálculos. Para continuar después, usa \"Abrir proyecto…\" y elige ese mismo archivo."
   },
   {
     q: "⑪ ¿Puedo hacer que la app guarde sola mientras trabajo?",
-    a: "Sí — en la pestaña Cálculos, debajo de la tabla de datos del proyecto, activá \"Autoguardado\" y elegí la frecuencia (3/5/10 min). La primera vez te va a pedir elegir dónde guardar el archivo; a partir de ahí reescribe ese mismo archivo automáticamente. Requiere un navegador con soporte para File System Access API (Chrome o Edge) — en otros navegadores el control queda deshabilitado."
+    a: "Sí — en la pestaña Cálculos, debajo de la tabla de datos del proyecto, activa \"Autoguardado\" y elige la frecuencia (3/5/10 min). La primera vez te va a pedir elegir dónde guardar el archivo; a partir de ahí reescribe ese mismo archivo automáticamente. Requiere un navegador con soporte para File System Access API (Chrome o Edge) — en otros navegadores el control queda deshabilitado."
   },
 ];
 
