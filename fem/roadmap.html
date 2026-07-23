@@ -337,6 +337,28 @@
 
   <div class="schedule" id="schedule"></div>
 
+  <div class="legend" style="margin-top:36px;">
+    <span class="eyebrow">Mejoras futuras</span>
+  </div>
+  <div class="phase" style="border-bottom:none;">
+    <div class="ph-idx" style="font-size:32px;">→</div>
+    <div class="ph-body">
+      <h2>Transferencia de Fx/Fz + momento local por dado</h2>
+      <div class="ph-grid">
+        <div class="ph-field" style="grid-column:1/-1;">
+          <dt>Por qué falta</dt>
+          <dd>La fase 06 solo aplica Fy (axial) por área tributaria — el cortante horizontal de cada pata (Fx, Fz) y el momento que genera al actuar a una altura Pd+HD sobre la zapata todavía no se traducen en cargas nodales. El export a <code>.STD</code> (sección 4.7) tampoco lo aplica hoy, así que por ahora la comparación fase 06 vs. STAAD queda pareja.</dd>
+        </div>
+        <div class="validation">
+          <dt>Forma más realista de resolverlo</dt>
+          <dd>Un <b>vínculo rígido</b> (rigid link / master-slave, como los "body constraints" de SAP2000 o los joints maestro-esclavo de STAAD): atar los nodos de la placa bajo cada dado a un nodo maestro de cuerpo rígido, aplicar ahí Fy + Fx·brazo + Fz·brazo, y dejar que el solver reparta la reacción según la rigidez real del sistema completo (placa + resortes) — a diferencia de asumir una distribución de presión prescripta, el vínculo rígido no asume nada sobre cómo se reparte, lo calcula. Requiere agregar ecuaciones de restricción a <code>femSolveLineal</code>/<code>femSolveNoLineal</code> — una capacidad nueva del solver, con su propia validación aparte, no algo para sumar de paso en otra fase.
+          <br><br>
+          Alternativa más liviana si en algún momento hace falta algo más rápido de implementar: repartir el momento como una presión tipo Navier sobre la huella del dado (P/A ± M·y/I, con término cruzado Ixy en ejes globales para no tener que rotar por el azimut de la pata) — el mismo método que ya usa <code>calcularVuPunzonamiento</code> (Mux, Muy) para la revisión de punzonamiento por corte excéntrico, equivalente al γv·M·c/J de ACI 318 para transferencia de momento columna-losa. Es la aproximación de la práctica real, no la más rigurosa — ninguna de las dos está implementada todavía.</dd>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <span>fem/index.html — copia de trabajo, index.html sin modificar</span>
     <span>ACI 318-19 · TIA-222-H</span>

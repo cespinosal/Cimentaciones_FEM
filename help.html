@@ -197,7 +197,7 @@
     <path d="M24 8v6M18 22l6-6 6 6" stroke="#4FC3F7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
   </svg>
   <span class="title">Cimentaciones FEM — Ayuda</span>
-  <span class="ver">v2.0</span>
+  <span class="ver">v2.1</span>
   <span class="spacer"></span>
   <a class="gh" href="https://github.com/cespinosal/Cimentaciones_FEM" target="_blank" rel="noopener">
     <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
@@ -227,7 +227,7 @@
 <section class="help-section" id="s1">
   <h2>1. Descripción general</h2>
   <p><b>Cimentaciones FEM — Zapata/Losa General</b> (nombre interno del proyecto: <b>GeoCim</b>) es una aplicación web de un solo archivo (<code>index.html</code>) para el diseño de cimentaciones de torres autosoportadas y monopolos de telecomunicaciones. No necesita instalación, servidor ni conexión a internet: se abre con doble clic en cualquier navegador moderno (Chrome, Edge, Firefox).</p>
-  <p>La herramienta reconstruye, en formato web, el flujo de cálculo de la hoja Excel <b>"ZAPATA GENERAL DE 3 DADOS"</b> (actualmente en su <b>Rev. 09</b> como hoja de cálculo, y <b>v2.0 "Desarrollo en aplicación WEB"</b> como app), bajo la norma <b>ANSI/TIA-222-H</b> con método <b>LRFD</b> (Load and Resistance Factor Design).</p>
+  <p>La herramienta reconstruye, en formato web, el flujo de cálculo de la hoja Excel <b>"ZAPATA GENERAL DE 3 DADOS"</b> (actualmente en su <b>Rev. 09</b> como hoja de cálculo, y <b>v2.1 "Desarrollo en aplicación WEB"</b> como app), bajo la norma <b>ANSI/TIA-222-H</b> con método <b>LRFD</b> (Load and Resistance Factor Design).</p>
 
   <h3>Tipos de estructura soportados</h3>
   <p>En la pestaña <b>Definición de la zapata</b>, el selector <b>Tipo de estructura</b> ofrece cuatro opciones:</p>
@@ -249,14 +249,16 @@
     <li>Importar reacciones de patas por combinación de carga desde el PDF del software de análisis de la torre, o cargarlas a mano.</li>
     <li>Calcular la revisión geotécnica por <b>volteo</b> (TIA-222-H) y por <b>capacidad portante</b> (Ley de Navier) para Autosoportada 3P.</li>
     <li>Generar una previsualización visual del <b>mallado FEM</b> de la losa (algoritmo "Urdimbre Mesh") — geometría del mallado, no un análisis de esfuerzos.</li>
-    <li>Guardar y volver a abrir el proyecto completo como archivo <code>.gfem</code> (JSON).</li>
+    <li>Diseñar el refuerzo por <b>ACI 318-19</b> (sección 5): flexión (lecho superior/inferior, bloque de Whitney), cortante en una dirección, punzonamiento y revisión de dados de desplante (compresión/tensión axial, superficie de interacción por compatibilidad de deformaciones).</li>
+    <li>Exportar el modelo completo a un archivo <code>.STD</code> para STAAD.Pro (sección 4.7): malla real de la losa, apoyos elásticos (coeficiente de balasto), peso propio + relleno/ciclópeo/dados (con el factor 1.2 de ANSI/TIA-222-H §9.4 para los combos 1.2D+viento) y las reacciones de cada pata, ya combinados en <code>LOAD</code> listos para correr.</li>
+    <li>Guardar y volver a abrir el proyecto completo como archivo <code>.gfem</code> (JSON), con autoguardado periódico opcional (pestaña Cálculos) y nombre de archivo por default <code>&lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem</code>.</li>
   </ul>
 
   <h3>Qué NO hace todavía (honesto)</h3>
   <div class="alert alert-info">
     <svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-13v5m0 3h.01" stroke="#0C7B93" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <div>
-      No genera el archivo <code>.STD</code> para STAAD.Pro (el mallado de la sección 4.4 es solo previsualización geométrica) y no calcula todavía el diseño estructural por <b>ACI 318-19</b> (acero de refuerzo, punzonamiento, cuantías). Estas dos piezas están en el roadmap del proyecto pero no están activas en esta versión. Tampoco existe un botón de "Generar reporte": el único guardado disponible es <b>Guardar como…</b>, que exporta el estado completo del proyecto como JSON (<code>.gfem</code>), no una memoria de cálculo imprimible.
+      No hay un botón de "Generar reporte": el único guardado disponible es <b>Guardar como…</b>, que exporta el estado completo del proyecto como JSON (<code>.gfem</code>), no una memoria de cálculo imprimible. El análisis de esfuerzos sobre la malla de la losa (más allá del volteo/Navier de 4.2-4.3) todavía depende de exportar a STAAD.Pro y correrlo por fuera — un motor de elementos finitos propio, para dejar de depender de STAAD, está en desarrollo interno (ver Anexo: Motor FEM más abajo si tu copia de la app tiene esa pestaña).
     </div>
   </div>
 </section>
@@ -444,7 +446,7 @@
     <dd>Extensión de archivo de proyecto de esta app — internamente es JSON con todo el <code>state</code> (geometría, materiales, reacciones, parámetros).</dd>
 
     <dt>STAAD.Pro</dt>
-    <dd>Software externo de análisis estructural (Bentley) al que esta app apunta a exportar el modelo FEM de la losa (archivo <code>.STD</code>) — todavía no implementado en esta versión.</dd>
+    <dd>Software externo de análisis estructural (Bentley) al que esta app exporta el modelo FEM completo de la losa (sección 4.7, archivo <code>.STD</code>): malla real, apoyos elásticos, peso propio+relleno y reacciones de cada pata, ya combinados en <code>LOAD</code> por combinación de viento.</dd>
   </dl>
 </section>
 
@@ -463,7 +465,8 @@
       <tr><td>V1.5</td><td>04/06/2025</td><td>Regla de pesos adicionales + función de reacciones.</td></tr>
       <tr><td>V1.6</td><td>15/12/2025</td><td>Reacciones unitarias + procedimiento de automallado.</td></tr>
       <tr><td>V1.7</td><td>12/05/2026</td><td>Rotar dados sobre ejes locales + discretizar carga axial en el perímetro del dado.</td></tr>
-      <tr><td><b>V2.0</b></td><td>15/07/2026</td><td><b>Desarrollo en aplicación web</b> (esta versión) — geometría, propiedades de sección, reacciones (con importación desde PDF), revisión geotécnica por volteo y capacidad portante para Autosoportada 3P, previsualización de mallado FEM "Urdimbre Mesh" y sección de Ayuda integrada.</td></tr>
+      <tr><td>V2.0</td><td>15/07/2026</td><td><b>Desarrollo en aplicación web</b> — geometría, propiedades de sección, reacciones (con importación desde PDF), revisión geotécnica por volteo y capacidad portante para Autosoportada 3P, diseño estructural ACI 318-19 (sección 5), previsualización de mallado FEM "Urdimbre Mesh" y exportación de modelo a STAAD.Pro (sección 4.7).</td></tr>
+      <tr><td><b>V2.1</b></td><td>23/07/2026</td><td><b>Esta versión.</b> Export a STAAD: peso propio+relleno+dados con el factor 1.2 de ANSI/TIA-222-H §9.4 combinado con las reacciones en un solo <code>LOAD</code> por combinación 1.2D+viento. Autoguardado reubicado a la pestaña Cálculos (antes en Definición de la zapata), con nombre de archivo por default <code>&lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem</code>. Corrección de mallado en el automallado (dados no seguían el refinamiento del resto de la losa; transición dado-losa mejorada). Ayuda embebida en la propia app (ya no depende de <code>help.html</code> aparte).</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -491,7 +494,7 @@ const FAQ = [
   },
   {
     q: "④ ¿Qué precisión tiene el mallado FEM respecto a un análisis con software especializado?",
-    a: "La sección 4.4 no hace un análisis FEM real todavía — es solo una previsualización geométrica de cómo quedaría discretizada la losa (tamaño y forma de los elementos), pensada para exportarse más adelante a STAAD.Pro, que sí resuelve el modelo de placas sobre resortes de suelo. Hoy no hay ningún esfuerzo calculado sobre esa malla dentro de la app."
+    a: "La sección 4.4 en sí es solo la geometría de la malla (tamaño y forma de los elementos) — el análisis de esfuerzos sobre esa malla se hace exportando a STAAD.Pro (sección 4.7), que resuelve el modelo de placas sobre resortes de suelo con el peso propio, el relleno y las reacciones ya combinados en los LOAD listos para correr. Existe además un motor de elementos finitos propio en desarrollo interno (pestaña \"Motor FEM\", si tu copia la tiene) que corre ese mismo análisis dentro de la app — todavía sin validar formalmente contra STAAD.Pro, tratalo como orientativo hasta que esa validación se complete."
   },
   {
     q: "⑤ ¿Cómo interpreto los colores del diagrama de esfuerzo de contacto (4.3)?",
@@ -503,7 +506,7 @@ const FAQ = [
   },
   {
     q: "⑦ ¿Las verificaciones de diseño cubren acero de refuerzo o solo el concreto/geotecnia?",
-    a: "Por ahora, solo geotecnia: volteo y capacidad portante del suelo. El diseño estructural del concreto por ACI 318-19 (punzonamiento, flexión, cuantías de acero) todavía no está implementado en esta versión — está en el roadmap del proyecto."
+    a: "Cubren ambas cosas. Geotecnia: volteo y capacidad portante del suelo (sección 4). Estructural por ACI 318-19 (sección 5): flexión (lecho superior/inferior), cortante en una dirección, punzonamiento y diseño de los dados de desplante (compresión/tensión axial, superficie de interacción)."
   },
   {
     q: "⑧ ¿Puedo usar la herramienta offline, sin conexión a internet?",
@@ -515,7 +518,11 @@ const FAQ = [
   },
   {
     q: "⑩ ¿Cómo guardo mi avance para retomarlo después?",
-    a: "Con el botón \"Guardar como…\" de la barra superior, que descarga un archivo .gfem con todo el estado del proyecto (geometría, reacciones, materiales, parámetros). Para continuar después, usá \"Abrir proyecto…\" y elegí ese mismo archivo."
+    a: "Con el botón \"Guardar como…\" de la barra superior, que descarga un archivo .gfem con todo el estado del proyecto (geometría, reacciones, materiales, parámetros). El nombre por default es &lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem, tomado de los datos de proyecto en la pestaña Cálculos. Para continuar después, usá \"Abrir proyecto…\" y elegí ese mismo archivo."
+  },
+  {
+    q: "⑪ ¿Puedo hacer que la app guarde sola mientras trabajo?",
+    a: "Sí — en la pestaña Cálculos, debajo de la tabla de datos del proyecto, activá \"Autoguardado\" y elegí la frecuencia (3/5/10 min). La primera vez te va a pedir elegir dónde guardar el archivo; a partir de ahí reescribe ese mismo archivo automáticamente. Requiere un navegador con soporte para File System Access API (Chrome o Edge) — en otros navegadores el control queda deshabilitado."
   },
 ];
 

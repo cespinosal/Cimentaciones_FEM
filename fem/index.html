@@ -374,7 +374,7 @@ label.field .unit{color:var(--subtle); width:30px; font-size:12px;}
 
 /* Fluent-style toggle switch */
 .switch-row{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
-.switch{position:relative; width:38px; height:20px; flex-shrink:0;}
+.switch{display:inline-block; position:relative; width:38px; height:20px; flex-shrink:0;}
 .switch input{position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; z-index:1;}
 .switch .track{
   position:absolute; inset:0; background:var(--ns2); border-radius:20px; transition:background .12s;
@@ -416,6 +416,15 @@ label.field .unit{color:var(--subtle); width:30px; font-size:12px;}
 #propsConcreto .prop{flex-wrap:nowrap; gap:12px;}
 #propsConcreto .prop .k{white-space:nowrap;}
 #propsConcreto .prop .v{white-space:nowrap;}
+/* Resumen del preview del Motor FEM: valores largos (ej. "405.99 Tn (factor
+   1.2 sobre pesoTotal, ANSI/TIA-222-H §9.4)") no entran en una columna
+   angosta al lado de la etiqueta sin verse encimados — acá cada item apila
+   etiqueta arriba y valor abajo, con columnas más anchas (menos por fila),
+   así el texto largo tiene lugar para respirar y el grid crece hacia abajo
+   en vez de apretarse hacia los costados. */
+#femPreviewResumen .props-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px 20px;}
+#femPreviewResumen .prop{flex-direction:column; align-items:flex-start; gap:4px; padding:8px 0;}
+#femPreviewResumen .prop .v{white-space:normal; line-height:1.4;}
 /* % Acero / % Momento: forzar cada uno a su propia fila completa, así
    quedan apilados en ese orden sin importar cuántas columnas quepan. */
 #flexionInfExistComputed .prop:nth-last-child(-n+2),
@@ -457,6 +466,34 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
 
 .hidden{display:none !important;}
 
+/* ---------- Ayuda embebida (modal + iframe aislado) ---------- */
+/* El contenido de Ayuda vive en <template id="ayudaTemplate"> (un documento
+   HTML completo, con su propio <style>/<script>) y se carga recién al
+   primer click en "Ayuda" dentro de un <iframe srcdoc="...">, no como parte
+   del DOM de la app — así su CSS/JS quedan completamente aislados (nada de
+   scoping manual de selectores como body/h1-h4/a/table que colisionarían
+   con los de la app) y no hace falta guardar help.html aparte: todo vive
+   en este mismo archivo.  */
+#ayudaOverlay{
+  position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.55);
+  display:flex; align-items:center; justify-content:center; padding:26px;
+}
+#ayudaOverlay.hidden{display:none;}
+#ayudaFrame{
+  width:100%; height:100%; max-width:1400px; border:0; border-radius:10px;
+  background:#fff; box-shadow:0 20px 60px rgba(0,0,0,.45);
+}
+#btnAyudaClose{
+  position:fixed; top:34px; right:calc(50% - 700px + 26px); z-index:1001;
+  width:36px; height:36px; border-radius:50%; border:1px solid var(--border-strong);
+  background:var(--panel); color:var(--text); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+#btnAyudaClose:hover{background:var(--panel-2);}
+@media (max-width:1452px){
+  #btnAyudaClose{right:34px;}
+}
+
 /* ---------- Layout de la pestaña Cálculos: nav lateral + contenido ---------- */
 .calc-layout{display:flex; align-items:flex-start; gap:14px; max-width:1374px; margin:0 auto;}
 .calc-sidenav{
@@ -493,6 +530,17 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
 .calc-header-data tr:last-child td{border-bottom:none;}
 .calc-header-data td:first-child{font-weight:600; color:var(--muted); white-space:nowrap;}
 .calc-header-data td:last-child{width:100%;}
+/* Fila propia del autoguardado, aparte de la tabla de datos (esa columna
+   es angosta, 260px — ahí nunca entraban el toggle + los 3 botones de
+   frecuencia en una sola línea). Ocupa todo el ancho del header
+   (grid-column:1/-1, mismo grid de 3 columnas que title/flag/data) y
+   alinea todo su contenido a la derecha. */
+.calc-header-autosave{
+  grid-column:1/-1; display:flex; align-items:center; justify-content:flex-end;
+  flex-wrap:wrap; gap:14px; padding:8px 16px; border-top:1px solid var(--border-strong);
+  font-size:12px;
+}
+#autosaveFreqButtons{flex-wrap:wrap; row-gap:6px;}
 .calc-header-data input, .calc-header-data select{
   border:none; background:transparent; color:var(--accent); font-weight:600; font-size:12px;
   padding:2px 4px; width:100%;
@@ -647,12 +695,640 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <button class="btn icon-only subtle" id="btnTheme" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
     </button>
-    <a class="btn subtle" id="btnHelp" href="help.html" target="_blank" rel="noopener" title="Ayuda" style="text-decoration:none;">
+    <button class="btn subtle" id="btnHelp" type="button" title="Ayuda">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.3" stroke="currentColor" stroke-width="1.3"/><path d="M6.1 6.2a1.9 1.9 0 1 1 2.8 1.7c-.6.35-.9.7-.9 1.3v.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.4" r="0.75" fill="currentColor"/></svg>
       Ayuda
-    </a>
+    </button>
   </div>
 </header>
+
+<div id="ayudaOverlay" class="hidden" role="dialog" aria-modal="true" aria-label="Ayuda">
+  <button id="btnAyudaClose" type="button" aria-label="Cerrar ayuda" title="Cerrar">
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 3l10 10M13 3 3 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+  </button>
+  <iframe id="ayudaFrame" title="Ayuda — Cimentaciones FEM"></iframe>
+</div>
+<template id="ayudaTemplate"><!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cimentaciones FEM — Ayuda</title>
+<style>
+  :root{
+    --bg:#F8F9FA;
+    --text:#212529;
+    --muted:#5A6472;
+    --sidebar:#1B3A6B;
+    --sidebar-text:#FFFFFF;
+    --sidebar-inactive:#B0C4DE;
+    --sidebar-active-bg:#2E5FAC;
+    --sidebar-active-border:#4FC3F7;
+    --note-bg:#FFF3CD; --note-border:#FFC107;
+    --warn-bg:#F8D7DA; --warn-border:#DC3545;
+    --info-bg:#D1ECF1; --info-border:#0C7B93;
+    --code-bg:#F1F3F5; --code-border:#DEE2E6;
+    --card-bg:#FFFFFF; --card-border:#E1E5EA;
+    --header-h:56px;
+    --sidebar-w:230px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:14px; line-height:1.7;
+  }
+  h1,h2,h3,h4{font-weight:600; color:var(--sidebar); line-height:1.3;}
+  a{color:#0C5FAC;}
+  code, .code-inline{
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:13px;
+    background:var(--code-bg); border:1px solid var(--code-border);
+    border-radius:4px; padding:1px 6px;
+  }
+  kbd.step{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%; background:var(--sidebar);
+    color:#fff; font-style:normal; font-weight:700; font-size:12px; margin-right:8px;
+    flex-shrink:0;
+  }
+
+  /* ---------- Header ---------- */
+  header.topbar{
+    position:fixed; top:0; left:0; right:0; height:var(--header-h); z-index:40;
+    background:var(--sidebar); color:#fff; display:flex; align-items:center;
+    gap:14px; padding:0 18px; box-shadow:0 1px 4px rgba(0,0,0,.25);
+  }
+  header.topbar .icon{width:28px; height:28px; flex-shrink:0;}
+  header.topbar .title{font-weight:600; font-size:16px; white-space:nowrap;}
+  header.topbar .ver{
+    font-size:11px; background:rgba(255,255,255,.18); border-radius:10px;
+    padding:2px 9px; white-space:nowrap;
+  }
+  header.topbar .spacer{flex:1;}
+  header.topbar .gh{
+    display:flex; align-items:center; gap:6px; color:#fff; text-decoration:none;
+    font-size:13px; opacity:.9; white-space:nowrap;
+  }
+  header.topbar .gh:hover{opacity:1; text-decoration:underline;}
+  header.topbar .gh svg{width:16px; height:16px; fill:#fff;}
+  #btnHamburger{
+    display:none; background:none; border:none; color:#fff; cursor:pointer;
+    padding:6px; margin-right:2px;
+  }
+  #btnHamburger svg{width:22px; height:22px;}
+
+  /* ---------- Sidebar ---------- */
+  nav.sidebar{
+    position:fixed; top:var(--header-h); left:0; bottom:0; width:var(--sidebar-w);
+    background:var(--sidebar); overflow-y:auto; z-index:30;
+    padding:14px 0 30px;
+  }
+  nav.sidebar .grp-label{
+    color:var(--sidebar-inactive); text-transform:uppercase; font-size:11px;
+    letter-spacing:.05em; padding:14px 18px 6px; font-weight:600;
+  }
+  nav.sidebar a{
+    display:block; padding:8px 18px; color:var(--sidebar-inactive);
+    text-decoration:none; font-size:13.5px; border-left:3px solid transparent;
+    transition:background .12s,color .12s;
+  }
+  nav.sidebar a:hover{color:#fff; background:rgba(255,255,255,.06);}
+  nav.sidebar a.active{
+    background:var(--sidebar-active-bg); color:#fff;
+    border-left-color:var(--sidebar-active-border); font-weight:600;
+  }
+
+  /* ---------- Layout ---------- */
+  .breadcrumb{
+    position:sticky; top:0; background:var(--bg); z-index:5;
+    padding:10px 0 14px; font-size:12.5px; color:var(--muted);
+    border-bottom:1px solid var(--card-border); margin-bottom:22px;
+  }
+  .breadcrumb b{color:var(--sidebar);}
+  main{
+    margin-left:var(--sidebar-w); margin-top:var(--header-h);
+    padding:26px 40px 80px; max-width:900px;
+  }
+  section.help-section{padding-top:8px; margin-bottom:56px; scroll-margin-top:calc(var(--header-h) + 10px);}
+  section.help-section h2{
+    font-size:21px; border-bottom:2px solid var(--card-border); padding-bottom:10px; margin-bottom:18px;
+  }
+  section.help-section h3{font-size:16px; margin-top:28px;}
+  section.help-section h4{font-size:14px; margin-top:20px; color:var(--text);}
+  p{margin:0 0 12px;}
+  ul,ol{padding-left:22px;}
+  li{margin-bottom:6px;}
+
+  /* ---------- Alertas ---------- */
+  .alert{
+    display:flex; gap:10px; align-items:flex-start; border-radius:6px;
+    padding:12px 14px; margin:16px 0; font-size:13.5px;
+  }
+  .alert svg{width:18px; height:18px; flex-shrink:0; margin-top:1px;}
+  .alert-info{background:var(--info-bg); border:1px solid var(--info-border); color:#0b5567;}
+  .alert-info svg{fill:var(--info-border);}
+  .alert-note{background:var(--note-bg); border:1px solid var(--note-border); color:#664d03;}
+  .alert-note svg{fill:var(--note-border);}
+  .alert-warning{background:var(--warn-bg); border:1px solid var(--warn-border); color:#7a1a26;}
+  .alert-warning svg{fill:var(--warn-border);}
+
+  /* ---------- Tablas ---------- */
+  table{border-collapse:collapse; width:100%; margin:14px 0 20px; font-size:13px;}
+  thead th{
+    background:var(--sidebar); color:#fff; text-align:left; padding:8px 10px;
+    position:sticky; top:0; font-weight:600;
+  }
+  tbody td{padding:7px 10px; border-bottom:1px solid var(--card-border);}
+  tbody tr:nth-child(even){background:#F1F4F8;}
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--card-border); border-radius:6px;}
+
+  /* ---------- Bloques de código ---------- */
+  pre.code-block{
+    background:var(--code-bg); border:1px solid var(--code-border); border-radius:6px;
+    padding:12px 14px; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+    font-size:12.5px; overflow-x:auto; line-height:1.5;
+  }
+
+  /* ---------- FAQ acordeón ---------- */
+  .faq-item{border:1px solid var(--card-border); border-radius:6px; margin-bottom:8px; background:var(--card-bg); overflow:hidden;}
+  .faq-q{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 16px; cursor:pointer; font-weight:600; color:var(--sidebar);
+    background:none; border:none; width:100%; text-align:left; font-size:14px;
+  }
+  .faq-q .chev{width:14px; height:14px; flex-shrink:0; transition:transform .18s; fill:var(--sidebar);}
+  .faq-item.open .faq-q .chev{transform:rotate(180deg);}
+  .faq-a{max-height:0; overflow:hidden; transition:max-height .22s ease;}
+  .faq-a-inner{padding:0 16px 14px; color:var(--text); font-size:13.5px;}
+  .faq-item.open .faq-a{max-height:600px;}
+
+  /* ---------- Glosario ---------- */
+  dl.glossary dt{font-weight:600; color:var(--sidebar); margin-top:14px;}
+  dl.glossary dd{margin:2px 0 0; color:var(--text);}
+
+  /* ---------- Botón volver arriba ---------- */
+  #btnTop{
+    position:fixed; right:22px; bottom:22px; width:44px; height:44px; border-radius:50%;
+    background:var(--sidebar); color:#fff; border:none; cursor:pointer; z-index:35;
+    box-shadow:0 2px 8px rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  #btnTop.show{opacity:1; pointer-events:auto;}
+  #btnTop svg{width:20px; height:20px; fill:#fff;}
+
+  .step-list li{margin-bottom:14px;}
+  .step-list b{color:var(--sidebar);}
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:768px){
+    #btnHamburger{display:inline-flex;}
+    nav.sidebar{
+      transform:translateX(-100%); transition:transform .2s; width:250px;
+      box-shadow:2px 0 10px rgba(0,0,0,.3);
+    }
+    nav.sidebar.open{transform:translateX(0);}
+    main{margin-left:0; padding:20px 18px 70px;}
+    header.topbar .ver{display:none;}
+    header.topbar .gh span{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <button id="btnHamburger" aria-label="Abrir menú">
+    <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+  </button>
+  <svg class="icon" viewBox="0 0 48 48" fill="none">
+    <path d="M6 40h36" stroke="#4FC3F7" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M10 40V22l14-14 14 14v18" stroke="#4FC3F7" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+    <path d="M17 40V27h14v13" stroke="#fff" stroke-width="2.2" stroke-linejoin="round" fill="none"/>
+    <path d="M24 8v6M18 22l6-6 6 6" stroke="#4FC3F7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </svg>
+  <span class="title">Cimentaciones FEM — Ayuda</span>
+  <span class="ver">v2.1</span>
+  <span class="spacer"></span>
+  <a class="gh" href="https://github.com/cespinosal/Cimentaciones_FEM" target="_blank" rel="noopener">
+    <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+    <span>cespinosal/Cimentaciones_FEM</span>
+  </a>
+</header>
+
+<nav class="sidebar" id="sidebar">
+  <span class="grp-label">Contenido</span>
+  <a href="#s1" data-target="s1">1. Descripción general</a>
+  <a href="#s2" data-target="s2">2. Archivos de entrada</a>
+  <a href="#s3" data-target="s3">3. Flujo de trabajo</a>
+  <a href="#s4" data-target="s4">4. Campos y parámetros</a>
+  <a href="#s5" data-target="s5">5. Interpretación de resultados</a>
+  <a href="#s6" data-target="s6">6. Preguntas frecuentes</a>
+  <a href="#s7" data-target="s7">7. Glosario técnico</a>
+  <a href="#s8" data-target="s8">8. Historial de versiones</a>
+  <a href="#s9" data-target="s9">9. Anexo: Motor FEM</a>
+</nav>
+
+<div class="breadcrumb-wrap" style="margin-left:var(--sidebar-w); margin-top:var(--header-h);">
+  <div class="breadcrumb" id="breadcrumb" style="padding-left:40px;">Ayuda / <b id="bcCurrent">Descripción general</b></div>
+</div>
+
+<main>
+
+<!-- ============ 1. DESCRIPCIÓN GENERAL ============ -->
+<section class="help-section" id="s1">
+  <h2>1. Descripción general</h2>
+  <p><b>Cimentaciones FEM — Zapata/Losa General</b> (nombre interno del proyecto: <b>GeoCim</b>) es una aplicación web de un solo archivo (<code>index.html</code>) para el diseño de cimentaciones de torres autosoportadas y monopolos de telecomunicaciones. No necesita instalación, servidor ni conexión a internet: se abre con doble clic en cualquier navegador moderno (Chrome, Edge, Firefox).</p>
+  <p>La herramienta reconstruye, en formato web, el flujo de cálculo de la hoja Excel <b>"ZAPATA GENERAL DE 3 DADOS"</b> (actualmente en su <b>Rev. 09</b> como hoja de cálculo, y <b>v2.1 "Desarrollo en aplicación WEB"</b> como app), bajo la norma <b>ANSI/TIA-222-H</b> con método <b>LRFD</b> (Load and Resistance Factor Design).</p>
+  <div class="alert alert-note">
+    <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#FFC107" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div>Esta copia (<code>fem/index.html</code>) es la rama de trabajo donde se está construyendo un <b>motor FEM propio</b>, todavía no incorporado a la versión de producción — ver el Anexo (sección 9) al final de esta ayuda.</div>
+  </div>
+
+  <h3>Tipos de estructura soportados</h3>
+  <p>En la pestaña <b>Definición de la zapata</b>, el selector <b>Tipo de estructura</b> ofrece cuatro opciones:</p>
+  <ul>
+    <li><b>Autosoportada 3P</b> — torre de 3 patas (patas <code>1b</code>, <code>1a</code>, <code>1</code>). Es el <b>único tipo con la revisión geotécnica completa implementada</b> (volteo, capacidad portante, mallado).</li>
+    <li><b>Autosoportada 4P</b> — torre de 4 patas (<code>1c</code>, <code>1b</code>, <code>1a</code>, <code>1</code>).</li>
+    <li><b>M4</b> — mismas reacciones que "Autosoportada 4P" (4 patas), pero embebidas en <b>un solo pedestal central</b> en vez de 4 dados independientes: el Visor 3D dibuja un único bloque A<sub>D</sub>×L<sub>D</sub> centrado en el centroide de las 4 patas.</li>
+    <li><b>Monopolo</b> — un solo apoyo por combinación de carga (sin patas, sin Radius/Azimuth).</li>
+  </ul>
+  <div class="alert alert-warning">
+    <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#DC3545" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div><b>Limitación actual importante:</b> la geometría de vértices y la carga de reacciones funcionan para los 4 tipos, pero la revisión geotécnica (secciones 4.1 a 4.4: criterios, volteo, capacidad portante y mallado) <b>solo está calculada para "Autosoportada 3P"</b>. Para 4P/M4/Monopolo, esas tarjetas muestran el aviso: <i>"El diseño geotécnico todavía solo está implementado para 'Autosoportada 3P' (y su alias M4/4P aún no tiene la geometría de patas de esta sección)."</i></div>
+  </div>
+
+  <h3>Qué SÍ hace hoy la herramienta</h3>
+  <ul>
+    <li>Importar la geometría de la zapata/losa (y su hueco opcional) desde archivos <code>.txt</code>.</li>
+    <li>Calcular propiedades de la sección (área, centroide, Ix, Iy) directamente de esos vértices.</li>
+    <li>Importar reacciones de patas por combinación de carga desde el PDF del software de análisis de la torre, o cargarlas a mano.</li>
+    <li>Calcular la revisión geotécnica por <b>volteo</b> (TIA-222-H) y por <b>capacidad portante</b> (Ley de Navier) para Autosoportada 3P.</li>
+    <li>Generar una previsualización visual del <b>mallado FEM</b> de la losa (algoritmo "Urdimbre Mesh") — geometría del mallado, no un análisis de esfuerzos.</li>
+    <li>Diseñar el refuerzo por <b>ACI 318-19</b> (sección 5): flexión (lecho superior/inferior, bloque de Whitney), cortante en una dirección, punzonamiento y revisión de dados de desplante (compresión/tensión axial, superficie de interacción por compatibilidad de deformaciones).</li>
+    <li>Exportar el modelo completo a un archivo <code>.STD</code> para STAAD.Pro (sección 4.7): malla real de la losa, apoyos elásticos (coeficiente de balasto), peso propio + relleno/ciclópeo/dados (con el factor 1.2 de ANSI/TIA-222-H §9.4 para los combos 1.2D+viento) y las reacciones de cada pata, ya combinados en <code>LOAD</code> listos para correr.</li>
+    <li>Guardar y volver a abrir el proyecto completo como archivo <code>.gfem</code> (JSON), con autoguardado periódico opcional (pestaña Cálculos) y nombre de archivo por default <code>&lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem</code>.</li>
+    <li>(Solo esta copia, pestaña <b>Motor FEM</b>) Correr un análisis de elementos finitos propio sobre la geometría real de la zapata — ver Anexo, sección 9.</li>
+  </ul>
+
+  <h3>Qué NO hace todavía (honesto)</h3>
+  <div class="alert alert-info">
+    <svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-13v5m0 3h.01" stroke="#0C7B93" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div>
+      No hay un botón de "Generar reporte": el único guardado disponible es <b>Guardar como…</b>, que exporta el estado completo del proyecto como JSON (<code>.gfem</code>), no una memoria de cálculo imprimible. El motor FEM propio (pestaña Motor FEM) todavía no está validado formalmente contra STAAD.Pro — tratalo como orientativo, no como reemplazo del export a STAAD (sección 4.7).
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. ARCHIVOS DE ENTRADA ============ -->
+<section class="help-section" id="s2">
+  <h2>2. Archivos de entrada</h2>
+
+  <h3>2.1 — Contorno exterior (archivo <code>.txt</code>, ej. <code>Zapata.txt</code>)</h3>
+  <p>Se carga con el botón <b>Importar Contorno Exterior…</b> en la pestaña <b>Definición de la zapata</b>. Formato: una línea por vértice, coordenadas <b>X,Y en metros</b>, separadas por coma o por espacio. El polígono se cierra implícitamente — no repitas el primer punto al final.</p>
+  <p>Ejemplo real (hexágono irregular de una zapata triangular de torre de 3 patas):</p>
+  <pre class="code-block">-5.45346419,-1.65464592
+-4.45346419,-3.38669673
+ 3.27858662,-3.38669673
+ 4.27858662,-1.65464592
+ 0.41256121, 5.04150650
+-1.58743879, 5.04150650</pre>
+  <p>Estos archivos se generan típicamente desde AutoCAD con la rutina embebida <code>SHAPEPTS.lsp</code> (cárgala con el comando <code>APPLOAD</code>): usa <code>SHAPEPTS</code> para hacer clic-a-clic sobre cada vértice, o <code>SHAPEPLINE</code> para extraer los vértices de una polilínea ya dibujada. El botón <b>Descargar SHAPEPTS.lsp</b>, dentro de la misma sección, entrega la rutina.</p>
+  <div class="alert alert-note">
+    <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#FFC107" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div>Las coordenadas <b>no se editan a mano</b> dentro de la app — la tabla de vértices es de solo lectura (con un botón ✕ para borrar un punto suelto). Para corregir una coordenada, corrige el archivo de origen y vuelve a importar.</div>
+  </div>
+
+  <h3>2.2 — Hueco interior (archivo <code>.txt</code>, ej. <code>Hueco.txt</code>)</h3>
+  <p>Mismo formato que el contorno exterior. Se usa solo si la cimentación es una losa con abertura central (ej. para paso de instalaciones). Activa primero el switch <b>Incluir hueco en la zapata</b> — hasta entonces aparece el botón <b>Importar Hueco…</b>. Si tu cimentación no tiene hueco, deja el switch apagado (no hace falta cargar nada).</p>
+  <p>Ejemplo real:</p>
+  <pre class="code-block">-2.08743879,-1.49994538
+ 0.91256121,-1.49994538
+ 0.91256121, 1.50005462
+-2.08743879, 1.50005462</pre>
+
+  <h3>2.3 — PDF de reacciones de la torre</h3>
+  <p>Se carga con el botón <b>Cargar desde PDF…</b> en la pestaña <b>Reacciones</b>. Es el reporte de reacciones exportado directamente por el software de análisis estructural de la torre (mismo PDF que ya generas para el diseño de la torre, sin editar).</p>
+  <p>Qué busca la app dentro del PDF, según el <b>Tipo de estructura</b> seleccionado:</p>
+  <ul>
+    <li><b>Autosoportada 3P / 4P / M4:</b> la sección titulada <b>"Resumen de Reacciones"</b> (o <b>"Support Forces Summary"</b> si el reporte está en inglés) — columnas Radius, Elevation, Azimuth, Nodo, FX, FY, FZ, por cada pata y cada combinación de carga.</li>
+    <li><b>Monopolo:</b> la sección <b>"Analysis Summary"</b> — Shear FX, Shear FZ, Axial FY, Moment MX/MY/MZ por combinación (sin patas, sin Radius/Azimuth).</li>
+  </ul>
+  <div class="alert alert-info">
+    <svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-13v5m0 3h.01" stroke="#0C7B93" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div><b>Unidades:</b> las reacciones se manejan en <b>toneladas [ton]</b> (fuerzas) y <b>toneladas-metro [ton-m]</b> (momentos) — todo el sistema de unidades de esta app es <b>métrico</b>. No usa kip ni kip-ft en ninguna sección.</div>
+  </div>
+</section>
+
+<!-- ============ 3. FLUJO DE TRABAJO ============ -->
+<section class="help-section" id="s3">
+  <h2>3. Flujo de trabajo paso a paso</h2>
+  <ol class="step-list">
+    <li><kbd class="step">①</kbd><b>Preparar los archivos de entrada.</b> Ten a mano el <code>.txt</code> del contorno exterior, el <code>.txt</code> del hueco (si aplica) y el PDF de reacciones de la torre.</li>
+    <li><kbd class="step">②</kbd><b>Abrir <code>index.html</code></b> con doble clic — no requiere servidor.</li>
+    <li><kbd class="step">③</kbd>En la pestaña <b>Definición de la zapata</b>, elige el <b>Tipo de estructura</b>, haz clic en <b>Importar Contorno Exterior…</b> y elige tu archivo. Si tu losa tiene hueco, activa <b>Incluir hueco en la zapata</b> y haz clic en <b>Importar Hueco…</b>.</li>
+    <li><kbd class="step">④</kbd>Revisa la <b>Vista en planta</b> y las <b>Propiedades de sección calculadas</b> (misma pestaña, más abajo) — confirma que el polígono se vea como esperas y que el área/centroide sean razonables.</li>
+    <li><kbd class="step">⑤</kbd>En la pestaña <b>Reacciones</b>, haz clic en <b>Cargar desde PDF…</b> y selecciona el reporte de tu torre (o completa la tabla a mano si preferís). Revisa los valores importados antes de seguir.</li>
+    <li><kbd class="step">⑥</kbd>En la pestaña <b>Cálculos</b>, completa <b>2.- Características de los materiales</b> (f'c, Fy, pesos volumétricos) y <b>3.- Datos geométricos de la cimentación</b> (peralte, profundidad de desplante, dados, capacidad admisible del suelo, factor de seguridad).</li>
+    <li><kbd class="step">⑦</kbd>Revisa los resultados que se recalculan automáticamente al completar los datos anteriores: <b>4.1 Criterios de resistencia</b>, <b>4.2 Revisión por volteo</b>, <b>4.3 Revisión por capacidad de carga</b> (diagramas de esfuerzo), <b>4.4 Mallado FEM</b> (previsualización), <b>4.7 Exportación de modelo</b> (.STD para STAAD.Pro) y <b>5.- Diseño estructural</b> (ACI 318-19).</li>
+    <li><kbd class="step">⑧</kbd>Guarda tu avance con <b>Guardar como…</b> (descarga un archivo <code>.gfem</code> con todo el proyecto) para poder retomarlo después con <b>Abrir proyecto…</b>, o activá el <b>Autoguardado</b> (pestaña Cálculos) para que se guarde solo cada 3/5/10 minutos.</li>
+  </ol>
+  <div class="alert alert-note">
+    <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#FFC107" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div>No hay un paso de "ejecutar cálculo": <b>todo se recalcula automáticamente</b> apenas cambias cualquier dato de entrada (vértices, reacciones, materiales, geometría). No hace falta ningún botón "Calcular" general — sí existen botones puntuales como <b>Calcular…</b> dentro de la tabla de Área efectiva (4.3), que abren una animación específica para esa combinación.</div>
+  </div>
+</section>
+
+<!-- ============ 4. CAMPOS Y PARÁMETROS ============ -->
+<section class="help-section" id="s4">
+  <h2>4. Descripción de campos y parámetros</h2>
+
+  <h3>2.- Características de los materiales</h3>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Campo</th><th>Descripción</th><th>Unidad</th><th>Obligatorio</th></tr></thead>
+    <tbody>
+      <tr><td>Resistencia del Concreto (f'c)</td><td>Resistencia a compresión del concreto</td><td>kg/cm²</td><td>Sí</td></tr>
+      <tr><td>Peso Volumétrico del Concreto (γc)</td><td>Peso propio del concreto de la zapata/dados</td><td>kg/m³</td><td>Sí</td></tr>
+      <tr><td>Peso Volumétrico del Relleno (γr)</td><td>Peso del relleno sobre la zapata</td><td>kg/m³</td><td>Sí</td></tr>
+      <tr><td>Esfuerzo de Fluencia del Acero (Fy)</td><td>Fluencia del acero de refuerzo, usada en el diseño ACI 318-19 (sección 5)</td><td>kg/cm²</td><td>Sí</td></tr>
+      <tr><td>¿Existe concreto ciclópeo?</td><td>Selector Sí/No</td><td>—</td><td>Sí</td></tr>
+      <tr><td>Espesor de ciclópeo</td><td>Solo si el anterior es "Sí"</td><td>m</td><td>Condicional</td></tr>
+      <tr><td>Peso Volumétrico Concreto Ciclópeo (γcc)</td><td>Solo si existe ciclópeo</td><td>kg/m³</td><td>Condicional</td></tr>
+      <tr><td>Peso adicional</td><td>Cualquier peso muerto extra a incluir en el volteo/capacidad portante</td><td>kg</td><td>Opcional (0 por defecto)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>3.- Datos geométricos de la cimentación</h3>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Campo</th><th>Símbolo</th><th>Unidad</th><th>Rango validado</th></tr></thead>
+    <tbody>
+      <tr><td>Peralte de la zapata</td><td>P<sub>Z</sub></td><td>m</td><td>0.30 – 2.50</td></tr>
+      <tr><td>Profundidad de desplante</td><td>P<sub>d</sub></td><td>m</td><td>0.50 – 8.00</td></tr>
+      <tr><td>Distancia entre Montantes</td><td>Lo</td><td>m</td><td>1.00 – 20.00</td></tr>
+      <tr><td>Ancho del dado</td><td>A<sub>D</sub></td><td>m</td><td>0.30 – 2.00</td></tr>
+      <tr><td>Largo del dado</td><td>L<sub>D</sub></td><td>m</td><td>0.30 – 2.00</td></tr>
+      <tr><td>Afloramiento del dado</td><td>H<sub>D</sub></td><td>m</td><td>0.00 – 1.50</td></tr>
+      <tr><td>Distancia entre centroides (horiz.)</td><td>C<sub>X</sub></td><td>m</td><td>sin validación</td></tr>
+      <tr><td>Distancia entre centroides (vert.)</td><td>C<sub>Y</sub></td><td>m</td><td>sin validación</td></tr>
+      <tr><td>Capacidad admisible del suelo</td><td>Q<sub>ADM</sub></td><td>Tn/m²</td><td>1.00 – 100.00</td></tr>
+      <tr><td>Factor de seguridad</td><td>F<sub>S</sub></td><td>—</td><td>1.00 – 10.00</td></tr>
+      <tr><td>Ángulo de P1 / P1a / P1b</td><td>—</td><td>°</td><td>sin validación</td></tr>
+    </tbody>
+  </table></div>
+  <p>Si un valor sale del rango habitual, el campo muestra un aviso en línea (<code>⚠ Valor fuera del rango habitual…</code>) — esto es solo una advertencia visual, no bloquea el cálculo.</p>
+
+  <h3>4.4 — Mallado FEM</h3>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Campo</th><th>Descripción</th><th>Unidad</th><th>Rango</th></tr></thead>
+    <tbody>
+      <tr><td>Tamaño de elemento</td><td>Control deslizante (slider) del tamaño objetivo de cada elemento de la malla</td><td>cm</td><td>5 – 120, en pasos de 5</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ 5. INTERPRETACIÓN DE RESULTADOS ============ -->
+<section class="help-section" id="s5">
+  <h2>5. Interpretación de resultados</h2>
+
+  <h3>5.1 — Diagrama de esfuerzo de contacto (Ley de Navier, sección 4.3)</h3>
+  <p>Para cada combinación de carga <code>0.9D + 1.0W</code> (90°, 60° y Normal), la app dibuja el polígono de la zapata con un mapa de color tipo "jet" (azul → cian → verde → amarillo → rojo) que representa el esfuerzo de contacto <b>τ</b> contra el suelo en cada punto del perímetro, calculado con la fórmula de Navier: <code>τ = R_FY/Área + Mx·y/Ix + My·x/Iy</code>. Pasa el cursor sobre el diagrama para ver el valor de τ en cualquier punto, no solo en los vértices.</p>
+  <p>La tabla <b>4.3.2 Eficiencias</b> muestra, por combinación: <code>τ_max</code>, <b>Área efectiva</b> (haz clic en esa celda para ver la animación que la calcula), <code>Q_prom</code>, <code>Ф·Qult</code> y la <b>Eficiencia</b> final (el mayor entre τ_max y Q_prom, dividido entre Ф·Qult).</p>
+
+  <h3>5.2 — Tabla de reacciones por pata</h3>
+  <p>En la pestaña <b>Reacciones</b>, cada fila es una combinación de carga y cada columna una pata (o, para Monopolo, el único punto de apoyo). Las columnas <code>FX</code>, <code>FY</code>, <code>FZ</code> están en toneladas; <code>Radius</code>/<code>Elevation</code> en metros, <code>Azimuth</code> en grados.</p>
+
+  <h3>5.3 — Revisión por volteo (sección 4.2)</h3>
+  <p>La tabla <b>4.2.2 Eficiencias a volteo</b> muestra, por combinación, el <b>FSV</b> (factor de seguridad al volteo) y la <b>Eficiencia</b>, junto con una columna <b>Resultado</b> que indica <b>CUMPLE</b> o <b>NO CUMPLE</b> directamente — no hace falta interpretar el número vos mismo, la herramienta ya aplica el criterio de aceptación.</p>
+
+  <h3>5.4 — Mallado FEM (sección 4.4)</h3>
+  <div class="alert alert-warning">
+    <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#DC3545" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div>Esta previsualización <b>no calcula esfuerzos</b> — es únicamente la geometría de la malla (elementos cuadriláteros/triangulares) que se exporta a STAAD.Pro (sección 4.7) para el análisis FEM real. Los dados se resaltan en color naranja (tienen su propia subdivisión, siempre perfecta, sin importar su rotación); el resto de la losa se ve en un único color uniforme.</div>
+  </div>
+</section>
+
+<!-- ============ 6. FAQ ============ -->
+<section class="help-section" id="s6">
+  <h2>6. Preguntas frecuentes</h2>
+  <div id="faqList"></div>
+</section>
+
+<!-- ============ 7. GLOSARIO ============ -->
+<section class="help-section" id="s7">
+  <h2>7. Glosario técnico</h2>
+  <dl class="glossary">
+    <dt>FEM (Finite Element Method / Método de Elementos Finitos)</dt>
+    <dd>Técnica numérica que discretiza una estructura continua (como una losa) en elementos pequeños conectados por nodos, para analizar esfuerzos y deformaciones. En esta app, la sección 4.4 genera la <i>malla</i> de elementos; el análisis de esfuerzos sobre esa malla se hace exportando a STAAD.Pro (sección 4.7), o con el motor FEM propio en desarrollo (Anexo, sección 9).</dd>
+
+    <dt>Zapata</dt>
+    <dd>Cimentación aislada, generalmente de menor tamaño, bajo cada pata o bajo toda la torre.</dd>
+
+    <dt>Losa general</dt>
+    <dd>Cimentación única que cubre toda la huella de la torre, apoyando las 3 (o 4) patas sobre una misma placa de concreto — con o sin hueco central.</dd>
+
+    <dt>Dado</dt>
+    <dd>Elemento de concreto (pedestal) que transmite la carga de cada pata de la torre hacia la zapata/losa. Cada dado tiene su propia posición y ángulo de rotación (P1, P1a, P1b).</dd>
+
+    <dt>LRFD (Load and Resistance Factor Design)</dt>
+    <dd>Método de diseño por factores de carga y resistencia: las cargas se amplifican (factores >1) y la resistencia del material se reduce (factores Ф <1), en vez de aplicar un único factor de seguridad global.</dd>
+
+    <dt>TIA-222-H</dt>
+    <dd>Norma ANSI/TIA-222 (revisión H), estándar de referencia para el diseño estructural de torres y estructuras de soporte de antenas en telecomunicaciones — incluye los criterios de revisión geotécnica que usa esta app.</dd>
+
+    <dt>Ley de Navier / esfuerzo de contacto</dt>
+    <dd>Fórmula clásica de mecánica de materiales (τ = P/A ± M·y/I) usada aquí para estimar la presión de contacto entre la zapata/losa y el suelo, en cualquier punto del perímetro, combinando la carga axial y los momentos de vuelco.</dd>
+
+    <dt>Momento de vuelco</dt>
+    <dd>Momento que tiende a "volcar" la cimentación por el efecto de las cargas horizontales de viento actuando a una altura sobre la base — se revisa contra el momento resistente (peso propio + relleno) en la sección 4.2.</dd>
+
+    <dt>FSV (Factor de Seguridad al Volteo)</dt>
+    <dd>Relación entre el momento resistente y el momento actuante de vuelco; debe superar un mínimo normativo para que la combinación "cumpla".</dd>
+
+    <dt>Q<sub>ADM</sub> (capacidad admisible del suelo)</dt>
+    <dd>Presión máxima que el suelo de fundación puede resistir de forma segura, en Tn/m² — dato de entrada del estudio geotécnico del sitio.</dd>
+
+    <dt>Ф (factor de reducción de resistencia)</dt>
+    <dd>Factor LRFD que reduce la capacidad última calculada, para tener en cuenta incertidumbre en el material/método — distinto para capacidad de carga y para deslizamiento.</dd>
+
+    <dt>Urdimbre Mesh</dt>
+    <dd>Nombre del algoritmo de mallado usado en la sección 4.4: una grilla regular ("urdimbre", los hilos fijos de un tejido) cubre el interior de la losa, y una triangulación restringida de Delaunay ("el hilo libre") resuelve las zonas de transición (huecos, esquinas, dados), recombinada en cuadriláteros y reparada localmente para evitar elementos deformes o diminutos.</dd>
+
+    <dt>Combinación de carga</dt>
+    <dd>Conjunto de factores aplicados simultáneamente a las cargas (ej. <code>0.9D + 1.0W Normal</code>) según la norma, para representar un escenario de diseño específico (aquí, D = carga muerta, W = viento).</dd>
+
+    <dt>Excentricidad (ex, ey)</dt>
+    <dd>Distancia entre el punto de aplicación de la resultante de cargas y el centroide geométrico de la zapata — determina qué tan "descentrada" queda la carga y por lo tanto cuánto se dispara el esfuerzo de contacto en un borde.</dd>
+
+    <dt>.gfem</dt>
+    <dd>Extensión de archivo de proyecto de esta app — internamente es JSON con todo el <code>state</code> (geometría, materiales, reacciones, parámetros).</dd>
+
+    <dt>STAAD.Pro</dt>
+    <dd>Software externo de análisis estructural (Bentley) al que esta app exporta el modelo FEM completo de la losa (sección 4.7, archivo <code>.STD</code>): malla real, apoyos elásticos, peso propio+relleno y reacciones de cada pata, ya combinados en <code>LOAD</code> por combinación de viento.</dd>
+
+    <dt>Motor FEM (interno)</dt>
+    <dd>Solver de elementos finitos propio, en desarrollo dentro de esta copia (<code>fem/index.html</code>): placa Mindlin/Reissner triangular + resortes de Winkler + no linealidad compression-only, corriendo sobre la geometría real de la zapata. Ver Anexo, sección 9.</dd>
+  </dl>
+</section>
+
+<!-- ============ 8. HISTORIAL DE VERSIONES ============ -->
+<section class="help-section" id="s8">
+  <h2>8. Historial de versiones</h2>
+  <p>Historial combinado: versiones de la hoja de cálculo original (V1.0 a V1.7) y la migración a aplicación web (V2.0+).</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Versión</th><th>Fecha</th><th>Descripción del cambio</th></tr></thead>
+    <tbody>
+      <tr><td>V1.0</td><td>01/01/2025</td><td>Publicación inicial de la hoja de cálculo.</td></tr>
+      <tr><td>V1.1</td><td>15/01/2025</td><td>Excentricidades en "X" y "Y" respecto al centro geométrico.</td></tr>
+      <tr><td>V1.2</td><td>10/02/2025</td><td>Pestaña "AutoCAD" para generar áreas efectivas en CAD.</td></tr>
+      <tr><td>V1.3</td><td>26/02/2025</td><td>Botón para abrir archivo AutoCAD desde la pestaña "Vértices".</td></tr>
+      <tr><td>V1.4</td><td>25/05/2025</td><td>Pestaña "Integrador" (diagrama de esfuerzos, viga simplemente apoyada).</td></tr>
+      <tr><td>V1.5</td><td>04/06/2025</td><td>Regla de pesos adicionales + función de reacciones.</td></tr>
+      <tr><td>V1.6</td><td>15/12/2025</td><td>Reacciones unitarias + procedimiento de automallado.</td></tr>
+      <tr><td>V1.7</td><td>12/05/2026</td><td>Rotar dados sobre ejes locales + discretizar carga axial en el perímetro del dado.</td></tr>
+      <tr><td>V2.0</td><td>15/07/2026</td><td><b>Desarrollo en aplicación web</b> — geometría, propiedades de sección, reacciones (con importación desde PDF), revisión geotécnica por volteo y capacidad portante para Autosoportada 3P, diseño estructural ACI 318-19 (sección 5), previsualización de mallado FEM "Urdimbre Mesh" y exportación de modelo a STAAD.Pro (sección 4.7).</td></tr>
+      <tr><td><b>V2.1</b></td><td>23/07/2026</td><td><b>Esta versión.</b> Export a STAAD: peso propio+relleno+dados con el factor 1.2 de ANSI/TIA-222-H §9.4 combinado con las reacciones en un solo <code>LOAD</code> por combinación 1.2D+viento. Autoguardado reubicado a la pestaña Cálculos (antes en Definición de la zapata), con nombre de archivo por default <code>&lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem</code>. Corrección de mallado en el automallado (dados no seguían el refinamiento del resto de la losa; transición dado-losa mejorada). Motor FEM interno: fases 00-06 (malla, rigidez de placa, solver lineal, resortes de Winkler, no linealidad compression-only, geometría real) — ver Anexo, sección 9. Ayuda embebida en la propia app (ya no depende de <code>help.html</code> aparte).</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ 9. ANEXO: MOTOR FEM ============ -->
+<section class="help-section" id="s9">
+  <h2>9. Anexo: Motor FEM (interno, en desarrollo)</h2>
+  <div class="alert alert-warning">
+    <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm0 6v6m0 3h.01" stroke="#DC3545" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div><b>Solo en esta copia de trabajo.</b> La pestaña <b>Motor FEM</b> no existe en la versión de producción de la app — es una rama de desarrollo (<code>fem/index.html</code>) para construir un solver de elementos finitos propio, pensado para eventualmente dejar de depender de exportar a STAAD.Pro. Todavía <b>no está validado formalmente</b> contra un modelo real corrido en STAAD — tratá sus resultados como orientativos.</div>
+  </div>
+  <p>El motor resuelve la losa como una placa de <b>Mindlin/Reissner</b> (elemento triangular de 3 nodos) apoyada en <b>resortes de Winkler</b> (coeficiente de balasto de la sección 4.5), con un loop de no linealidad tipo <b>ENT</b> (elastic-no-tension) que desactiva los resortes que salen en tracción — así el % de área en contacto con el suelo sale de la propia física del modelo, no de una fórmula cerrada como Meyerhof.</p>
+  <p>Dentro de la pestaña, la tarjeta <b>"Análisis del solver sobre geometría real"</b> corre este motor sobre la malla real de la zapata actual (la misma de la sección 4.4), con la carga axial de cada pata más el peso propio+relleno (con el factor 1.2 de ANSI/TIA-222-H §9.4 para los combos 1.2D+viento) — el selector de combo solo lista las variantes "+ Relleno" porque son las únicas con sentido físico completo (las reacciones solas, sin peso propio, no sostienen la zapata en la realidad).</p>
+  <div class="alert alert-info">
+    <svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-13v5m0 3h.01" stroke="#0C7B93" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div>La tabla de "Reacción total por dado" del preview está pensada justamente para comparar contra la <b>Summation</b> de reacciones de STAAD.Pro sobre esos mismos números de nodo (mostrados en la propia tabla) — es el mecanismo de validación mientras el motor no tenga un cierre formal.</div>
+  </div>
+  <h3>Limitaciones conocidas</h3>
+  <ul>
+    <li>Solo aplica la carga axial (Fy) de cada pata — el cortante horizontal (Fx/Fz) y el momento local que genera en el dado todavía no se modelan.</li>
+    <li>Solo corre para Autosoportada 3P/4P (necesita la tabla de reacciones por pata); Monopolo queda pendiente.</li>
+    <li>No recupera todavía momentos de diseño (flexión) a partir de la deformada — eso es trabajo de fases posteriores del roadmap interno.</li>
+  </ul>
+</section>
+
+</main>
+
+<button id="btnTop" aria-label="Volver al inicio">
+  <svg viewBox="0 0 24 24"><path d="M12 5l-7 7h4v7h6v-7h4l-7-7Z"/></svg>
+</button>
+
+<script>
+// ---------- Datos de FAQ ----------
+const FAQ = [
+  {
+    q: "① ¿En qué sistema de coordenadas deben estar las coordenadas de Zapata.txt?",
+    a: "En el sistema propio de tu dibujo de AutoCAD (X,Y en metros, cualquier origen). No hace falta centrarlas vos: la app recentra automáticamente el polígono en el origen (0,0) al importarlo, usando el centroide calculado — las coordenadas crudas que cargaste no se modifican en el archivo, solo se ajusta el despliegue interno."
+  },
+  {
+    q: "② ¿La herramienta soporta torres de 4 patas o solo de 3?",
+    a: "El selector \"Tipo de estructura\" incluye Autosoportada 4P (y su alias M4), y podés cargar su geometría y sus reacciones sin problema. Lo que todavía no está implementado para 4P/M4 (ni para Monopolo) es la revisión geotécnica completa — volteo, capacidad portante y mallado (secciones 4.1-4.4) solo calculan hoy para Autosoportada 3P."
+  },
+  {
+    q: "③ ¿Puedo ingresar las reacciones manualmente si no tengo el PDF?",
+    a: "Sí. La tabla de Reacciones es editable a mano en todas sus celdas — el botón \"Cargar desde PDF…\" es un atajo para no tipear todo, no un requisito. Si el PDF no tiene el formato esperado, simplemente completá la tabla vos mismo."
+  },
+  {
+    q: "④ ¿Qué precisión tiene el mallado FEM respecto a un análisis con software especializado?",
+    a: "La sección 4.4 en sí es solo la geometría de la malla (tamaño y forma de los elementos) — el análisis de esfuerzos sobre esa malla se hace exportando a STAAD.Pro (sección 4.7), que resuelve el modelo de placas sobre resortes de suelo con el peso propio, el relleno y las reacciones ya combinados en los LOAD listos para correr. Esta copia además tiene un motor de elementos finitos propio (pestaña \"Motor FEM\") que corre ese mismo análisis dentro de la app — todavía sin validar formalmente contra STAAD.Pro, tratalo como orientativo hasta que esa validación se complete (ver Anexo, sección 9)."
+  },
+  {
+    q: "⑤ ¿Cómo interpreto los colores del diagrama de esfuerzo de contacto (4.3)?",
+    a: "Es un mapa de color tipo \"jet\": azul representa el menor esfuerzo de contacto sobre ese perímetro para esa combinación, y rojo el mayor. Pasá el cursor sobre el polígono para leer el valor numérico exacto de τ en cualquier punto, no solo en los vértices etiquetados."
+  },
+  {
+    q: "⑥ ¿Qué hago si el archivo PDF de reacciones no es reconocido?",
+    a: "La app busca literalmente el título \"Resumen de Reacciones\" / \"Support Forces Summary\" (patas) o \"Analysis Summary\" (Monopolo) dentro del texto del PDF. Si tu reporte usa otro formato o esas secciones no existen, vas a ver el mensaje \"No se encontró la sección de reacciones… en <archivo>.\" — en ese caso, cargá los valores a mano en la tabla."
+  },
+  {
+    q: "⑦ ¿Las verificaciones de diseño cubren acero de refuerzo o solo el concreto/geotecnia?",
+    a: "Cubren ambas cosas. Geotecnia: volteo y capacidad portante del suelo (sección 4). Estructural por ACI 318-19 (sección 5): flexión (lecho superior/inferior), cortante en una dirección, punzonamiento y diseño de los dados de desplante (compresión/tensión axial, superficie de interacción)."
+  },
+  {
+    q: "⑧ ¿Puedo usar la herramienta offline, sin conexión a internet?",
+    a: "Sí. Es un único archivo HTML autocontenido (CSS y JS embebidos, sin llamadas externas) — se abre con doble clic y funciona completo sin internet."
+  },
+  {
+    q: "⑨ ¿En qué unidades trabaja toda la aplicación?",
+    a: "100% sistema métrico: metros para geometría, kg/cm² y kg/m³ para materiales, Tn/m² para capacidad del suelo, toneladas y toneladas-metro para reacciones. No hay ninguna sección en unidades imperiales (no usa kip ni kip-ft)."
+  },
+  {
+    q: "⑩ ¿Cómo guardo mi avance para retomarlo después?",
+    a: "Con el botón \"Guardar como…\" de la barra superior, que descarga un archivo .gfem con todo el estado del proyecto (geometría, reacciones, materiales, parámetros). El nombre por default es &lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem, tomado de los datos de proyecto en la pestaña Cálculos. Para continuar después, usá \"Abrir proyecto…\" y elegí ese mismo archivo."
+  },
+  {
+    q: "⑪ ¿Puedo hacer que la app guarde sola mientras trabajo?",
+    a: "Sí — en la pestaña Cálculos, debajo de la tabla de datos del proyecto, activá \"Autoguardado\" y elegí la frecuencia (3/5/10 min). La primera vez te va a pedir elegir dónde guardar el archivo; a partir de ahí reescribe ese mismo archivo automáticamente. Requiere un navegador con soporte para File System Access API (Chrome o Edge) — en otros navegadores el control queda deshabilitado."
+  },
+];
+
+const faqList = document.getElementById("faqList");
+FAQ.forEach((item, i) => {
+  const div = document.createElement("div");
+  div.className = "faq-item";
+  div.innerHTML = `
+    <button class="faq-q" aria-expanded="false">
+      <span>${item.q}</span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="faq-a"><div class="faq-a-inner">${item.a}</div></div>
+  `;
+  const btn = div.querySelector(".faq-q");
+  btn.addEventListener("click", () => {
+    const open = div.classList.toggle("open");
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  faqList.appendChild(div);
+});
+
+// ---------- Sidebar: resaltar sección activa + scroll ----------
+const sections = Array.from(document.querySelectorAll("section.help-section"));
+const navLinks = Array.from(document.querySelectorAll("nav.sidebar a"));
+const bcCurrent = document.getElementById("bcCurrent");
+
+function setActive(id){
+  navLinks.forEach(a => a.classList.toggle("active", a.dataset.target === id));
+  const link = navLinks.find(a => a.dataset.target === id);
+  if(link) bcCurrent.textContent = link.textContent.replace(/^\d+\.\s*/, "");
+}
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting){
+      setActive(entry.target.id);
+    }
+  });
+}, { rootMargin: "-20% 0px -70% 0px", threshold: 0 });
+sections.forEach(s => observer.observe(s));
+setActive("s1");
+
+// ---------- Botón volver arriba ----------
+const btnTop = document.getElementById("btnTop");
+window.addEventListener("scroll", () => {
+  btnTop.classList.toggle("show", window.scrollY > 400);
+});
+btnTop.addEventListener("click", () => window.scrollTo({top:0, behavior:"smooth"}));
+
+// ---------- Menú hamburguesa (responsive) ----------
+const sidebar = document.getElementById("sidebar");
+const btnHamburger = document.getElementById("btnHamburger");
+btnHamburger.addEventListener("click", () => sidebar.classList.toggle("open"));
+navLinks.forEach(a => a.addEventListener("click", () => sidebar.classList.remove("open")));
+document.addEventListener("click", (e) => {
+  if(window.innerWidth <= 768 && sidebar.classList.contains("open")){
+    if(!sidebar.contains(e.target) && e.target !== btnHamburger && !btnHamburger.contains(e.target)){
+      sidebar.classList.remove("open");
+    }
+  }
+});
+</script>
+</body>
+</html>
+</template>
 
 <main class="content" id="main-content" tabindex="-1">
   <div class="tabs-bar" role="tablist" aria-label="Secciones">
@@ -764,24 +1440,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           </div>
         </section>
 
-        <div class="switch-row" style="margin-top:14px;">
-          <span class="switch">
-            <input type="checkbox" id="chkAutosave" aria-label="Autoguardado automático del archivo .gfem">
-            <span class="track" aria-hidden="true"><span class="thumb"></span></span>
-          </span>
-          <span>Autoguardado automático (.gfem)</span>
-        </div>
-        <div id="autosaveFreqBlock" class="hidden" style="margin-top:10px;">
-          <div class="small" style="margin-bottom:6px;">Frecuencia:</div>
-          <div class="row-actions" id="autosaveFreqButtons" role="group" aria-label="Frecuencia de autoguardado" style="margin-top:0;">
-            <button type="button" class="btn" data-min="3">3 min</button>
-            <button type="button" class="btn primary" data-min="5">5 min</button>
-            <button type="button" class="btn" data-min="10">10 min</button>
-          </div>
-        </div>
-        <p class="small" id="autosaveStatus" style="margin-top:4px; display:none;"></p>
-
-        <div class="row-actions" style="margin-top:8px;">
+        <div class="row-actions" style="margin-top:14px;">
           <button class="btn" id="btnReset">
             <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13 5.5A5.5 5.5 0 1 0 13.8 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M13.3 2.5v3.3H10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Ejemplo
@@ -916,6 +1575,22 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
           <tr><td>Solicitud:</td><td><input type="text" id="proy_request" aria-label="Solicitud"></td></tr>
         </tbody>
       </table>
+      <div class="calc-header-autosave">
+        <span class="switch">
+          <input type="checkbox" id="chkAutosave" aria-label="Autoguardado automático del archivo .gfem">
+          <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+        </span>
+        <span class="small">Autoguardado</span>
+        <div id="autosaveFreqBlock" class="hidden" style="display:flex; align-items:center; gap:8px;">
+          <span class="small">Frecuencia:</span>
+          <div class="row-actions" id="autosaveFreqButtons" role="group" aria-label="Frecuencia de autoguardado" style="margin-top:0;">
+            <button type="button" class="btn" data-min="3">3 min</button>
+            <button type="button" class="btn primary" data-min="5">5 min</button>
+            <button type="button" class="btn" data-min="10">10 min</button>
+          </div>
+        </div>
+        <p class="small" id="autosaveStatus" style="margin:0; display:none;"></p>
+      </div>
     </div>
 
     <section class="card" id="sec-elementos-mecanicos" aria-labelledby="h-elementos-mecanicos">
@@ -1695,14 +2370,14 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
       </div>
     </section>
     <section class="card" id="sec-fem-preview" aria-labelledby="h-fem-preview">
-      <div class="head"><span id="h-fem-preview">Vista previa del solver (fases 00–05)</span></div>
+      <div class="head"><span id="h-fem-preview">Análisis del solver sobre geometría real (fases 00–06)</span></div>
       <div class="body">
         <div class="message-bar warning" role="status" style="margin-bottom:16px;">
           <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span><b>Preview adelantado, no oficial.</b> Corre las fases ya hechas (00–05: malla, rigidez de placa, solver lineal, resortes de Winkler, no linealidad compression-only) sobre la geometría real de esta zapata, pero todavía sin recuperar momentos de diseño (07/08) ni optimizar rendimiento (09) — con malla fina el loop de la fase 05 puede tardar unos segundos (barra de progreso abajo). Solo sirve para <i>ver</i> la deformada y qué zona queda sin contacto con el suelo — no reemplaza el diseño de la sección 5.</span>
+          <span><b>Sin validar todavía contra STAAD.</b> Corre las fases ya hechas (00–05: malla, rigidez de placa, solver lineal, resortes de Winkler, no linealidad compression-only) sobre la geometría real de esta zapata, con la carga axial (Fy) real de cada pata y el peso propio+relleno+ciclópeo+adicional (sección 4.-, con el factor 1.2 del ANSI/TIA-222-H §9.4 aplicado a todo el peso en combos 1.2D), todo repartido por área tributaria. Todavía sin aplicar el cortante horizontal (Fx/Fz) ni el momento local que genera en cada dado, sin recuperar momentos de diseño (07/08) ni optimizar rendimiento (09) — con malla fina el loop de la fase 05 puede tardar unos segundos (barra de progreso abajo). Solo sirve para <i>ver</i> la deformada y qué zona queda sin contacto con el suelo — no reemplaza el diseño de la sección 5.</span>
         </div>
         <div id="femPreviewNoSoportado" class="message-bar error hidden" role="alert">
-          <span>Esta vista previa solo corre para Autosoportada 3P/4P (necesita la tabla de reacciones por pata). Para Monopolo falta repartir momento/cortante del apoyo único en cargas nodales — eso queda para cuando se conecte de verdad en la fase 06.</span>
+          <span>Este análisis solo corre para Autosoportada 3P/4P (necesita la tabla de reacciones por pata). Para Monopolo falta repartir momento/cortante del apoyo único en cargas nodales.</span>
         </div>
         <div id="femPreviewControles" class="row-actions" style="flex-wrap:wrap; align-items:center; gap:12px;">
           <label class="field" style="margin:0;"><span class="lbl">Caso de carga (combo)</span><select id="femPreviewComboSelect"></select></label>
@@ -3053,7 +3728,7 @@ const EXAMPLE_GFEM = {
       { "1": { "radius": 2.97, "elevation": 0, "azimuth": 0, "fx": 0, "fy": 84.98, "fz": -9.62 }, "1b": { "radius": 2.97, "elevation": 0, "azimuth": 240, "fx": -3.44, "fy": -37.55, "fz": -3.12 }, "1a": { "radius": 2.97, "elevation": 0, "azimuth": 120, "fx": 3.44, "fy": -37.55, "fz": -3.12 } }
     ]
   },
-  "proyecto": { "assetNum": "", "assetName": "", "engineer": "", "date": "", "country": "Costa Rica", "request": "" },
+  "proyecto": { "assetNum": "123456", "assetName": "ABCDE", "engineer": "X", "date": "Hoy", "country": "Costa Rica", "request": "12345678" },
   "materiales": { "fc": 210, "gc": 2400, "gr": 1600, "fy": 4200, "existeCiclopeo": "No", "espesorCiclopeo": 1, "gcc": 2200, "pesoAdicional": 0 },
   "tipoTorre": "Autosoportada 3P"
 };
@@ -3234,6 +3909,16 @@ let lastPlanArgs = null;
 // .bin, etc.), aunque acá no se pidan. Con un MIME que no existe en el
 // registro no hay nada que mezclar, así que el filtro queda solo en .gfem.
 const GFEM_FILE_TYPES = [{ description: "Archivos GeoCimFEM", accept: {"application/x-geocimfem": [".gfem"]} }];
+
+// Nombre por default para Guardar/Guardar como/autoguardado: <Asset Number>+
+// <Asset Name> (pedido explícito del usuario) — si falta alguno de los dos
+// se usa el que haya, y si no hay ninguno cae a "cimentacion" como antes.
+function nombreArchivoProyecto(ext){
+  const num = (state.proyecto.assetNum||"").trim();
+  const name = (state.proyecto.assetName||"").trim();
+  const base = (num && name) ? `${num}+${name}` : (num || name || "cimentacion");
+  return `${base}.${ext}`;
+}
 
 // Autoguardado automático del proyecto (.gfem): opt-in vía checkbox en
 // "Definición de la zapata". No usa localStorage (ver nota arriba sobre por
@@ -5883,6 +6568,15 @@ function populateGeoComboSelector(){
 // que ya usan getCriteriosDisenoRevision()/computeCortante()/etc. para
 // "combosEstructurales" — porque acá interesa la carga última, no la de
 // servicio (0.9D/1.0D) que se usa para volteo/geotécnico en 4.2/4.3.
+//
+// La etiqueta visible lleva "+ Relleno" (el value sigue siendo el combo
+// tal cual, sin ese sufijo, para no romper las búsquedas contra
+// cfg.combos/reacciones) porque femRunPreview SIEMPRE suma peso propio +
+// relleno — no existe variante "solo reacciones" seleccionable, igual que
+// en el export a STAAD las cargas 3-5 (solo reacciones, sin relleno) no se
+// usan para ninguna revisión real, solo alimentan el REPEAT LOAD "... +
+// RELLENO" (cargas 8+) que sí es el caso completo. Mismo criterio acá: solo
+// se expone la variante completa.
 function femPreviewPoblarCombos(cfg){
   const sel = document.getElementById("femPreviewComboSelect");
   if(!sel) return;
@@ -5896,7 +6590,7 @@ function femPreviewPoblarCombos(cfg){
     femPreviewSelectedCombo = combosEstructurales[0] || null;
   }
   sel.innerHTML = combosEstructurales.map(c=>
-    `<option value="${c}"${c===femPreviewSelectedCombo ? " selected" : ""}>${c}</option>`
+    `<option value="${c}"${c===femPreviewSelectedCombo ? " selected" : ""}>${c} + Relleno</option>`
   ).join("");
 }
 
@@ -6625,19 +7319,40 @@ function umDensifyRingGridAligned(poly,xmin,dx,ymin,dy,fallbackSize){
   }
   return pts;
 }
-function umSeedInteriorPoints(outer,holes,boundaryRings,spacing,grid){
+function umSeedInteriorPoints(outer,holes,gridAlignedRings,pedestalRings,spacing,grid){
   const g=grid||umGridDims(outer,spacing);
   const {xmin,ymin,nx,ny,dx,dy}=g;
-  const margin=spacing*0.5;
-  const boundaryEdges=[];
-  for(const ring of boundaryRings){ const n=ring.length; for(let i=0;i<n;i++) boundaryEdges.push([ring[i],ring[(i+1)%n]]); }
+  // Dos márgenes distintos, NO uno solo — probamos con uno solo ampliado y
+  // arregló los dados pero rompió el contorno/huecos, que son casos
+  // distintos:
+  //  - gridAlignedRings (contorno exterior + huecos): sus puntos vienen de
+  //    umDensifyRingGridAligned, ya ALINEADOS a la misma grilla regular que
+  //    usa este sembrado — el margen angosto de siempre (spacing*0.5) anda
+  //    bien ahí, y agrandarlo de más solo deja un hueco más ancho que una
+  //    celda de grilla para rellenar, generando el mismo tipo de muescas
+  //    chicas que estábamos arreglando, pero ahora en el contorno.
+  //  - pedestalRings (dados): alineados a SU PROPIA orientación rotada
+  //    (según el azimut de cada pata), casi nunca coincide con la grilla
+  //    regular — ahí sí hace falta el margen más ancho (spacing*1.2) para
+  //    dejarle a Delaunay una franja vacía y triangular esa transición
+  //    libremente, en vez de forzarla contra puntos de grilla mal ubicados.
+  const marginGrid = spacing*0.5;
+  const marginPedestal = spacing*1.2;
+  function edgesOf(rings){
+    const es=[];
+    for(const ring of rings){ const n=ring.length; for(let i=0;i<n;i++) es.push([ring[i],ring[(i+1)%n]]); }
+    return es;
+  }
+  const gridEdges = edgesOf(gridAlignedRings);
+  const pedEdges = edgesOf(pedestalRings);
   const result=[];
   for(let j=1;j<ny;j++){
     const y=ymin+j*dy;
     for(let i=1;i<nx;i++){
       const x=xmin+i*dx, p=[x,y];
       if(umPointInPolygon(p,outer) && !holes.some(h=>umPointInPolygon(p,h))){
-        if(boundaryEdges.every(([a,b])=>umDistPointToSegment(p,a,b)>=margin)) result.push(p);
+        if(gridEdges.every(([a,b])=>umDistPointToSegment(p,a,b)>=marginGrid) &&
+           pedEdges.every(([a,b])=>umDistPointToSegment(p,a,b)>=marginPedestal)) result.push(p);
       }
     }
   }
@@ -6911,8 +7626,19 @@ function umMeshPedestalGrid(ped,elementSize){
   // (no a los ejes X/Y globales), construida por interpolación directa,
   // sin pasar por Delaunay — así queda perfecta (ángulos exactos de 90°,
   // aspecto uniforme) sin importar el ángulo de rotación del dado. Mínimo
-  // 2x2 elementos por dado; el tamaño de elemento dentro del dado se
-  // redondea al múltiplo de 20 cm más cercano al tamaño de elemento global.
+  // 2x2 elementos por dado (Math.max(2,...) en nx/ny alcanza para eso, sin
+  // necesidad de un piso aparte en el tamaño de elemento).
+  //
+  // ANTES: el tamaño de elemento dentro del dado se redondeaba al múltiplo
+  // de 20 cm más cercano al tamaño de elemento global, con un piso de 0.2 m
+  // — para elementSize "normales" (20-30 cm) daba un número prolijo, pero
+  // para un estudio de convergencia de malla (refinar a 10 cm, 5 cm...) el
+  // dado se quedaba SIEMPRE en 3×3 (0.6 m / 0.2 m) sin importar cuánto se
+  // refinara el resto, y esa diferencia de densidad entre el anillo del
+  // dado (fijo, grueso) y la losa circundante (cada vez más fina) hacía que
+  // el mallador CDT generara triángulos chicos/degenerados justo en esa
+  // frontera para conciliar los dos tamaños. Ahora el dado usa el mismo
+  // elementSize que el resto de la malla, sin redondear ni pisar en 0.2 m.
   const p0=ped[0], p1=ped[1], p2=ped[2];
   const ux=p1[0]-p0[0], uy=p1[1]-p0[1];
   const width=Math.hypot(ux,uy);
@@ -6920,9 +7646,8 @@ function umMeshPedestalGrid(ped,elementSize){
   const vx=p2[0]-p1[0], vy=p2[1]-p1[1];
   const height=Math.hypot(vx,vy);
   const vhx=vx/height, vhy=vy/height;
-  const snapped=Math.max(0.2, Math.round(elementSize/0.2)*0.2);
-  const nx=Math.max(2, Math.round(width/snapped));
-  const ny=Math.max(2, Math.round(height/snapped));
+  const nx=Math.max(2, Math.round(width/elementSize));
+  const ny=Math.max(2, Math.round(height/elementSize));
   const grid=[];
   for(let i=0;i<=nx;i++){
     const col=[];
@@ -6968,14 +7693,15 @@ function umMeshSlab(outerRaw,holesRaw,pedestalsRaw,elementSize,maxAspect,angleRa
     }
   });
 
-  const boundaryRings=[outerD,...holesD,...pedestalRings];
-  // umSeedInteriorPoints solo descarta puntos cerca del BORDE de cada dado
-  // (por el margen de distancia a boundaryEdges) — un punto bien adentro de
-  // un dado, lejos de su anillo, pasaba ese filtro igual y quedaba como
-  // nodo huérfano: se agregaba a JOINT COORDINATES pero ningún elemento lo
-  // usaba, porque el triángulo que lo contenía se elimina más abajo por
-  // caer dentro del dado (el dado ya tiene su propia malla perfecta).
-  let interiorPts=umSeedInteriorPoints(outer,holes,boundaryRings,elementSize,grid);
+  // umSeedInteriorPoints solo descarta puntos cerca del BORDE de cada anillo
+  // (por el margen de distancia) — un punto bien adentro de un dado, lejos
+  // de su anillo, pasaba ese filtro igual y quedaba como nodo huérfano: se
+  // agregaba a JOINT COORDINATES pero ningún elemento lo usaba, porque el
+  // triángulo que lo contenía se elimina más abajo por caer dentro del dado
+  // (el dado ya tiene su propia malla perfecta). Contorno/huecos y dados se
+  // pasan por separado porque cada uno usa su propio margen (ver comentario
+  // dentro de la función).
+  let interiorPts=umSeedInteriorPoints(outer,holes,[outerD,...holesD],pedestalRings,elementSize,grid);
   if(pedestals.length){
     interiorPts=interiorPts.filter(p=> !pedestals.some(ped=>umPointInPolygon(p,ped)));
   }
@@ -7539,13 +8265,17 @@ function generarStaadModel(){
   ].join("\n") : "";
 
   // ESTADOS DE CARGA: LOAD 2 (Relleno) reparte el peso de relleno/ciclópeo/
-  // adicional (ya calculados en Tn en 4.- Diseño Geotécnico) como presión
-  // uniforme en kg/m² sobre toda la losa.
+  // adicional/dados (ya calculados en Tn en 4.- Diseño Geotécnico) como
+  // presión uniforme en kg/m² sobre toda la losa. Dados se agrega acá (y no
+  // en LOAD 1 PP) porque SELFWEIGHT solo conoce los shell del modelo, que
+  // usan el espesor de la LOSA (PZ) en toda su extensión — no el volumen
+  // real, más alto, del dado/pedestal (dadoVert=Hr+HD) por encima de esa
+  // losa, así que su peso no queda capturado por SELFWEIGHT en ningún lado.
   const geoW = (lastGeoData && lastGeoData.geo && lastGeoData.geo.supported) ? lastGeoData.geo : null;
   const areaZapata = (lastGeoData && lastGeoData.props) ? lastGeoData.props.area : 0;
   let presionRelleno = 0;
   if(geoW && areaZapata > 0){
-    const pesoTn = (geoW.Wrelleno||0) + (geoW.Wciclopeo||0) + (geoW.Wadicional||0);
+    const pesoTn = (geoW.Wrelleno||0) + (geoW.Wciclopeo||0) + (geoW.Wadicional||0) + (geoW.Wdados||0);
     presionRelleno = (pesoTn*1000) / areaZapata;
   }
   const cargas = totalShell ? [
@@ -7574,8 +8304,20 @@ function generarStaadModel(){
   // anillo, en vez de la reacción de una sola pata (no existe "PEDESTAL"
   // como posición real de reacción).
   //
+  // OJO — swap deliberado, pedido explícitamente por el usuario, SOLO para
+  // Autosoportada 3P y SOLO para esta carga JOINT del export a STAAD:
+  // reaccionFyPorPosicion() ya cruza "P1a"<->"1b"/"P1b"<->"1a" (verificado
+  // contra el Excel, mismo criterio que LEG_POSITION_MAP de
+  // computeGeotecnico) — acá se pre-cruza el nombre ANTES de llamarla, así
+  // el cruce interno se cancela y el dado físico P1a termina recibiendo la
+  // reacción "1a" directo (no la "1b"). Es a propósito distinto del
+  // criterio de computeGeotecnico/calcularVuPunzonamiento (que siguen sin
+  // tocar, con el cruce de siempre) — no "arreglar" esto para que
+  // coincidan, es una decisión tomada conscientemente para esta carga.
+  const NOMBRE_PARA_CARGA_STAAD_3P = { "P1a":"P1b", "P1b":"P1a" };
   function bloqueJointLoadFy(numLoad, nombreLoad, comboTexto){
     const esM4 = state.tipoEstructura === "M4";
+    const es3P = reactionTypeKey(state.tipoEstructura) === "Autosoportada 3P";
     const posicionesReal = legKeysFor(state.tipoEstructura);
     const lineas = nombresDado.map(nombre=>{
       const nNodos = (ringsByName[nombre]||[]).length;
@@ -7586,7 +8328,8 @@ function generarStaadModel(){
         if(fys.some(f => f == null)) return null;
         fy = fys.reduce((s,f)=>s+f, 0);
       } else {
-        fy = reaccionFyPorPosicion(comboTexto, nombre);
+        const nombreParaReaccion = (es3P && NOMBRE_PARA_CARGA_STAAD_3P[nombre]) || nombre;
+        fy = reaccionFyPorPosicion(comboTexto, nombreParaReaccion);
         if(fy==null) return null;
       }
       const fyKg = fy*1000; // la tabla de Reacciones está en Tn; el modelo en kg
@@ -8242,6 +8985,28 @@ function initTheme(){
     applyTheme(next);
   });
 }
+
+// ---------- Ayuda embebida: carga perezosa del iframe desde <template> ----------
+(function(){
+  const overlay = document.getElementById("ayudaOverlay");
+  const frame = document.getElementById("ayudaFrame");
+  const btnHelp = document.getElementById("btnHelp");
+  const btnClose = document.getElementById("btnAyudaClose");
+  if(!overlay || !frame || !btnHelp || !btnClose) return;
+  let cargado = false;
+  function abrir(){
+    if(!cargado){
+      frame.srcdoc = document.getElementById("ayudaTemplate").innerHTML;
+      cargado = true;
+    }
+    overlay.classList.remove("hidden");
+  }
+  function cerrar(){ overlay.classList.add("hidden"); }
+  btnHelp.addEventListener("click", abrir);
+  btnClose.addEventListener("click", cerrar);
+  overlay.addEventListener("click", (e)=>{ if(e.target === overlay) cerrar(); });
+  document.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && !overlay.classList.contains("hidden")) cerrar(); });
+})();
 
 /* ---------- Navegación lateral (resalta la sección visible) ---------- */
 // La pestaña activa NO se persiste a propósito: cada carga/refresh del archivo
@@ -9856,7 +10621,7 @@ function initBindings(){
     const json = JSON.stringify(state, null, 2);
     if(window.showSaveFilePicker){
       try{
-        const handle = await window.showSaveFilePicker({ suggestedName: "cimentacion.gfem", types: GFEM_FILE_TYPES });
+        const handle = await window.showSaveFilePicker({ suggestedName: nombreArchivoProyecto("gfem"), types: GFEM_FILE_TYPES });
         const writable = await handle.createWritable();
         await writable.write(json);
         await writable.close();
@@ -9873,7 +10638,7 @@ function initBindings(){
     const blob = new Blob([json], {type:"application/octet-stream"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "cimentacion.gfem";
+    a.href = url; a.download = nombreArchivoProyecto("gfem");
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -9927,7 +10692,7 @@ function initBindings(){
   const autosaveFreqBlock = document.getElementById("autosaveFreqBlock");
   if(!AUTOSAVE_SUPPORTED){
     chkAutosave.disabled = true;
-    chkAutosave.closest(".switch-row").title = "No soportado en este navegador (requiere Chrome o Edge)";
+    chkAutosave.closest(".switch").title = "No soportado en este navegador (requiere Chrome o Edge)";
   }
 
   function disableAutosave(statusText){
@@ -9944,7 +10709,7 @@ function initBindings(){
       try{
         if(!AUTOSAVE_SUPPORTED) throw new Error("navegador sin soporte");
         if(!autosaveHandle){
-          autosaveHandle = await window.showSaveFilePicker({ suggestedName: "cimentacion.gfem", types: GFEM_FILE_TYPES });
+          autosaveHandle = await window.showSaveFilePicker({ suggestedName: nombreArchivoProyecto("gfem"), types: GFEM_FILE_TYPES });
           const writable = await autosaveHandle.createWritable();
           await writable.write(JSON.stringify(state, null, 2));
           await writable.close();
@@ -10390,18 +11155,25 @@ function femResortesWinkler(malla, ksKgm3){
   return K;
 }
 
-// ---- Vista previa fuera de orden (pestaña "Motor FEM", tarjeta nueva) ----
-// Adelanto informal pedido antes de llegar a la fase 06/10 del roadmap: corre
-// las fases 00-04 (ya hechas y validadas) sobre la geometría REAL de la
-// zapata actual, en vez de las placas sintéticas usadas para validar. No es
-// la fase 06 (esa exige comparar contra STAAD antes de darse por buena) ni
-// la 10 (esa es la UI oficial con Three.js) — solo deja *ver* la deformada
-// para no esperar a las 6 fases que faltan. Limitaciones deliberadas:
-//  - Resortes siempre activos (sin corte por tracción, fase 05 pendiente).
-//  - Carga = solo Fz de cada pata, repartida por área tributaria entre los
-//    nodos del dado correspondiente — Fx/Fy y cualquier momento de vuelco no
-//    se aplican todavía (eso requeriría repartir momento en cargas nodales
-//    sobre el dado, que es justamente parte del trabajo de la fase 06).
+// ---- Análisis sobre geometría real (pestaña "Motor FEM", fase 06) ----
+// Corre las fases 00-05 (malla, rigidez de placa, solver lineal, resortes
+// de Winkler, no linealidad compression-only — todas hechas y validadas)
+// sobre la geometría REAL de la zapata actual (huecos, dados, borde
+// irregular), en vez de las placas sintéticas usadas para validar cada
+// fase. Cumple el pedido básico de la fase 06 del roadmap, pero todavía NO
+// está marcada "hecho" ahí — falta el paso manual de comparar contra un
+// modelo corrido en STAAD.Pro. Tampoco es la fase 10 (esa es la UI oficial
+// con Three.js). Limitaciones deliberadas:
+//  - Carga = Fy (axial) de cada pata por área tributaria entre los nodos del
+//    dado correspondiente, MÁS peso propio+relleno+ciclópeo+adicional
+//    (mismo pesoTotal de computeGeotecnico, sección 4.-, con el factor 1.2
+//    de ANSI/TIA-222-H §9.4 aplicado a todo en combos 1.2D) por área tributaria sobre TODA la
+//    malla — el cortante horizontal (Fx/Fz) y el momento local que genera en
+//    el dado (Fx·brazo, Fz·brazo) todavía no se aplican. Ver "Mejoras
+//    futuras" en fem/roadmap.html: la forma más realista de modelarlo es un
+//    vínculo rígido (nodo maestro de cuerpo rígido por dado) — no
+//    implementado, requeriría agregar
+//    ecuaciones de restricción al solver.
 //  - Solo Autosoportada 3P/4P (incluida M4, que colapsa sus 4 patas al mismo
 //    pedestal — dadosFisicos ya lo maneja así). Monopolo queda pendiente.
 function femPreviewRamp(t){
@@ -10521,10 +11293,21 @@ async function femRunPreview(){
   const cargas = [];
   let cargaTotalAplicada = 0;
   const avisos = [];
+  const dadoNodosPorPata = {}; // legKey -> {nodos:[idx...], P} — para el resumen por dado (comparación contra STAAD)
   cfg.legs.forEach(legKey=>{
     const row = filaCombo[legKey];
     if(!row) return;
-    const P = -row.fz; // kg, positivo hacia abajo — misma convención que computeGeotecnico (fzCorregido = -row.fz)
+    // BUG corregido en fase 06: row.fz NO es la reacción vertical — es
+    // cortante horizontal (confirmado cruzando update3D, que la dibuja como
+    // flecha horizontal, y la tabla de reacciones, aria-label "Shear FZ").
+    // La axial/vertical es row.fy, ya en convención "positivo=compresión
+    // hacia abajo" (update3D: "const compresion = row.fy >= 0"; sin negar
+    // tampoco en computeGeotecnico: "sumFy += row.fy") — misma convención
+    // que usa el export a STAAD (bloqueJointLoadFy → reaccionFyPorPosicion
+    // → row.fy). Fx/Fz (cortante) y el momento local que generan en el dado
+    // (Fx·brazo, Fz·brazo) todavía no se aplican — ver "Mejoras futuras" en
+    // fem/roadmap.html.
+    const P = row.fy * 1000; // Tn -> kg (la tabla de Reacciones está en Tn; mismo factor que usa generarStaadModel: fyKg = fy*1000). row.fy ya viene positivo=compresión hacia abajo, sin negar.
     // cfg.legs usa claves sin prefijo ("1","1a","1b"), pero dadosFisicos()
     // nombra los dados con las claves de legKeysFor() ("P1","P1a","P1b") —
     // dos espacios de nombres distintos para la misma pata (ver TOWER_TYPES
@@ -10543,7 +11326,46 @@ async function femRunPreview(){
       cargas.push({ nodo: ni, dof:0, valor: -P*(areaTrib[ni]/areaTotal) });
     });
     cargaTotalAplicada += P;
+    dadoNodosPorPata[legKey] = { nodos: [...nodosDado], P };
   });
+
+  // Peso propio + relleno + ciclópeo + adicional (mismo pesoTotal que ya
+  // calcula computeGeotecnico, section 4.- Diseño Geotécnico — se reusa
+  // lastGeoData.geo en vez de recalcular las fórmulas de peso acá) —
+  // repartido como presión uniforme por área tributaria sobre TODA la malla
+  // (dados incluidos), mismo criterio que usa generarStaadModel para
+  // "LOAD 2 RELLENO". Antes de esto el preview solo aplicaba las reacciones
+  // de las patas y se olvidaba de esta carga, que para una zapata real es
+  // la dominante (~338 Tn de peso propio+relleno contra ~10 Tn de resultante
+  // de patas en el Ejemplo) — sin ella, el % de área en compresión que da
+  // la fase 05 no tiene sentido físico.
+  //
+  // Factor 1.2 sobre TODO pesoTotal (zapata+dados+relleno+ciclópeo+adicional)
+  // para los combos estructurales 1.2D+viento — confirmado en ANSI/TIA-222-H
+  // §9.4 "Foundation Design": "The weight of the foundation and the weight
+  // of soil or other material directly above a foundation shall be
+  // considered as dead load... A 1.2 load factor shall be applied when dead
+  // loads act in combination with factored reactions..." — el peso de la
+  // FUNDACIÓN (zapata+dados, ACI 318 los trata como "piers (pedestals)") y
+  // el del SUELO (relleno/ciclópeo) son el mismo "dead load" para diseño de
+  // fundaciones, mismo factor 1.2 para los dos. No hay tratamiento distinto
+  // para zapata/dados vs. relleno/ciclópeo.
+  const geoW = (lastGeoData && lastGeoData.geo && lastGeoData.geo.supported) ? lastGeoData.geo : null;
+  const areaZapataPeso = (lastGeoData && lastGeoData.props) ? lastGeoData.props.area : 0;
+  let pesoUniformeTn = 0, factorRelleno = 1.0, presionKgM2 = 0;
+  if(geoW && areaZapataPeso > 0){
+    factorRelleno = /1\.2\s*d/i.test(comboElegido) ? 1.2 : 1.0;
+    pesoUniformeTn = (geoW.pesoTotal||0) * factorRelleno;
+    presionKgM2 = (pesoUniformeTn*1000) / areaZapataPeso; // Tn -> kg, presión uniforme
+    for(let i=0;i<malla.nodos.length;i++){
+      const cargaNodo = presionKgM2 * areaTrib[i]; // kg, positivo hacia abajo
+      if(cargaNodo === 0) continue;
+      cargas.push({ nodo: i, dof:0, valor: -cargaNodo });
+      cargaTotalAplicada += cargaNodo;
+    }
+  } else {
+    avisos.push("No se pudo calcular el peso propio/relleno (sección 4.-) — el preview corre solo con las reacciones de las patas.");
+  }
 
   if(!cargas.length){
     resumenEl.innerHTML = `<div class="message-bar error"><span>No se pudo aplicar ninguna carga. ${avisos.join(" ")}</span></div>`;
@@ -10591,10 +11413,51 @@ async function femRunPreview(){
   propRow(grid, "Nodos / ecuaciones", `${malla.nodos.length} / ${resultado.nEq}`, "");
   propRow(grid, "Flecha máxima", fmt(maxW*100,4), "cm");
   propRow(grid, "Carga total aplicada", fmt(cargaTotalAplicada,0), "kg");
+  propRow(grid, "Peso propio+relleno incluido", fmt(pesoUniformeTn,2), `Tn (factor ${fmt(factorRelleno,1)} sobre pesoTotal, ANSI/TIA-222-H §9.4)`);
   propRow(grid, "Equilibrio (ΣReacciones − ΣCargas)", fmt(diffEquilibrio,6), "kg");
   propRow(grid, "Nodos levantados (sin contacto)", `${nLevantados} / ${malla.nodos.length}`, `${fmt(100*nLevantados/malla.nodos.length,1)}%`);
   propRow(grid, "Convergencia (fase 05)", `${resultado.estado}, ${resultado.iter} iteración${resultado.iter===1?"":"es"}`, "");
   resumenEl.appendChild(grid);
+
+  // Reacción total POR DADO (todos los nodos del dado, no solo el anillo
+  // del grupo JOINT del export STAAD — la malla de cada dado tiene su
+  // propia sub-grilla interior, ver umMeshSlab/pedestalQuads) + los números
+  // de nodo STAAD correspondientes (mismo índice 1-based que JOINT
+  // COORDINATES: nodeIdMap = idx+1 en generarStaadModel). Comparar por dado
+  // en vez de nodo-por-nodo evita el efecto de que STAAD reparte el área
+  // tributaria sobre SU malla nativa (cuadriláteros, sin triangular) y
+  // nuestro FEM sobre la malla ya triangulada (femBuildMeshAdapter) — la
+  // suma total por dado debería coincidir razonablemente aunque el reparto
+  // nodo-por-nodo no coincida exacto.
+  // "Carga total" incluye la porción de peso propio+relleno que cae sobre
+  // los MISMOS nodos del dado (por área tributaria, presionKgM2 ya
+  // calculada arriba) — sin esto, comparar "Fy de la pata" a secas contra
+  // "Reacción FEM" da una diferencia enorme que no es un error: gran parte
+  // de esa diferencia es peso propio+relleno que también cae ahí, más la
+  // redistribución normal de una losa flexible (una carga puntual se
+  // reparte sobre un área bastante más grande que la huella del dado).
+  const filasDado = Object.keys(dadoNodosPorPata).map(legKey=>{
+    const { nodos, P } = dadoNodosPorPata[legKey];
+    let reaccionDado = 0, pesoDado = 0;
+    nodos.forEach(ni=>{
+      if(activos[ni]) reaccionDado += resortesBase[ni]*(-u[3*ni+0]);
+      pesoDado += presionKgM2*areaTrib[ni];
+    });
+    const cargaTotalDado = P + pesoDado;
+    const staadJoints = comprimirRangosStaad(nodos.map(ni=>ni+1)).join(", ");
+    return { legKey, P, pesoDado, cargaTotalDado, reaccionDado, staadJoints };
+  });
+  if(filasDado.length){
+    const wrap = document.createElement("div");
+    wrap.style.marginTop = "12px";
+    wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:6px;">Reacción total por dado (para comparar contra la <b>Summation</b> de reacciones de STAAD sobre esos mismos números de nodo — sección 4.7). La diferencia restante es redistribución por flexión de la losa, no un hueco de esta tabla:</p>
+      <div style="overflow-x:auto;"><table class="em-table">
+        <thead><tr><th>Pata</th><th>Nodos STAAD</th><th>Fy pata</th><th>+ Peso propio/relleno (área trib.)</th><th>Carga total</th><th>Reacción FEM</th><th>Diferencia</th></tr></thead>
+        <tbody>${filasDado.map(f=>`<tr><td>${f.legKey}</td><td>${f.staadJoints}</td><td>${fmt(f.P,2)} kg</td><td>${fmt(f.pesoDado,2)} kg</td><td>${fmt(f.cargaTotalDado,2)} kg</td><td>${fmt(f.reaccionDado,2)} kg</td><td>${fmt(f.reaccionDado-f.cargaTotalDado,4)} kg</td></tr>`).join("")}</tbody>
+      </table></div>`;
+    resumenEl.appendChild(wrap);
+  }
+
   if(resultado.estado !== "convergio"){
     const avEstado = document.createElement("div");
     avEstado.className = "message-bar warning";
