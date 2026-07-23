@@ -11467,10 +11467,25 @@ async function femRunPreview(){
   if(filasDado.length){
     const wrap = document.createElement("div");
     wrap.style.marginTop = "12px";
-    wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:6px;">Reacción total por dado, solo anillo (para comparar contra la <b>Summation</b> de reacciones de STAAD seleccionando por el grupo Dados / _P1-_P1a-_P1b, sección 4.7 — no incluye la sub-grilla interior del dado). La diferencia restante es redistribución por flexión de la losa, no un hueco de esta tabla:</p>
+    wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:2px;">Reacción por dado, <b>solo anillo</b> — mismos nodos que el grupo "Dados" (<code>_P1</code>/<code>_P1a</code>/<code>_P1b</code>) del export STAAD, sección 4.7.</p>
+      <p class="small" style="color:var(--muted); margin-bottom:8px;">Para validar: en STAAD, seleccioná ese mismo grupo y sacá la <b>Summation</b> de reacciones (L/C del combo elegido acá) — ese número es el que se compara contra la columna <b>"Reacción del solver"</b>. Las 3 primeras columnas son la carga aplicada, no lo que hay que comparar contra STAAD; la diferencia entre "Carga total" y "Reacción del solver" es redistribución por flexión de la losa (la carga puntual se reparte a un área más grande que el anillo), no un error de esta tabla.</p>
       <div style="overflow-x:auto;"><table class="em-table">
-        <thead><tr><th>Pata</th><th>Nodos STAAD</th><th>Fy pata</th><th>+ Peso propio/relleno (área trib.)</th><th>Carga total</th><th>Reacción FEM</th><th>Diferencia</th></tr></thead>
-        <tbody>${filasDado.map(f=>`<tr><td>${f.legKey}</td><td>${f.staadJoints}</td><td>${fmt(f.P,2)} kg</td><td>${fmt(f.pesoDado,2)} kg</td><td>${fmt(f.cargaTotalDado,2)} kg</td><td>${fmt(f.reaccionDado,2)} kg</td><td>${fmt(f.reaccionDado-f.cargaTotalDado,4)} kg</td></tr>`).join("")}</tbody>
+        <thead>
+          <tr>
+            <th rowspan="2">Pata</th>
+            <th rowspan="2">Nodos STAAD<br><span style="font-weight:400; color:var(--muted);">(anillo)</span></th>
+            <th colspan="3" style="text-align:center; border-bottom:1px solid var(--line);">Carga aplicada en el dado</th>
+            <th colspan="2" style="text-align:center; border-bottom:1px solid var(--line);">Resultado del solver, mismo anillo</th>
+          </tr>
+          <tr>
+            <th>Fy pata</th>
+            <th>+ Peso propio/relleno</th>
+            <th>= Carga total</th>
+            <th>Reacción del solver<br><span style="font-weight:400; color:var(--muted);">(comparar contra STAAD)</span></th>
+            <th>Redistribuido por flexión</th>
+          </tr>
+        </thead>
+        <tbody>${filasDado.map(f=>`<tr><td>${f.legKey}</td><td>${f.staadJoints}</td><td>${fmt(f.P,2)} kg</td><td>${fmt(f.pesoDado,2)} kg</td><td>${fmt(f.cargaTotalDado,2)} kg</td><td><b>${fmt(f.reaccionDado,2)} kg</b></td><td>${fmt(f.reaccionDado-f.cargaTotalDado,4)} kg</td></tr>`).join("")}</tbody>
       </table></div>`;
     resumenEl.appendChild(wrap);
   }
