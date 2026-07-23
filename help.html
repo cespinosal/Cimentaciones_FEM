@@ -566,7 +566,16 @@ btnTop.addEventListener("click", () => window.scrollTo({top:0, behavior:"smooth"
 const sidebar = document.getElementById("sidebar");
 const btnHamburger = document.getElementById("btnHamburger");
 btnHamburger.addEventListener("click", () => sidebar.classList.toggle("open"));
-navLinks.forEach(a => a.addEventListener("click", () => sidebar.classList.remove("open")));
+// preventDefault + scrollIntoView manual en vez de dejar que el navegador
+// resuelva el salto de ancla (href="#s..") por su cuenta — mismo criterio
+// que la copia embebida en index.html/fem/index.html (ahí el salto nativo
+// a veces abría una ventana nueva dentro del iframe srcdoc).
+navLinks.forEach(a => a.addEventListener("click", (e) => {
+  e.preventDefault();
+  const target = document.getElementById(a.dataset.target);
+  if(target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+  sidebar.classList.remove("open");
+}));
 document.addEventListener("click", (e) => {
   if(window.innerWidth <= 768 && sidebar.classList.contains("open")){
     if(!sidebar.contains(e.target) && e.target !== btnHamburger && !btnHamburger.contains(e.target)){
