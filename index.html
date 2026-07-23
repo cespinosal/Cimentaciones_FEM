@@ -3955,12 +3955,19 @@ function update3D(props, legs, dados, outerC, holeC){
 
         // OJO: esto es SOLO para la vista 3D (flechas/etiquetas) — no toca
         // computeGeotecnico ni su LEG_POSITION_MAP (el cálculo de volteo
-        // sigue con el mapeo cruzado que ya está verificado contra el
-        // Excel). Visualmente, el usuario confirmó que la flecha de cada
-        // dado debe mostrar la reacción de SU PROPIA posición (mapeo
-        // directo), no la de la posición espejo.
+        // sigue con su propio mapeo, ya verificado contra el Excel, sin
+        // tocar). Mapeo directo para todas las patas, EXCEPTO 1a/1b en
+        // Autosoportada 3P: el usuario confirmó viendo el visor que esas dos
+        // etiquetas (con su flecha y sus valores Fx/Fy/Fz) quedaban en la
+        // posición física contraria — se intercambian solo acá, para
+        // mostrar. "1" (y "1c" en 4P) siguen con mapeo directo.
+        const cruzar1a1b = reactionTypeKey(state.tipoEstructura) === "Autosoportada 3P";
         legKeysFor(state.tipoEstructura).forEach(key=>{
-          const suffix = key.slice(1); // "P1b"->"1b", "P1"->"1", etc. (mapeo directo, no cruzado)
+          let suffix = key.slice(1); // "P1b"->"1b", "P1"->"1", etc. (mapeo directo, no cruzado)
+          if(cruzar1a1b){
+            if(suffix === "1a") suffix = "1b";
+            else if(suffix === "1b") suffix = "1a";
+          }
           const row = comboRow[suffix];
           if(!row) return;
           const cx0 = legs[key].x, cz0 = legs[key].y;

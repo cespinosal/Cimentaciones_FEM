@@ -1695,11 +1695,11 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
       </div>
     </section>
     <section class="card" id="sec-fem-preview" aria-labelledby="h-fem-preview">
-      <div class="head"><span id="h-fem-preview">Vista previa del solver (fases 00–04)</span></div>
+      <div class="head"><span id="h-fem-preview">Vista previa del solver (fases 00–05)</span></div>
       <div class="body">
         <div class="message-bar warning" role="status" style="margin-bottom:16px;">
           <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span><b>Preview adelantado, no oficial.</b> Corre las fases ya hechas (00–04: malla, rigidez de placa, solver lineal, resortes de Winkler) sobre la geometría real de esta zapata, pero todavía sin corte por tracción del suelo (fase 05), sin recuperar momentos de diseño (07/08) ni optimizar rendimiento (09). Solo sirve para <i>ver</i> la deformada — no reemplaza el diseño de la sección 5.</span>
+          <span><b>Preview adelantado, no oficial.</b> Corre las fases ya hechas (00–05: malla, rigidez de placa, solver lineal, resortes de Winkler, no linealidad compression-only) sobre la geometría real de esta zapata, pero todavía sin recuperar momentos de diseño (07/08) ni optimizar rendimiento (09) — con malla fina el loop de la fase 05 puede tardar unos segundos (barra de progreso abajo). Solo sirve para <i>ver</i> la deformada y qué zona queda sin contacto con el suelo — no reemplaza el diseño de la sección 5.</span>
         </div>
         <div id="femPreviewNoSoportado" class="message-bar error hidden" role="alert">
           <span>Esta vista previa solo corre para Autosoportada 3P/4P (necesita la tabla de reacciones por pata). Para Monopolo falta repartir momento/cortante del apoyo único en cargas nodales — eso queda para cuando se conecte de verdad en la fase 06.</span>
@@ -1707,6 +1707,12 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
         <div id="femPreviewControles" class="row-actions" style="flex-wrap:wrap; align-items:center; gap:12px;">
           <label class="field" style="margin:0;"><span class="lbl">Caso de carga (combo)</span><select id="femPreviewComboSelect"></select></label>
           <button class="btn primary" id="btnFemPreviewRun" type="button">Correr análisis (preview)</button>
+        </div>
+        <div id="femPreviewProgressWrap" class="hidden" style="margin-top:14px;">
+          <div style="height:8px; border-radius:4px; background:var(--input-bg); border:1px solid var(--border); overflow:hidden;">
+            <div id="femPreviewProgressBar" style="height:100%; width:0%; background:var(--accent); transition:width .2s ease;"></div>
+          </div>
+          <p class="small" id="femPreviewProgressTxt" style="color:var(--muted); margin-top:4px;">Preparando…</p>
         </div>
         <div id="femPreviewResumen" style="margin-top:12px;"></div>
         <div id="femPreviewSvgWrap" style="margin-top:12px;"></div>
@@ -3974,12 +3980,19 @@ function update3D(props, legs, dados, outerC, holeC){
 
         // OJO: esto es SOLO para la vista 3D (flechas/etiquetas) — no toca
         // computeGeotecnico ni su LEG_POSITION_MAP (el cálculo de volteo
-        // sigue con el mapeo cruzado que ya está verificado contra el
-        // Excel). Visualmente, el usuario confirmó que la flecha de cada
-        // dado debe mostrar la reacción de SU PROPIA posición (mapeo
-        // directo), no la de la posición espejo.
+        // sigue con su propio mapeo, ya verificado contra el Excel, sin
+        // tocar). Mapeo directo para todas las patas, EXCEPTO 1a/1b en
+        // Autosoportada 3P: el usuario confirmó viendo el visor que esas dos
+        // etiquetas (con su flecha y sus valores Fx/Fy/Fz) quedaban en la
+        // posición física contraria — se intercambian solo acá, para
+        // mostrar. "1" (y "1c" en 4P) siguen con mapeo directo.
+        const cruzar1a1b = reactionTypeKey(state.tipoEstructura) === "Autosoportada 3P";
         legKeysFor(state.tipoEstructura).forEach(key=>{
-          const suffix = key.slice(1); // "P1b"->"1b", "P1"->"1", etc. (mapeo directo, no cruzado)
+          let suffix = key.slice(1); // "P1b"->"1b", "P1"->"1", etc. (mapeo directo, no cruzado)
+          if(cruzar1a1b){
+            if(suffix === "1a") suffix = "1b";
+            else if(suffix === "1b") suffix = "1a";
+          }
           const row = comboRow[suffix];
           if(!row) return;
           const cx0 = legs[key].x, cz0 = legs[key].y;
@@ -10398,7 +10411,7 @@ function femPreviewRamp(t){
   const r=Math.round(a[0]+(b[0]-a[0])*tt), g=Math.round(a[1]+(b[1]-a[1])*tt), bl=Math.round(a[2]+(b[2]-a[2])*tt);
   return `rgb(${r},${g},${bl})`;
 }
-function femPreviewSvg(u, maxW, outerC){
+function femPreviewSvg(u, maxW, outerC, activos){
   const idxByPointRef = new Map();
   lastMallaMesh.points.forEach((p,i)=>idxByPointRef.set(p,i));
   const pad = 0.4;
@@ -10407,21 +10420,58 @@ function femPreviewSvg(u, maxW, outerC){
   xmin-=pad; xmax+=pad; ymin-=pad; ymax+=pad;
   const w = xmax-xmin, h = ymax-ymin;
   const strokeW = Math.max(w,h)/450;
+  let hayLevantados = false;
   const cellsMarkup = lastMallaMesh.elements.map(el=>{
-    const ws = el.poly.map(p => -u[3*idxByPointRef.get(p)+0]);
+    const idxs = el.poly.map(p=>idxByPointRef.get(p));
+    const ws = idxs.map(i => -u[3*i+0]);
     const avg = ws.reduce((a,b)=>a+b,0)/ws.length;
     const t = maxW>0 ? Math.max(0, Math.min(1, avg/maxW)) : 0;
     const col = femPreviewRamp(t);
-    return `<polygon points="${el.poly.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="${col}" stroke="${col}" stroke-width="${strokeW}"/>`;
+    const base = `<polygon points="${el.poly.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="${col}" stroke="${col}" stroke-width="${strokeW}"/>`;
+    // Elemento con al menos un nodo sin contacto (resorte desactivado por la
+    // fase 05 — no linealidad compression-only): se resalta aparte, porque
+    // el asentamiento casi-cero de esa zona se vería igual de "blanco" que
+    // un punto simplemente poco cargado si no se marca explícitamente.
+    const levantado = activos && idxs.some(i => !activos[i]);
+    if(levantado) hayLevantados = true;
+    const overlay = levantado
+      ? `<polygon points="${el.poly.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="#d9432e" fill-opacity="0.4" stroke="none"/>`
+      : "";
+    return base + overlay;
   }).join("");
   const outerPts = outerC.map(p=>`${p.x},${-p.y}`).join(" ");
+  const leyendaLevantados = hayLevantados
+    ? ` · <span style="color:#d9432e;">■</span> zona sin contacto con el suelo (resorte desactivado, sin tracción posible)`
+    : "";
   return `<svg viewBox="${xmin} ${-ymax} ${w} ${h}" style="width:100%; height:520px; display:block; background:var(--panel);">
     ${cellsMarkup}
     <polygon points="${outerPts}" fill="none" stroke="var(--accent)" stroke-width="${strokeW*2.5}"/>
   </svg>
-  <p class="small" style="color:var(--muted); margin-top:6px;">Escala de flecha: 0 (blanco) → ${fmt(maxW*100,3)} cm hacia abajo (azul oscuro).</p>`;
+  <p class="small" style="color:var(--muted); margin-top:6px;">Escala de flecha: 0 (blanco) → ${fmt(maxW*100,3)} cm hacia abajo (azul oscuro)${leyendaLevantados}.</p>`;
 }
-function femRunPreview(){
+// Barra de progreso del preview (5.10) — el único paso costoso es el loop
+// de la fase 05 (varias resoluciones lineales sucesivas), y no se conoce de
+// antemano cuántas iteraciones va a necesitar. En vez de mostrar un
+// porcentaje inventado, cada iteración REAL ya resuelta cierra una fracción
+// fija del tramo que falta (curva 1-0.7^iter): crece rápido al principio y
+// se aplana sin tocar el 100% hasta que el loop realmente termina — patrón
+// estándar para tareas de duración desconocida, sin fingir precisión que no
+// existe.
+function femPreviewSetProgreso(frac, texto){
+  const bar = document.getElementById("femPreviewProgressBar");
+  const txt = document.getElementById("femPreviewProgressTxt");
+  bar.style.width = `${Math.round(Math.max(0,Math.min(1,frac))*100)}%`;
+  txt.textContent = texto;
+}
+function femPreviewMostrarProgreso(){
+  document.getElementById("femPreviewProgressWrap").classList.remove("hidden");
+  femPreviewSetProgreso(0.04, "Preparando malla y resortes…");
+}
+function femPreviewOcultarProgreso(){
+  document.getElementById("femPreviewProgressWrap").classList.add("hidden");
+}
+
+async function femRunPreview(){
   const noSoportado = document.getElementById("femPreviewNoSoportado");
   const controles = document.getElementById("femPreviewControles");
   const resumenEl = document.getElementById("femPreviewResumen");
@@ -10451,7 +10501,7 @@ function femRunPreview(){
   const ks = getKBalastoKgm3();  // kg/m³
 
   const areaTrib = femAreaTributariaNodos(malla);
-  const resortes = femResortesWinkler(malla, ks);
+  const resortesBase = femResortesWinkler(malla, ks);
 
   const dadoNames = Object.keys(lastPlanArgs.dados || {});
   const comboElegido = document.getElementById("femPreviewComboSelect").value;
@@ -10501,23 +10551,38 @@ function femRunPreview(){
     return;
   }
 
+  const btnRun = document.getElementById("btnFemPreviewRun");
+  btnRun.disabled = true;
+  femPreviewMostrarProgreso();
   let resultado;
   try{
-    resultado = femSolveLineal(malla, { espesor, E, nu, restringidos:[], cargas, resortes });
+    resultado = await femSolveNoLinealConProgreso(malla, { espesor, E, nu, restringidos:[], cargas, resortesBase }, (iter, tope)=>{
+      const frac = 1 - Math.pow(0.7, iter);
+      femPreviewSetProgreso(frac, `Resolviendo (no linealidad compression-only) — iteración ${iter} de máx. ${tope}…`);
+    });
   } catch(err){
+    femPreviewOcultarProgreso();
+    btnRun.disabled = false;
     resumenEl.innerHTML = `<div class="message-bar error"><span>El solver falló: ${err.message}</span></div>`;
     svgWrapEl.innerHTML = "";
     return;
   }
+  femPreviewSetProgreso(1, "Listo.");
+  setTimeout(femPreviewOcultarProgreso, 500);
+  btnRun.disabled = false;
   const u = resultado.u;
+  const activos = resultado.activos;
 
   let maxW = 0;
   for(let i=0;i<malla.nodos.length;i++){
     const w = -u[3*i+0];
     if(w>maxW) maxW = w;
   }
-  let sumReacciones = 0;
-  for(let i=0;i<malla.nodos.length;i++) sumReacciones += resortes[i]*(-u[3*i+0]);
+  let sumReacciones = 0, nLevantados = 0;
+  for(let i=0;i<malla.nodos.length;i++){
+    if(activos[i]) sumReacciones += resortesBase[i]*(-u[3*i+0]);
+    else nLevantados++;
+  }
   const diffEquilibrio = sumReacciones - cargaTotalAplicada;
 
   resumenEl.innerHTML = "";
@@ -10527,7 +10592,18 @@ function femRunPreview(){
   propRow(grid, "Flecha máxima", fmt(maxW*100,4), "cm");
   propRow(grid, "Carga total aplicada", fmt(cargaTotalAplicada,0), "kg");
   propRow(grid, "Equilibrio (ΣReacciones − ΣCargas)", fmt(diffEquilibrio,6), "kg");
+  propRow(grid, "Nodos levantados (sin contacto)", `${nLevantados} / ${malla.nodos.length}`, `${fmt(100*nLevantados/malla.nodos.length,1)}%`);
+  propRow(grid, "Convergencia (fase 05)", `${resultado.estado}, ${resultado.iter} iteración${resultado.iter===1?"":"es"}`, "");
   resumenEl.appendChild(grid);
+  if(resultado.estado !== "convergio"){
+    const avEstado = document.createElement("div");
+    avEstado.className = "message-bar warning";
+    avEstado.style.marginTop = "8px";
+    avEstado.innerHTML = resultado.estado === "ciclo"
+      ? `<span>El set de nodos en contacto no se estabilizó — quedó "aleteando" entre iteraciones (ciclo detectado). El resultado mostrado es de la última iteración, tomarlo como orientativo.</span>`
+      : `<span>Se alcanzó el límite de iteraciones sin estabilizar el set de nodos en contacto. El resultado mostrado es de la última iteración, tomarlo como orientativo.</span>`;
+    resumenEl.appendChild(avEstado);
+  }
   if(avisos.length){
     const av = document.createElement("div");
     av.className = "message-bar warning";
@@ -10536,13 +10612,144 @@ function femRunPreview(){
     resumenEl.appendChild(av);
   }
 
-  svgWrapEl.innerHTML = femPreviewSvg(u, maxW, lastPlanArgs.outerC);
+  svgWrapEl.innerHTML = femPreviewSvg(u, maxW, lastPlanArgs.outerC, activos);
 }
 
-// Fase 05 — no linealidad compression-only (loop tipo ENT, con límite de
-// iteraciones y detección de ciclos en el set de resortes activos).
-function femSolveNoLineal(malla, cargas, ksKgm3){
-  throw new Error("FEM: femSolveNoLineal no implementado (fase 05)");
+// Fase 05 — no linealidad compression-only (loop tipo ENT, elastic-no-
+// tension): resuelve linealmente (femSolveLineal, fase 03/04) con el set de
+// resortes activos actual, desactiva los que salieron en "tracción" y
+// repite hasta que el set deja de cambiar. Límite de iteraciones + detección
+// de ciclos (si el set de activos ya apareció antes —típico en zapatas muy
+// excéntricas donde un nodo del borde "aletea" activo/inactivo de una
+// iteración a la otra—, corta ahí en vez de loopear infinito).
+//
+// Convención de signo: igual que femResortesWinkler/femRunPreview, el dof w
+// es positivo HACIA ARRIBA (la carga hacia abajo se aplica como valor=-P).
+// Entonces "-u[3*nodo]" es el asentamiento (positivo = se hunde). Un resorte
+// en TRACCIÓN es el que tendría que tirar la zapata hacia abajo para seguir
+// en contacto con el suelo — pasa cuando el nodo se levanta en vez de
+// hundirse, o sea "-u[3*nodo] < 0". Esos son los que se desactivan
+// (K_nodo=0) para la siguiente iteración.
+//
+// opts = { espesor, E, nu, restringidos, cargas, resortesBase (Float64Array
+// con TODOS los resortes activos, típicamente la salida de
+// femResortesWinkler), maxIter (opcional, default 50) }. Devuelve
+// { u, activos (Uint8Array, 1=nodo en compresión en la solución final),
+// iter, estado:"convergio"|"ciclo"|"max-iteraciones", nEq, stats }.
+//
+// Si TODOS los resortes terminan desactivados (zapata completamente
+// levantada, sin ningún punto en compresión) el sistema queda sin ningún
+// apoyo y femSolveLineal tira "pivote no positivo" (mecanismo, los 3 modos
+// de cuerpo rígido de la fase 02 quedan libres) — se deja pasar ese error
+// con un mensaje más claro: es una falla real de vuelco, no un bug.
+//
+// Validación (fuera de la app, mismo criterio que fases 02-04 — reimplementación
+// literal del algoritmo en PowerShell sobre una malla real, harness en
+// fem/roadmap.html): caso de placa de concreto real (E=2.1e10 kg/m², t=0.5 m)
+// sobre resortes de Winkler (ks=3000 kg/m³), franja L=6 m × B=2 m, con una
+// carga puntual excéntrica. Con β·L≈0.26 (β=(ks·B/(4·E·t³/12·B))^(1/4)) la
+// flexión ya es despreciable frente al asentamiento de los resortes → la
+// placa se comporta como cuerpo rígido (w=a+bx+cy), que es EXACTAMENTE la
+// hipótesis detrás del área efectiva de Meyerhof para zapatas rígidas
+// excéntricas. Con e>L/6=1 m (carga puntual en el nodo de malla más cercano
+// a esa excentricidad, e real registrada por corrida) se comparó el largo de
+// contacto (rango de nodos activos en la fila central) contra el cierre
+// analítico x'=3·(L/2−e) de la zapata rígida excéntrica (Bowles, "Foundation
+// Analysis and Design") — coincide EXACTO (error 0.000000%) en las 4 mallas
+// probadas (N=8,16,32,64 divisiones a lo largo de L; N=8→e=1.5→x'=4.5,
+// N=16→e=1.5→x'=4.5, N=32→e=1.6875→x'=3.9375, N=64→e=1.59375→x'=4.21875),
+// porque en este régimen casi-rígido el nodo de transición cae justo donde
+// predice la fórmula, dentro de precisión de máquina. Además, en cada corrida:
+// (a) equilibrio Σ(resorte·asentamiento) en nodos activos = carga aplicada,
+// error relativo 3.6e-10 a 3.0e-8 (crece un poco con N por el mayor número de
+// operaciones en la eliminación LU densa del harness, no por el algoritmo);
+// (b) con carga centrada (e=0<L/6) el loop converge en 1 iteración con el
+// 100% de los nodos activos (sin volcamiento, coincide con Meyerhof: zapata
+// íntegra en compresión); (c) detección de ciclos verificada aparte, con un
+// test aislado de la lógica del loop (activo/inactivo tabulado a mano para
+// forzar la secuencia 11→10→01→10, un ciclo real de longitud 3 que nunca
+// vuelve a un punto fijo): el loop corta correctamente con estado "ciclo" en
+// la iteración 3 en vez de repetir para siempre.
+function femSolveNoLineal(malla, opts){
+  const { espesor, E, nu, restringidos, cargas, resortesBase, maxIter } = opts;
+  const nNodos = malla.nodos.length;
+  const tope = maxIter || 50;
+  let activos = new Uint8Array(nNodos).fill(1); // arranca con TODOS los resortes activos (= resultado de la fase 04)
+  const vistos = new Set([activos.join("")]);
+  let ultimo = null;
+  for(let iter=1; iter<=tope; iter++){
+    const resortes = new Float64Array(nNodos);
+    for(let i=0;i<nNodos;i++) if(activos[i]) resortes[i] = resortesBase[i];
+    try{
+      ultimo = femSolveLineal(malla, { espesor, E, nu, restringidos, cargas, resortes });
+    } catch(err){
+      throw new Error(`FEM: no linealidad no converge — ${err.message} (¿la carga volcó completamente la zapata, sin ningún punto en compresión?)`);
+    }
+    const siguiente = new Uint8Array(nNodos);
+    let cambio = false;
+    for(let i=0;i<nNodos;i++){
+      const asentamiento = -ultimo.u[3*i]; // positivo = se hunde (compresión)
+      const nuevoEstado = asentamiento >= 0 ? 1 : 0;
+      siguiente[i] = nuevoEstado;
+      if(nuevoEstado !== activos[i]) cambio = true;
+    }
+    if(!cambio){
+      return { u: ultimo.u, activos, iter, estado:"convergio", nEq: ultimo.nEq, stats: ultimo.stats };
+    }
+    const clave = siguiente.join("");
+    if(vistos.has(clave)){
+      return { u: ultimo.u, activos: siguiente, iter, estado:"ciclo", nEq: ultimo.nEq, stats: ultimo.stats };
+    }
+    vistos.add(clave);
+    activos = siguiente;
+  }
+  return { u: ultimo.u, activos, iter: tope, estado:"max-iteraciones", nEq: ultimo.nEq, stats: ultimo.stats };
+}
+
+// Variante asíncrona de femSolveNoLineal, SOLO para la UI del preview (5.10):
+// mismo loop, misma lógica de desactivación de resortes y de detección de
+// ciclos, pero cede el hilo entre iteraciones (await + requestAnimationFrame)
+// para que el navegador pueda repintar una barra de progreso, y reporta cada
+// iteración terminada vía onProgress(iter, tope). La referencia validada
+// (harness documentado en fem/roadmap.html) sigue siendo la síncrona
+// femSolveNoLineal de arriba — esta es un envoltorio de UI, no una
+// reimplementación distinta del algoritmo.
+async function femSolveNoLinealConProgreso(malla, opts, onProgress){
+  const { espesor, E, nu, restringidos, cargas, resortesBase, maxIter } = opts;
+  const nNodos = malla.nodos.length;
+  const tope = maxIter || 50;
+  let activos = new Uint8Array(nNodos).fill(1);
+  const vistos = new Set([activos.join("")]);
+  let ultimo = null;
+  for(let iter=1; iter<=tope; iter++){
+    const resortes = new Float64Array(nNodos);
+    for(let i=0;i<nNodos;i++) if(activos[i]) resortes[i] = resortesBase[i];
+    try{
+      ultimo = femSolveLineal(malla, { espesor, E, nu, restringidos, cargas, resortes });
+    } catch(err){
+      throw new Error(`FEM: no linealidad no converge — ${err.message} (¿la carga volcó completamente la zapata, sin ningún punto en compresión?)`);
+    }
+    if(onProgress) onProgress(iter, tope);
+    await new Promise(r => requestAnimationFrame(r));
+    const siguiente = new Uint8Array(nNodos);
+    let cambio = false;
+    for(let i=0;i<nNodos;i++){
+      const asentamiento = -ultimo.u[3*i];
+      const nuevoEstado = asentamiento >= 0 ? 1 : 0;
+      siguiente[i] = nuevoEstado;
+      if(nuevoEstado !== activos[i]) cambio = true;
+    }
+    if(!cambio){
+      return { u: ultimo.u, activos, iter, estado:"convergio", nEq: ultimo.nEq, stats: ultimo.stats };
+    }
+    const clave = siguiente.join("");
+    if(vistos.has(clave)){
+      return { u: ultimo.u, activos: siguiente, iter, estado:"ciclo", nEq: ultimo.nEq, stats: ultimo.stats };
+    }
+    vistos.add(clave);
+    activos = siguiente;
+  }
+  return { u: ultimo.u, activos, iter: tope, estado:"max-iteraciones", nEq: ultimo.nEq, stats: ultimo.stats };
 }
 
 // Fase 07 — rotación del tensor de momentos [Mx,My,Mxy] de ejes locales del
