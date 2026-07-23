@@ -1817,7 +1817,7 @@ document.addEventListener("click", (e) => {
         <!-- No depende de la geometría de patas: generateMallaFEM() ya toma
              "dados" de forma genérica (Object.values), igual que la vista 3D. -->
         <p class="small" style="margin:0 0 10px; color:var(--muted);">Malla "Urdimbre": grilla regular sobre el interior + triangulación restringida en huecos/esquinas/dados, recombinada en cuadriláteros y reparada localmente (dados resaltados en naranja, con su propia malla perfecta). Es solo una previsualización visual — todavía no genera el archivo .STD para STAAD.</p>
-        <label class="field" style="max-width:360px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="120" id="g_mallaTamElem" style="max-width:150px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">50 cm</span></label>
+        <label class="field" style="max-width:640px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="75" id="g_mallaTamElem" style="max-width:460px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">50 cm</span></label>
         <div style="position:relative; max-width:1180px; margin:0 auto;">
           <div id="geoMallaDiagrama" class="navier-card"></div>
           <div style="position:absolute; top:10px; left:10px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:6px 10px; font-size:11.5px; z-index:5;">
@@ -2391,6 +2391,7 @@ document.addEventListener("click", (e) => {
         </div>
         <div id="femPreviewResumen" style="margin-top:12px;"></div>
         <div id="femPreviewSvgWrap" style="margin-top:12px;"></div>
+        <div id="femPreviewMomentosWrap" style="margin-top:16px;"></div>
       </div>
     </section>
     </div>
@@ -4401,6 +4402,8 @@ let last3dArgs = null;
 let viewMode3d = "3d";
 let selectedVolteoCombo = null; // combinación elegida en el selector "Combinación" del header de Vista 3D
 let femPreviewSelectedCombo = null; // combo elegido en el selector propio de la vista previa del Motor FEM (independiente del de 4.2 Volteo)
+let femPreviewMomentosComponente = "Mx"; // componente elegida en el selector de mapa de momentos del preview (fase 07)
+let lastMomentosPreview = null; // {momentosPorNodo, outerC} de la última corrida del preview — para redibujar el mapa sin volver a resolver
 let lastGeoData = null; // {geo, cap, props, outerC, holeC} del último renderAll() — usado por los modales de animación del Brazo y del Área efectiva
 // Resultados de las animaciones de Brazo/Área efectiva, por combinación —
 // viven en state.brazoCache/state.areaEfectivaCache (no en lastGeoData, que
@@ -10900,8 +10903,7 @@ function femPlacaCurvatura(nodosTriangulo, dofs9){
 function femPlacaStiffness(nodosTriangulo, espesor, E, nu){
   const { area } = femPlacaGeom(nodosTriangulo);
   const { Bb, Bs } = femPlacaB(nodosTriangulo);
-  const D11 = E*espesor*espesor*espesor/(12*(1-nu*nu));
-  const Db = [[D11, D11*nu, 0], [D11*nu, D11, 0], [0, 0, D11*(1-nu)/2]];
+  const Db = femPlacaDb(espesor, E, nu);
   const G = E/(2*(1+nu));
   const kShear = 5/6; // factor de corrección por cortante (Reissner-Mindlin)
   const Gs = kShear*G*espesor;
@@ -11183,6 +11185,122 @@ function femPreviewRamp(t){
   const r=Math.round(a[0]+(b[0]-a[0])*tt), g=Math.round(a[1]+(b[1]-a[1])*tt), bl=Math.round(a[2]+(b[2]-a[2])*tt);
   return `rgb(${r},${g},${bl})`;
 }
+// Escala tipo "jet" (azul→cian→verde→amarillo→rojo) — misma paleta de 5
+// colores que ya usa el degradado de Navier (navierSvgInner, sección 4.3),
+// el estándar de facto en STAAD.Pro para mapas de contorno. Lineal sobre el
+// rango real min-max del campo (t en [0,1], 0=mínimo, 1=máximo) — no
+// centrada en el cero físico, igual que un contorno de STAAD: el 0 cae
+// donde le toque dentro del rango, no necesariamente al medio.
+// OJO: el signo de Mx/My/Mxy que da femMomentosPorNodo todavía no está
+// validado contra una convención física (qué cara queda traccionada) — eso
+// se valida al conectar esto con el diseño a flexión (fase 08).
+const FEM_MOMENTO_STOPS = [[0,[0,0,143]],[0.25,[0,255,255]],[0.5,[0,255,0]],[0.75,[255,255,0]],[1,[255,0,0]]];
+function femMomentoRamp(t){ // t en [0,1]
+  const tt = Math.max(0, Math.min(1, t));
+  let i=0; while(i<FEM_MOMENTO_STOPS.length-2 && tt>FEM_MOMENTO_STOPS[i+1][0]) i++;
+  const [t0,c0] = FEM_MOMENTO_STOPS[i], [t1,c1] = FEM_MOMENTO_STOPS[i+1];
+  const f = (tt-t0)/(t1-t0);
+  const r=Math.round(c0[0]+(c1[0]-c0[0])*f), g=Math.round(c0[1]+(c1[1]-c0[1])*f), bl=Math.round(c0[2]+(c1[2]-c0[2])*f);
+  return `rgb(${r},${g},${bl})`;
+}
+// Mapa de color de un componente de momento (Mx/My/Mxy), promediado por nodo
+// (fase 07) y coloreado por elemento con el promedio de sus 3 nodos — mismo
+// patrón que femPreviewSvg (deflexión), pero con la escala tipo STAAD.Pro
+// (femMomentoRamp) normalizada sobre el rango real min-max del campo.
+function femMomentosSvg(outerC, holeC, momentosPorNodo, componente){
+  const idxByPointRef = new Map();
+  lastMallaMesh.points.forEach((p,i)=>idxByPointRef.set(p,i));
+  const pad = 0.4;
+  let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
+  outerC.forEach(p=>{ xmin=Math.min(xmin,p.x); xmax=Math.max(xmax,p.x); ymin=Math.min(ymin,p.y); ymax=Math.max(ymax,p.y); });
+  xmin-=pad; xmax+=pad; ymin-=pad; ymax+=pad;
+  const w = xmax-xmin, h = ymax-ymin;
+  const strokeW = Math.max(w,h)/450;
+  const valores = lastMallaMesh.elements.map(el=>{
+    const idxs = el.poly.map(p=>idxByPointRef.get(p));
+    const vs = idxs.map(i => momentosPorNodo[i][componente]);
+    return vs.reduce((a,b)=>a+b,0)/vs.length;
+  });
+  const minVal = Math.min(...valores), maxVal = Math.max(...valores);
+  const rango = (maxVal-minVal) || 1e-9;
+  const cellsMarkup = lastMallaMesh.elements.map((el,idx)=>{
+    const col = femMomentoRamp((valores[idx]-minVal)/rango);
+    return `<polygon points="${el.poly.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="${col}" stroke="${col}" stroke-width="${strokeW}"/>`;
+  }).join("");
+  const outerPts = outerC.map(p=>`${p.x},${-p.y}`).join(" ");
+  const holePts = (holeC && holeC.length>=3) ? holeC.map(p=>`${p.x},${-p.y}`).join(" ") : "";
+  const r = Math.max(w,h)/70;
+  const fs = Math.max(w,h)/38;
+  // Cursor + lectura por nodo: mismo patrón que navierSvgInner/4.3
+  // (svgEventToPlan + pointInPolygon para recortar fuera del contorno/hueco),
+  // pero acá se reporta el nodo más cercano en vez de evaluar una fórmula
+  // analítica, porque el campo ya está discretizado por nodo (fase 07). El
+  // valor se muestra en un <text> flotante que sigue al cursor (no en un
+  // párrafo aparte) — pedido explícito del usuario.
+  return `<svg id="femPreviewMomentoSvgEl" viewBox="${xmin} ${-ymax} ${w} ${h}" style="width:100%; height:520px; display:block; background:var(--panel); cursor:crosshair;">
+    ${cellsMarkup}
+    <polygon points="${outerPts}" fill="none" stroke="var(--accent)" stroke-width="${strokeW*2.5}"/>
+    ${holePts ? `<polygon points="${holePts}" fill="var(--input-bg)" stroke="#c0392b" stroke-width="${strokeW*2.5}" stroke-dasharray="${Math.max(w,h)/120},${Math.max(w,h)/120}"/>` : ""}
+    <circle id="femPreviewMomentoCursor" class="hidden" r="${r*0.7}" fill="none" stroke="var(--danger-fg)" stroke-width="${strokeW*2}"/>
+    <text id="femPreviewMomentoTexto" class="hidden" font-size="${fs}" font-weight="600" fill="#000" stroke="#fff" stroke-width="${fs/6}" paint-order="stroke" text-anchor="start"></text>
+  </svg>
+  <p class="small" style="color:var(--muted); margin-top:6px;">Escala ${componente} (mín. → máx. del campo, tipo STAAD.Pro): ${fmt(minVal/1000,2)} <span style="color:rgb(0,0,143);">■</span> ${fmt((minVal+rango*0.25)/1000,2)} <span style="color:rgb(0,255,255);">■</span> ${fmt((minVal+rango*0.5)/1000,2)} <span style="color:rgb(0,255,0);">■</span> ${fmt((minVal+rango*0.75)/1000,2)} <span style="color:rgb(255,255,0);">■</span> ${fmt(maxVal/1000,2)} <span style="color:rgb(255,0,0);">■</span> Tn·m/m. Signo crudo del solver, sin validar todavía contra qué cara queda traccionada (se valida en fase 08).</p>`;
+}
+// Arma el resumen (tabla max/min) + selector de componente + mapa de color,
+// a partir de la última corrida guardada en lastMomentosPreview — separado
+// de femRunPreview para poder redibujar solo esto al cambiar el selector,
+// sin volver a resolver el sistema.
+function femPreviewRenderMomentos(){
+  const wrap = document.getElementById("femPreviewMomentosWrap");
+  if(!lastMomentosPreview){ wrap.innerHTML = ""; return; }
+  const { momentosPorNodo, outerC, holeC } = lastMomentosPreview;
+  let maxMx=-Infinity, minMx=Infinity, maxMy=-Infinity, minMy=Infinity, maxMxy=-Infinity, minMxy=Infinity;
+  momentosPorNodo.forEach(m=>{
+    if(m.Mx>maxMx) maxMx=m.Mx; if(m.Mx<minMx) minMx=m.Mx;
+    if(m.My>maxMy) maxMy=m.My; if(m.My<minMy) minMy=m.My;
+    if(m.Mxy>maxMxy) maxMxy=m.Mxy; if(m.Mxy<minMxy) minMxy=m.Mxy;
+  });
+  const filas = [["Mx",maxMx,minMx],["My",maxMy,minMy],["Mxy",maxMxy,minMxy]];
+  wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:6px;">Momentos por nodo (fase 07, promedio ponderado por área entre los elementos vecinos — ver comentario de femMomentosPorNodo):</p>
+    <div style="overflow-x:auto; margin-bottom:12px;"><table class="em-table">
+      <thead><tr><th>Componente</th><th>Máximo</th><th>Mínimo</th></tr></thead>
+      <tbody>${filas.map(([c,mx,mn])=>`<tr><td>${c}</td><td>${fmt(mx/1000,3)} Tn·m/m</td><td>${fmt(mn/1000,3)} Tn·m/m</td></tr>`).join("")}</tbody>
+    </table></div>
+    <label class="field" style="max-width:220px; margin-bottom:8px;"><span class="lbl">Mapa de momento</span><select id="femPreviewMomentoSelect"><option value="Mx"${femPreviewMomentosComponente==="Mx"?" selected":""}>Mx</option><option value="My"${femPreviewMomentosComponente==="My"?" selected":""}>My</option><option value="Mxy"${femPreviewMomentosComponente==="Mxy"?" selected":""}>Mxy</option></select></label>
+    <div id="femPreviewMomentoSvg"></div>`;
+  const dibujarSvg = ()=>{
+    document.getElementById("femPreviewMomentoSvg").innerHTML = femMomentosSvg(outerC, holeC, momentosPorNodo, femPreviewMomentosComponente);
+    const svg = document.getElementById("femPreviewMomentoSvgEl");
+    const cursor = document.getElementById("femPreviewMomentoCursor");
+    const texto = document.getElementById("femPreviewMomentoTexto");
+    const off = svg.viewBox.baseVal.width/45; // desplazamiento del texto respecto al cursor, en unidades del propio viewBox
+    svg.addEventListener("mousemove", (e)=>{
+      const p = svgEventToPlan(svg, e);
+      const dentro = pointInPolygon(p, outerC) && !(holeC && holeC.length>=3 && pointInPolygon(p, holeC));
+      if(!dentro){ cursor.classList.add("hidden"); texto.classList.add("hidden"); return; }
+      let mejorIdx=-1, mejorD2=Infinity;
+      lastMallaMesh.points.forEach((pt,i)=>{
+        const d2 = (pt.x-p.x)**2 + (pt.y-p.y)**2;
+        if(d2<mejorD2){ mejorD2=d2; mejorIdx=i; }
+      });
+      const valor = momentosPorNodo[mejorIdx][femPreviewMomentosComponente];
+      cursor.setAttribute("cx", p.x); cursor.setAttribute("cy", -p.y);
+      cursor.classList.remove("hidden");
+      texto.setAttribute("x", p.x + off); texto.setAttribute("y", -p.y - off);
+      texto.textContent = `${femPreviewMomentosComponente}: ${fmt(valor/1000,3)} Tn·m/m`;
+      texto.classList.remove("hidden");
+    });
+    svg.addEventListener("mouseleave", ()=>{
+      cursor.classList.add("hidden");
+      texto.classList.add("hidden");
+    });
+  };
+  dibujarSvg();
+  document.getElementById("femPreviewMomentoSelect").addEventListener("change", (e)=>{
+    femPreviewMomentosComponente = e.target.value;
+    dibujarSvg();
+  });
+}
 function femPreviewSvg(u, maxW, outerC, activos){
   const idxByPointRef = new Map();
   lastMallaMesh.points.forEach((p,i)=>idxByPointRef.set(p,i));
@@ -11253,7 +11371,7 @@ async function femRunPreview(){
   if(!cfg || cfg.kind !== "legs" || !lastMallaMesh || !lastMallaMesh.elements.length || !lastPlanArgs){
     noSoportado.classList.remove("hidden");
     controles.classList.add("hidden");
-    resumenEl.innerHTML = ""; svgWrapEl.innerHTML = "";
+    resumenEl.innerHTML = ""; svgWrapEl.innerHTML = ""; document.getElementById("femPreviewMomentosWrap").innerHTML = ""; lastMomentosPreview = null;
     return;
   }
   noSoportado.classList.add("hidden");
@@ -11262,7 +11380,7 @@ async function femRunPreview(){
   const malla = femBuildMeshAdapter(lastMallaMesh);
   if(!malla.nodos.length){
     resumenEl.innerHTML = `<div class="message-bar error"><span>La malla (sección 4.4) está vacía — revisá la geometría.</span></div>`;
-    svgWrapEl.innerHTML = "";
+    svgWrapEl.innerHTML = ""; document.getElementById("femPreviewMomentosWrap").innerHTML = ""; lastMomentosPreview = null;
     return;
   }
 
@@ -11281,7 +11399,7 @@ async function femRunPreview(){
   const reacciones = getCurrentReacciones();
   if(comboIdx < 0 || !reacciones){
     resumenEl.innerHTML = `<div class="message-bar error"><span>Elegí un caso de carga (combo 1.2D) antes de correr el análisis.</span></div>`;
-    svgWrapEl.innerHTML = "";
+    svgWrapEl.innerHTML = ""; document.getElementById("femPreviewMomentosWrap").innerHTML = ""; lastMomentosPreview = null;
     return;
   }
   const filaCombo = reacciones[comboIdx];
@@ -11383,7 +11501,7 @@ async function femRunPreview(){
 
   if(!cargas.length){
     resumenEl.innerHTML = `<div class="message-bar error"><span>No se pudo aplicar ninguna carga. ${avisos.join(" ")}</span></div>`;
-    svgWrapEl.innerHTML = "";
+    svgWrapEl.innerHTML = ""; document.getElementById("femPreviewMomentosWrap").innerHTML = ""; lastMomentosPreview = null;
     return;
   }
 
@@ -11400,7 +11518,7 @@ async function femRunPreview(){
     femPreviewOcultarProgreso();
     btnRun.disabled = false;
     resumenEl.innerHTML = `<div class="message-bar error"><span>El solver falló: ${err.message}</span></div>`;
-    svgWrapEl.innerHTML = "";
+    svgWrapEl.innerHTML = ""; document.getElementById("femPreviewMomentosWrap").innerHTML = ""; lastMomentosPreview = null;
     return;
   }
   femPreviewSetProgreso(1, "Listo.");
@@ -11489,6 +11607,12 @@ async function femRunPreview(){
       </table></div>`;
     resumenEl.appendChild(wrap);
   }
+
+  // Momentos por nodo (fase 07) — se recalculan siempre que corre el
+  // preview; el selector de componente (Mx/My/Mxy) solo redibuja el SVG,
+  // sin volver a resolver el sistema (femPreviewRenderMomentos).
+  lastMomentosPreview = { momentosPorNodo: femMomentosPorNodo(malla, u, espesor, E, nu), outerC: lastPlanArgs.outerC, holeC: state.holeEnabled ? lastPlanArgs.holeC : null };
+  femPreviewRenderMomentos();
 
   if(resultado.estado !== "convergio"){
     const avEstado = document.createElement("div");
@@ -11647,11 +11771,57 @@ async function femSolveNoLinealConProgreso(malla, opts, onProgress){
   return { u: ultimo.u, activos, iter: tope, estado:"max-iteraciones", nEq: ultimo.nEq, stats: ultimo.stats };
 }
 
-// Fase 07 — rotación del tensor de momentos [Mx,My,Mxy] de ejes locales del
-// triángulo a ejes globales fijos X-Y (transformación de Mohr), previo a
-// aplicar Wood-Armer.
-function femRotarMomentosAGlobal(momentosElemento, thetaLocal){
-  throw new Error("FEM: femRotarMomentosAGlobal no implementado (fase 07)");
+// Fase 07 — recuperación de momentos [Mx,My,Mxy] por elemento y suavizado
+// nodal. NO hace falta rotación de Mohr (a diferencia de lo que decía el
+// roadmap original, pensado para un DKT clásico con eje local por triángulo):
+// femPlacaGeom deriva dNdx/dNdy directo de las coordenadas GLOBALES de cada
+// nodo (no hay reencuadre a un eje local por elemento), así que bx=∂w/∂x y
+// by=∂w/∂y ya son GDL nodales sobre los mismos ejes X-Y globales para
+// cualquier triángulo, sin importar su orientación — la curvatura (y el
+// momento que sale de ella) ya está en eje global de entrada. Lo que sí hace
+// falta, y es lo que hace esta fase, es promediar el momento — constante
+// dentro de cada triángulo — entre todos los elementos que comparten un
+// nodo, ponderado por área, para armar un campo continuo por nodo (insumo
+// de Wood-Armer en la fase 08).
+function femPlacaDb(espesor, E, nu){
+  const D11 = E*espesor*espesor*espesor/(12*(1-nu*nu));
+  return [[D11, D11*nu, 0], [D11*nu, D11, 0], [0, 0, D11*(1-nu)/2]];
+}
+function femMomentosElemento(nodosTriangulo, dofs9, espesor, E, nu){
+  const { kx, ky, gxy } = femPlacaCurvatura(nodosTriangulo, dofs9);
+  const Db = femPlacaDb(espesor, E, nu);
+  return {
+    Mx: Db[0][0]*kx + Db[0][1]*ky,
+    My: Db[1][0]*kx + Db[1][1]*ky,
+    Mxy: Db[2][2]*gxy
+  };
+}
+// u: vector de GDL global (tamaño nNodos*3, [w,bx,by] por nodo — mismo
+// layout que devuelve femSolveLineal/femSolveNoLineal). Devuelve un array
+// paralelo a malla.nodos con {Mx,My,Mxy} promediados por área entre los
+// elementos que tocan cada nodo (0 en nodos sin ningún elemento, caso que no
+// debería darse en una malla bien formada).
+function femMomentosPorNodo(malla, u, espesor, E, nu){
+  const nNodos = malla.nodos.length;
+  const sumMx = new Float64Array(nNodos), sumMy = new Float64Array(nNodos), sumMxy = new Float64Array(nNodos), sumArea = new Float64Array(nNodos);
+  malla.elementos.forEach(el=>{
+    const nodosTriangulo = el.n.map(i=>malla.nodos[i]);
+    const dofs9 = [];
+    el.n.forEach(i=>{ dofs9.push(u[3*i], u[3*i+1], u[3*i+2]); });
+    const { area } = femPlacaGeom(nodosTriangulo);
+    const aAbs = Math.abs(area);
+    const { Mx, My, Mxy } = femMomentosElemento(nodosTriangulo, dofs9, espesor, E, nu);
+    el.n.forEach(i=>{
+      sumMx[i] += Mx*aAbs; sumMy[i] += My*aAbs; sumMxy[i] += Mxy*aAbs; sumArea[i] += aAbs;
+    });
+  });
+  const out = new Array(nNodos);
+  for(let i=0;i<nNodos;i++){
+    out[i] = sumArea[i]>0
+      ? { Mx: sumMx[i]/sumArea[i], My: sumMy[i]/sumArea[i], Mxy: sumMxy[i]/sumArea[i] }
+      : { Mx:0, My:0, Mxy:0 };
+  }
+  return out;
 }
 
 // Fase 08 — Wood-Armer sobre los momentos ya rotados a global y suavizados

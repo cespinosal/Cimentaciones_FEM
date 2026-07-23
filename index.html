@@ -1778,7 +1778,7 @@ document.addEventListener("click", (e) => {
         <!-- No depende de la geometría de patas: generateMallaFEM() ya toma
              "dados" de forma genérica (Object.values), igual que la vista 3D. -->
         <p class="small" style="margin:0 0 10px; color:var(--muted);">Malla "Urdimbre": grilla regular sobre el interior + triangulación restringida en huecos/esquinas/dados, recombinada en cuadriláteros y reparada localmente (dados resaltados en naranja, con su propia malla perfecta). Es solo una previsualización visual — todavía no genera el archivo .STD para STAAD.</p>
-        <label class="field" style="max-width:360px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="120" id="g_mallaTamElem" style="max-width:150px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">50 cm</span></label>
+        <label class="field" style="max-width:640px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="75" id="g_mallaTamElem" style="max-width:460px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">50 cm</span></label>
         <div style="position:relative; max-width:1180px; margin:0 auto;">
           <div id="geoMallaDiagrama" class="navier-card"></div>
           <div style="position:absolute; top:10px; left:10px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:6px 10px; font-size:11.5px; z-index:5;">
