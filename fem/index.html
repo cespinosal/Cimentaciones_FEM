@@ -11207,7 +11207,6 @@ function femPreviewRamp(t){
 // OJO: el signo de Mx/My/Mxy que da femMomentosPorNodo todavía no está
 // validado contra una convención física (qué cara queda traccionada) — eso
 // se valida al conectar esto con el diseño a flexión (fase 08).
-const FEM_MOMENTO_STOPS = [[0,[0,0,143]],[0.25,[0,255,255]],[0.5,[0,255,0]],[0.75,[255,255,0]],[1,[255,0,0]]];
 // Componentes seleccionables en el mapa/tabla del preview: Mx/My/Mxy (fase
 // 07) + Mu inferior/superior de Wood-Armer (fase 08) — mismo objeto por
 // nodo (femRunPreview les agrega muInferior/muSuperior a momentosPorNodo),
@@ -11219,13 +11218,30 @@ const FEM_MOMENTO_COMPONENTES = [
   { key:"muInferior", label:"Mu inferior (Wood-Armer)" },
   { key:"muSuperior", label:"Mu superior (Wood-Armer)" }
 ];
+// Mismos 17 colores leídos del legend de STAAD.Pro (capturas de MX/MY/MXY
+// local), pero invertidos (de mínimo a máximo ahora: rojo, naranja-rojizo,
+// naranja, dorado, amarillo, verde-amarillento, verde, turquesa, cian,
+// celeste, azul, azul marino, marrón oscuro/vino, magenta, magenta,
+// violeta oscuro) y con interpolación suave entre colores consecutivos en
+// vez de bandas de borde duro — pedido explícito del usuario (más visual,
+// menos abrupto que el contorno "a escalones" real de STAAD).
+const FEM_MOMENTO_PALETTE = [
+  [227,20,20], [255,69,0], [255,140,0], [255,190,0], [255,231,0],
+  [151,210,30], [40,190,40], [0,199,128], [0,210,208], [0,163,232],
+  [22,112,232], [0,60,222], [24,20,133], [92,48,45], [222,46,205],
+  [197,25,196], [112,8,141]
+];
 function femMomentoRamp(t){ // t en [0,1]
   const tt = Math.max(0, Math.min(1, t));
-  let i=0; while(i<FEM_MOMENTO_STOPS.length-2 && tt>FEM_MOMENTO_STOPS[i+1][0]) i++;
-  const [t0,c0] = FEM_MOMENTO_STOPS[i], [t1,c1] = FEM_MOMENTO_STOPS[i+1];
-  const f = (tt-t0)/(t1-t0);
-  const r=Math.round(c0[0]+(c1[0]-c0[0])*f), g=Math.round(c0[1]+(c1[1]-c0[1])*f), bl=Math.round(c0[2]+(c1[2]-c0[2])*f);
-  return `rgb(${r},${g},${bl})`;
+  const n = FEM_MOMENTO_PALETTE.length;
+  const pos = tt * (n-1);
+  const i0 = Math.min(n-2, Math.floor(pos));
+  const f = pos - i0;
+  const c0 = FEM_MOMENTO_PALETTE[i0], c1 = FEM_MOMENTO_PALETTE[i0+1];
+  const r = Math.round(c0[0]+(c1[0]-c0[0])*f);
+  const g = Math.round(c0[1]+(c1[1]-c0[1])*f);
+  const b = Math.round(c0[2]+(c1[2]-c0[2])*f);
+  return `rgb(${r},${g},${b})`;
 }
 // Mapa de color de un componente de momento (Mx/My/Mxy), promediado por nodo
 // (fase 07) y coloreado por elemento con el promedio de sus 3 nodos — mismo
@@ -11256,20 +11272,36 @@ function femMomentosSvg(outerC, holeC, momentosPorNodo, componente){
   const r = Math.max(w,h)/70;
   const fs = Math.max(w,h)/38;
   const label = FEM_MOMENTO_COMPONENTES.find(c=>c.key===componente).label;
+  // Leyenda: barra de degradado continuo (mismos colores de STAAD, ya
+  // invertidos e interpolados — ver femMomentoRamp) con marcas de valor al
+  // costado, en vez de la lista de 17 franjas planas de antes.
+  const nTicks = 8;
+  const gradStops = FEM_MOMENTO_PALETTE.map((c,i)=> `rgb(${c[0]},${c[1]},${c[2]}) ${(i/(FEM_MOMENTO_PALETTE.length-1)*100).toFixed(1)}%`).join(", ");
+  const ticks = Array.from({length:nTicks}, (_,i)=> maxVal - rango*i/(nTicks-1));
+  const tickRows = ticks.map(v=> `<div style="font-size:11px; color:var(--muted); white-space:nowrap;">${fmt(v/1000,3)}</div>`).join("");
   // Cursor + lectura por nodo: mismo patrón que navierSvgInner/4.3
   // (svgEventToPlan + pointInPolygon para recortar fuera del contorno/hueco),
   // pero acá se reporta el nodo más cercano en vez de evaluar una fórmula
   // analítica, porque el campo ya está discretizado por nodo (fase 07). El
   // valor se muestra en un <text> flotante que sigue al cursor (no en un
   // párrafo aparte) — pedido explícito del usuario.
-  return `<svg id="femPreviewMomentoSvgEl" viewBox="${xmin} ${-ymax} ${w} ${h}" style="width:100%; height:520px; display:block; background:var(--panel); cursor:crosshair;">
-    ${cellsMarkup}
-    <polygon points="${outerPts}" fill="none" stroke="var(--accent)" stroke-width="${strokeW*2.5}"/>
-    ${holePts ? `<polygon points="${holePts}" fill="var(--input-bg)" stroke="#c0392b" stroke-width="${strokeW*2.5}" stroke-dasharray="${Math.max(w,h)/120},${Math.max(w,h)/120}"/>` : ""}
-    <circle id="femPreviewMomentoCursor" class="hidden" r="${r*0.7}" fill="none" stroke="var(--danger-fg)" stroke-width="${strokeW*2}"/>
-    <text id="femPreviewMomentoTexto" class="hidden" font-size="${fs}" font-weight="600" fill="#000" stroke="#fff" stroke-width="${fs/6}" paint-order="stroke" text-anchor="start"></text>
-  </svg>
-  <p class="small" style="color:var(--muted); margin-top:6px;">Escala ${label} (mín. → máx. del campo, tipo STAAD.Pro): ${fmt(minVal/1000,2)} <span style="color:rgb(0,0,143);">■</span> ${fmt((minVal+rango*0.25)/1000,2)} <span style="color:rgb(0,255,255);">■</span> ${fmt((minVal+rango*0.5)/1000,2)} <span style="color:rgb(0,255,0);">■</span> ${fmt((minVal+rango*0.75)/1000,2)} <span style="color:rgb(255,255,0);">■</span> ${fmt(maxVal/1000,2)} <span style="color:rgb(255,0,0);">■</span> Tn·m/m. ${componente==="Mxy" ? "Mxy entra al diseño solo como |Mxy| (Wood-Armer, fase 08) — su signo no afecta el resultado." : "Signo verificado (fase 08, caso físico de carga puntual sobre resortes): positivo = tracción abajo = refuerzo inferior."}</p>`;
+  return `<div style="display:flex; gap:14px; align-items:flex-start;">
+    <div>
+      <div style="font-size:11px; color:var(--muted); margin-bottom:4px;">${label}<br>Tn·m/m</div>
+      <div style="display:flex; gap:6px; align-items:stretch;">
+        <div style="width:16px; height:280px; border-radius:3px; border:1px solid rgba(128,128,128,.35); background:linear-gradient(to top, ${gradStops});"></div>
+        <div style="display:flex; flex-direction:column; justify-content:space-between; height:280px;">${tickRows}</div>
+      </div>
+    </div>
+    <svg id="femPreviewMomentoSvgEl" viewBox="${xmin} ${-ymax} ${w} ${h}" style="flex:1; min-width:0; height:520px; display:block; background:var(--panel); cursor:crosshair;">
+      ${cellsMarkup}
+      <polygon points="${outerPts}" fill="none" stroke="var(--accent)" stroke-width="${strokeW*2.5}"/>
+      ${holePts ? `<polygon points="${holePts}" fill="var(--input-bg)" stroke="#c0392b" stroke-width="${strokeW*2.5}" stroke-dasharray="${Math.max(w,h)/120},${Math.max(w,h)/120}"/>` : ""}
+      <circle id="femPreviewMomentoCursor" class="hidden" r="${r*0.7}" fill="none" stroke="var(--danger-fg)" stroke-width="${strokeW*2}"/>
+      <text id="femPreviewMomentoTexto" class="hidden" font-size="${fs}" font-weight="600" fill="#000" stroke="#fff" stroke-width="${fs/6}" paint-order="stroke" text-anchor="start"></text>
+    </svg>
+  </div>
+  <p class="small" style="color:var(--muted); margin-top:6px;">${componente==="Mxy" ? "Mxy entra al diseño solo como |Mxy| (Wood-Armer, fase 08) — su signo no afecta el resultado." : "Signo verificado (fase 08, caso físico de carga puntual sobre resortes): positivo = tracción abajo = refuerzo inferior."}</p>`;
 }
 // Arma el resumen (tabla max/min) + selector de componente + mapa de color,
 // a partir de la última corrida guardada en lastMomentosPreview — separado
