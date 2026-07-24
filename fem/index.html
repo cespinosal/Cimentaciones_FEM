@@ -430,6 +430,42 @@ label.field .unit{color:var(--subtle); width:30px; font-size:12px;}
 #flexionInfExistComputed .prop:nth-last-child(-n+2),
 #flexionSupExistComputed .prop:nth-last-child(-n+2){ grid-column:1 / -1; }
 
+/* ---------- Motor FEM — panel tipo dashboard (fase 10) ---------- */
+.fem-toolbar{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;}
+.fem-toolbar .spacer{flex:1;}
+.fem-status-pill{
+  display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px;
+  font-size:11.5px; font-weight:700; border:1px solid var(--border); background:var(--panel-2); color:var(--muted);
+  white-space:nowrap;
+}
+.fem-status-pill .dot{width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0;}
+.fem-status-pill.ok{background:var(--success-bg); color:var(--success-fg); border-color:var(--success-border);}
+.fem-status-pill.fail{background:var(--danger-bg); color:var(--danger-fg); border-color:var(--danger-border);}
+.fem-status-pill.warn{background:var(--warning-bg); color:var(--warning-fg); border-color:var(--warning-border);}
+.fem-status-pill.running .dot{animation:fem-pulse 1s ease-in-out infinite;}
+.fem-status-pill.running{background:var(--brand-tint); color:var(--accent); border-color:var(--accent-border);}
+@keyframes fem-pulse{0%,100%{opacity:1;} 50%{opacity:.25;}}
+@media (prefers-reduced-motion:reduce){ .fem-status-pill.running .dot{animation:none;} }
+
+.fem-kpi-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:10px; margin:14px 0;}
+.fem-kpi{border:1px solid var(--border); border-radius:var(--radius-md); background:var(--panel-2); padding:10px 14px;}
+.fem-kpi .eyebrow{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700;}
+.fem-kpi .value{font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:20px; font-weight:700; margin:3px 0 2px; color:var(--text); line-height:1.2;}
+.fem-kpi .caption{font-size:11px; color:var(--subtle); line-height:1.35;}
+.fem-kpi.accent-ok .value{color:var(--success-fg);}
+.fem-kpi.accent-warn .value{color:var(--warning-fg);}
+.fem-kpi.accent-fail .value{color:var(--danger-fg);}
+
+.fem-scope{border:1px solid var(--border); border-radius:var(--radius-md); background:var(--panel-2); margin-top:16px;}
+.fem-scope summary{padding:10px 14px; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--muted); list-style:none; display:flex; align-items:center; gap:8px; user-select:none;}
+.fem-scope summary::-webkit-details-marker{display:none;}
+.fem-scope summary::before{content:"▸"; font-size:10px; color:var(--subtle); transition:transform .15s;}
+.fem-scope[open] summary::before{transform:rotate(90deg);}
+.fem-scope .fem-scope-body{padding:0 14px 14px; font-size:12.5px; color:var(--muted); line-height:1.55;}
+.fem-scope .fem-scope-body p{margin:0 0 8px;}
+.fem-scope .fem-scope-body p:last-child{margin-bottom:0;}
+.fem-scope .fem-scope-body ul{margin:0 0 8px; padding-left:18px;}
+
 /* ---------- SVG plan ---------- */
 svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid var(--border); border-radius:var(--radius-md); display:block;}
 .legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--muted);}
@@ -1203,7 +1239,7 @@ svg.plan{width:100%; height:auto; background:var(--input-bg); border:1px solid v
     <li><b>Mu inferior / Mu superior (Wood-Armer):</b> misma fórmula que ya usa la sección 5.3 (Mu_inferior=MAX(Mx+|Mxy|, My+|Mxy|), Mu_superior=|MIN(Mx−|Mxy|, My−|Mxy|)|), aplicada nodo por nodo en vez de un único peor caso para toda la zapata.</li>
     <li><b>Signo verificado:</b> se confirmó con un caso físico inequívoco (placa sobre resortes de Winkler, carga puntual hacia abajo en el nodo central — ese nodo necesariamente se hunde localmente, sagging, sin depender de ninguna convención de signos) que el momento positivo de este solver YA coincide con la convención de la sección 5.3 ("positivo = tracción abajo = refuerzo inferior"). No hizo falta invertir ningún signo.</li>
   </ul>
-  <p>El selector "Mapa de momento" de la tarjeta permite elegir entre Mx/My/Mxy/Mu inferior/Mu superior — se colorea con la paleta real de STAAD.Pro (17 colores leídos de su propio legend, interpolados suavemente), normalizada sobre el mínimo-máximo real de cada campo. Pasando el cursor sobre la losa (solo dentro del contorno, igual que en la sección 4.3) aparece el valor exacto del nodo más cercano, junto al propio cursor.</p>
+  <p>El selector "Mapa de solicitaciones" de la tarjeta permite elegir entre Mx/My/Mxy/Mu inferior/Mu superior/Qx/Qy — se colorea con la paleta real de STAAD.Pro (17 colores leídos de su propio legend, interpolados suavemente), normalizada sobre el mínimo-máximo real de cada campo, con la leyenda superpuesta en la esquina (igual que STAAD) en vez de ocupar una columna aparte. Pasando el cursor sobre la losa (solo dentro del contorno, igual que en la sección 4.3) aparece el valor exacto del nodo más cercano, junto al propio cursor.</p>
 
   <h4>Comparación de Mx/My/Mxy contra STAAD real (23/07/2026)</h4>
   <p>Con Mx, My y Mxy reales de STAAD.Pro (Ejemplo, combo Normal, "Plate Results" local) para los mismos nodos, malla 10cm: <b>My</b> dentro de ~6-7% en sus dos picos (14.968 vs 14.0 Tn·m/m; 8.928 vs 8.43), <b>Mxy</b> casi exacto (±2.72-2.75 vs ±2.73, ~1%), <b>Mx</b> dentro de 12.6% en un pico y 30.8% en el otro (5.456 vs 7.89 Tn·m/m).</p>
@@ -1838,7 +1874,7 @@ document.addEventListener("click", (e) => {
         <!-- No depende de la geometría de patas: generateMallaFEM() ya toma
              "dados" de forma genérica (Object.values), igual que la vista 3D. -->
         <p class="small" style="margin:0 0 10px; color:var(--muted);">Malla "Urdimbre": grilla regular sobre el interior + triangulación restringida en huecos/esquinas/dados, recombinada en cuadriláteros y reparada localmente (dados resaltados en naranja, con su propia malla perfecta). Es solo una previsualización visual — todavía no genera el archivo .STD para STAAD.</p>
-        <label class="field" style="max-width:640px; margin-bottom:12px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="75" id="g_mallaTamElem" style="max-width:460px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">50 cm</span></label>
+        <label class="field" style="width:fit-content; max-width:640px; margin-bottom:12px; justify-content:flex-start; gap:14px;"><span class="lbl" style="white-space:nowrap;">Tamaño de elemento</span><input type="range" step="5" min="5" max="75" id="g_mallaTamElem" style="max-width:460px;"><span class="unit" id="g_mallaTamElemUnit" style="width:auto; white-space:nowrap;">50 cm</span></label>
         <div style="position:relative; max-width:1180px; margin:0 auto;">
           <div id="geoMallaDiagrama" class="navier-card"></div>
           <div style="position:absolute; top:10px; left:10px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:6px 10px; font-size:11.5px; z-index:5;">
@@ -1913,7 +1949,7 @@ document.addEventListener("click", (e) => {
     <section class="card" id="sec-diseno-51" aria-labelledby="h-diseno-51">
       <div class="head"><span id="h-diseno-51">5.1.- Elementos mecánicos de diseño</span></div>
       <div class="body">
-        <p class="small" style="margin:0 0 10px; color:var(--muted);">Resumen de la malla de placas exportada de STAAD (máximos/mínimos por franja) — datos de entrada para el diseño estructural por ACI 318 (flexión, cortante, punzonamiento).</p>
+        <p class="small" style="margin:0 0 10px; color:var(--muted);">Resumen de la malla de placas exportada de STAAD (máximos/mínimos por franja) — datos de entrada para el diseño estructural por ACI 318 (flexión, cortante, punzonamiento). Se puede pegar la tabla completa copiada de STAAD (con encabezados y etiquetas de fila incluidos, tal como aparece en pantalla): hacer clic en la celda "Plate" de cualquier fila y pegar — las filas se ubican por su etiqueta ("Max Qx", "Min Qy", etc.), no por el orden de pegado.</p>
         <div style="overflow-x:auto;">
         <table id="tblElementosMecanicos">
           <thead>
@@ -2381,38 +2417,55 @@ document.addEventListener("click", (e) => {
     </div>
 
     <div class="tab-panel" data-tab="motor">
-    <section class="card" id="sec-docs" aria-labelledby="h-docs">
-      <div class="head"><span id="h-docs">Motor FEM — referencias normativas</span></div>
-      <div class="body">
-        <div class="message-bar info" role="status" style="margin-bottom:16px;">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span><b>Sección en desarrollo.</b> El objetivo del Motor FEM es correr el análisis por elementos finitos de la cimentación directamente dentro de la app, usando la malla "Urdimbre Mesh" ya generada (sección 4.4), para dejar de depender de exportar el modelo a STAAD.Pro y analizarlo por fuera.</span>
-        </div>
-      </div>
-    </section>
     <section class="card" id="sec-fem-preview" aria-labelledby="h-fem-preview">
-      <div class="head"><span id="h-fem-preview">Análisis del solver sobre geometría real (fases 00–06)</span></div>
+      <div class="head">
+        <span id="h-fem-preview">Motor FEM — análisis sobre geometría real</span>
+        <span class="fem-status-pill" id="femPreviewStatusPill"><span class="dot"></span>Sin correr</span>
+      </div>
       <div class="body">
-        <div class="message-bar warning" role="status" style="margin-bottom:16px;">
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.4 3.6l-1 1M4.6 11.4l-1 1M12.4 12.4l-1-1M4.6 4.6l-1-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
-          <span><b>Validado contra STAAD (fase 06, ver fem/roadmap.html):</b> flecha máxima con 0.06% de diferencia contra un modelo real corrido en STAAD.Pro. Corre las fases ya hechas (00–05: malla, rigidez de placa, solver lineal, resortes de Winkler, no linealidad compression-only) sobre la geometría real de esta zapata, con la carga axial (Fy) real de cada pata y el peso propio+relleno+ciclópeo+adicional (sección 4.-, con el factor 1.2 del ANSI/TIA-222-H §9.4 aplicado a todo el peso en combos 1.2D), todo repartido por área tributaria. Todavía sin aplicar el cortante horizontal (Fx/Fz) ni el momento local que genera en cada dado (ver Mejoras futuras en el roadmap), sin recuperar momentos de diseño (07/08) ni optimizar rendimiento (09) — con malla fina el loop de la fase 05 puede tardar unos segundos (barra de progreso abajo). Todavía no reemplaza el diseño de la sección 5.</span>
-        </div>
+        <p class="small" style="margin:0 0 14px; color:var(--muted);">Corre el solver de placas propio (Mindlin/Reissner + resortes de Winkler + no linealidad compression-only) directamente sobre la malla y geometría reales de esta zapata (sección 4.4) — sin depender de exportar el modelo a STAAD.Pro y analizarlo por fuera.</p>
         <div id="femPreviewNoSoportado" class="message-bar error hidden" role="alert">
           <span>Este análisis solo corre para Autosoportada 3P/4P (necesita la tabla de reacciones por pata). Para Monopolo falta repartir momento/cortante del apoyo único en cargas nodales.</span>
         </div>
-        <div id="femPreviewControles" class="row-actions" style="flex-wrap:wrap; align-items:center; gap:12px;">
-          <label class="field" style="margin:0;"><span class="lbl">Caso de carga (combo)</span><select id="femPreviewComboSelect"></select></label>
-          <button class="btn primary" id="btnFemPreviewRun" type="button">Correr análisis (preview)</button>
+        <div id="femPreviewControles" class="fem-toolbar">
+          <label class="field" style="margin:0; flex-wrap:nowrap;"><span class="lbl" style="white-space:nowrap; margin-right:10px;">Caso de carga (combo)</span><select id="femPreviewComboSelect"></select></label>
+          <button class="btn primary" id="btnFemPreviewRun" type="button">Correr análisis</button>
         </div>
-        <div id="femPreviewProgressWrap" class="hidden" style="margin-top:14px;">
+        <div id="femPreviewProgressWrap" class="hidden" style="margin-bottom:14px;">
           <div style="height:8px; border-radius:4px; background:var(--input-bg); border:1px solid var(--border); overflow:hidden;">
             <div id="femPreviewProgressBar" style="height:100%; width:0%; background:var(--accent); transition:width .2s ease;"></div>
           </div>
           <p class="small" id="femPreviewProgressTxt" style="color:var(--muted); margin-top:4px;">Preparando…</p>
         </div>
-        <div id="femPreviewResumen" style="margin-top:12px;"></div>
-        <div id="femPreviewSvgWrap" style="margin-top:12px;"></div>
+        <div id="femPreviewResumen"></div>
+        <div id="femPreviewKpis"></div>
+        <div id="femPreviewSvgWrap">
+          <div class="row-actions" style="margin:0 0 10px; flex-wrap:wrap; align-items:center; gap:10px;">
+            <label class="field" style="margin:0; max-width:260px; justify-content:flex-start; gap:10px;"><span class="lbl" style="white-space:nowrap;">Escala deformada</span><input type="range" id="femDeformadaEscala" min="1" max="9" step="1" value="5"><span class="unit" id="femDeformadaEscalaTxt" style="width:auto; white-space:nowrap;">×1</span></label>
+            <button class="btn subtle" id="btnFemDeformadaIso" type="button">Isométrica</button>
+            <button class="btn subtle" id="btnFemDeformadaPlanta" type="button">Planta</button>
+          </div>
+          <div style="position:relative; width:100%; height:560px; background:var(--canvas); border-radius:var(--radius-lg); overflow:hidden; border:1px solid var(--border);">
+            <canvas id="canvasFemDeformada" style="width:100%; height:100%; display:block;"></canvas>
+            <div id="femDeformadaNoWebgl" class="hidden message-bar error" role="alert" style="position:absolute; inset:12px; margin:0;">
+              <span>Tu navegador no soporta WebGL — no se puede mostrar esta vista.</span>
+            </div>
+            <div id="femDeformadaLeyenda" style="position:absolute; top:12px; left:12px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 12px; font-size:11.5px; z-index:5; max-width:320px;"></div>
+            <div id="femDeformadaReadout" class="hidden" style="position:absolute; bottom:12px; right:12px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:7px 11px; font-size:11.5px; z-index:5; font-family:var(--font-mono); font-variant-numeric:tabular-nums;"></div>
+          </div>
+        </div>
+        <div id="femPreviewTablas" style="margin-top:16px;"></div>
+        <div id="femPreviewAvisos"></div>
         <div id="femPreviewMomentosWrap" style="margin-top:16px;"></div>
+        <div id="femPreviewCortante" style="margin-top:16px;"></div>
+        <details class="fem-scope">
+          <summary>Alcance, validación contra STAAD y limitaciones conocidas</summary>
+          <div class="fem-scope-body">
+            <p><b>Qué corre hoy (fases 00–09 del roadmap, ver fem/roadmap.html):</b> malla y rigidez de placa Mindlin/Reissner, ensamblaje + solver lineal, resortes de Winkler y no linealidad compression-only, sobre la geometría real de esta zapata (huecos, dados, borde irregular) — con la carga axial (Fy) real de cada pata y el peso propio+relleno+ciclópeo+adicional (sección 4.-, factor 1.2 del ANSI/TIA-222-H §9.4 en combos 1.2D), repartidos por área tributaria. Recupera además Mx/My/Mxy y el momento de diseño Wood-Armer por nodo, y corre en un Web Worker para no colgar la pestaña con malla fina.</p>
+            <p><b>Validado contra un modelo real corrido en STAAD.Pro:</b> flecha máxima con 0.06% de diferencia; reacción por dado dentro de ~1% (comparando el mismo grupo de nodos del anillo); Mx/My/Mxy dentro de un 1%–31% según el pico (más ajustado lejos de la zona de carga concentrada bajo el dado).</p>
+            <p><b>Qué falta:</b> el cortante horizontal de cada pata (Fx/Fz) y el momento local que genera en el dado (Fx·brazo, Fz·brazo) todavía no se aplican como carga — modelarlo bien requeriría agregar un vínculo rígido (nodo maestro por dado) al solver, ver "Mejoras futuras" en el roadmap. Por ahora, esta vista previa <b>no reemplaza el diseño de la sección 5.</b></p>
+          </div>
+        </details>
       </div>
     </section>
     </div>
@@ -6039,6 +6092,16 @@ function calcularLongitudDesarrolloACI(varilla, r_cm, topBar){
 
 let sceneAcero=null, cameraAcero=null, rendererAcero=null, controlsAcero=null;
 let aceroGroup=null, animAceroRunning=false;
+// Fase 10 (adelantada, a pedido del usuario) — vista 3D interactiva de la
+// deformada del preview del Motor FEM, mismo patrón que Acero 3D (renderer/
+// cámara/luces/OrbitControls) — ver initFemDeformada3D.
+let sceneFemDef=null, cameraFemDef=null, rendererFemDef=null, controlsFemDef=null;
+let femDefGroup=null, animFemDefRunning=false;
+let femDeformadaEscalaFactor = 5; // multiplicador manual (slider 1-9) sobre la escala automática
+let femDeformadaUltimoCentro = null, femDeformadaUltimoTam = 1; // para reposicionar la cámara desde los botones de vista
+let lastFemPreviewResultado = null, lastFemPreviewMaxW = 0; // para redibujar la deformada 3D al mover el slider de escala, sin volver a resolver
+let femDeformadaUltimoU = null; // último vector de desplazamientos, para el hover (lectura por nodo)
+const femRaycaster = new THREE.Raycaster(), femRaycasterMouse = new THREE.Vector2();
 // El acero siempre sólido/opaco (transparent:true en TODOS los materiales,
 // incluso con opacity 1, metía los cilindros en la cola de render
 // transparente de Three.js —ordenada por objeto, no por profundidad— y
@@ -9077,6 +9140,12 @@ function initTabs(){
     if(name === "interaccion") calcularYRenderizarPMM();
     if(name === "acero3d"){ initAcero3D(); resizeAcero3D(); }
     else stopAcero3DLoop();
+    // Vista 3D de la deformada (fase 10 adelantada, dentro de "Motor FEM"):
+    // solo se inicializa la primera vez que se corre un análisis
+    // (femRunPreview), acá solo se retoma/pausa el loop y se reajusta el
+    // tamaño al cambiar de pestaña, igual criterio que Acero 3D.
+    if(name === "motor"){ if(sceneFemDef){ resizeFemDeformada3D(); if(!animFemDefRunning) startFemDeformada3DLoop(); } }
+    else animFemDefRunning = false;
   }
   tabs.forEach(b=>b.addEventListener("click", ()=>setActive(b.dataset.tab)));
   setActive("revisiones");
@@ -9310,6 +9379,8 @@ const ELEM_MEC_FIELDS = ["plate","lc","sqx","sqy","sx","sy","sxy","mx","my","mxy
 // celdas copiadas de golpe, como la tabla que exporta STAAD), se reparte
 // entre filas/columnas a partir de la celda con foco, en vez de meter todo
 // el texto crudo en un solo input.
+const ELEM_MEC_LABELS_NORM = ELEM_MEC_ROWS.map(l=>l.toLowerCase());
+
 function initElementosMecanicosPaste(){
   const tbody = document.querySelector("#tblElementosMecanicos tbody");
   if(!tbody) return;
@@ -9322,17 +9393,30 @@ function initElementosMecanicosPaste(){
     const texto = (e.clipboardData || window.clipboardData).getData("text");
     if(!texto || !/[\t\n]/.test(texto)) return; // un solo valor: dejar el pegado normal del navegador
     e.preventDefault();
-    texto.replace(/\r/g,"").split("\n").filter(l=>l.length>0).forEach((linea, dr)=>{
-      const ri = ri0 + dr;
-      if(ri >= state.elementosMecanicos.length) return;
+    let dr = 0;
+    texto.replace(/\r/g,"").split("\n").filter(l=>l.length>0).forEach((linea)=>{
       let celdas = linea.split("\t");
-      // La grilla de resultados de STAAD tiene una primera columna fija
-      // (etiqueta de fila, p.ej. "Max Qx"/"Min Qy") que no se puede excluir
-      // de la selección al copiar — si el pegado arranca en "plate" y esa
-      // primera celda no es el ID numérico esperado, se descarta.
-      if(fi0 === 0 && celdas.length > 1 && isNaN(parseDecimal(celdas[0]))){
+      // El bloque copiado tal cual de STAAD (resumen Max/Min de placas) trae,
+      // además de las 16 filas de datos, 2 líneas de encabezado por arriba
+      // ("Shear (Local)  Membrane (Local)  ..." y "Plate  L/C  SQX kg/cm2 ...")
+      // y una primera columna fija con la etiqueta de fila ("Max Qx"/"Min Qy")
+      // que no se puede excluir al seleccionar/copiar en STAAD. En vez de
+      // asumir que cada línea pegada es la fila siguiente en orden, se busca
+      // la etiqueta en la primera celda para ubicar la fila por NOMBRE — así
+      // se puede pegar el bloque completo (con encabezados incluidos, en
+      // cualquier orden) sin armar la selección a mano fila por fila.
+      const li = ELEM_MEC_LABELS_NORM.indexOf(celdas[0].trim().toLowerCase());
+      let ri;
+      if(li >= 0){
+        ri = li;
         celdas = celdas.slice(1);
+      } else if(celdas.length > 1 && isNaN(parseDecimal(celdas[0]))){
+        return; // línea de encabezado (sin etiqueta de fila reconocible): descartar
+      } else {
+        ri = ri0 + dr;
+        dr++;
       }
+      if(ri >= state.elementosMecanicos.length) return;
       celdas.forEach((valor, dc)=>{
         const fi = fi0 + dc;
         if(fi >= ELEM_MEC_FIELDS.length) return;
@@ -9356,16 +9440,16 @@ function renderElementosMecanicosDiseno(){
   tbody.innerHTML = state.elementosMecanicos.map((row, ri) => `
     <tr>
       <td style="text-align:left; font-weight:600;">${row.label}</td>
-      <td><input type="text" data-ri="${ri}" data-f="plate" value="${row.plate}" style="width:70px;" aria-label="${row.label}, Plate"></td>
-      <td><input type="text" data-ri="${ri}" data-f="lc" value="${row.lc}" style="width:230px;" aria-label="${row.label}, L/C"></td>
-      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sqx" value="${row.sqx}" aria-label="${row.label}, SQX"></td>
-      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sqy" value="${row.sqy}" aria-label="${row.label}, SQY"></td>
-      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sx" value="${row.sx}" aria-label="${row.label}, SX"></td>
-      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sy" value="${row.sy}" aria-label="${row.label}, SY"></td>
-      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sxy" value="${row.sxy}" aria-label="${row.label}, SXY"></td>
-      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="mx" value="${row.mx}" aria-label="${row.label}, MX"></td>
-      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="my" value="${row.my}" aria-label="${row.label}, MY"></td>
-      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="mxy" value="${row.mxy}" aria-label="${row.label}, MXY"></td>
+      <td><input type="text" data-ri="${ri}" data-f="plate" value="${row.plate}" style="width:60px;" aria-label="${row.label}, Plate"></td>
+      <td><input type="text" data-ri="${ri}" data-f="lc" value="${row.lc}" style="width:130px;" title="${row.lc}" aria-label="${row.label}, L/C"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sqx" value="${row.sqx}" style="width:72px;" aria-label="${row.label}, SQX"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sqy" value="${row.sqy}" style="width:72px;" aria-label="${row.label}, SQY"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sx" value="${row.sx}" style="width:72px;" aria-label="${row.label}, SX"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sy" value="${row.sy}" style="width:72px;" aria-label="${row.label}, SY"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="sxy" value="${row.sxy}" style="width:72px;" aria-label="${row.label}, SXY"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="mx" value="${row.mx}" style="width:72px;" aria-label="${row.label}, MX"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="my" value="${row.my}" style="width:72px;" aria-label="${row.label}, MY"></td>
+      <td><input type="text" inputmode="decimal" step="any" data-ri="${ri}" data-f="mxy" value="${row.mxy}" style="width:72px;" aria-label="${row.label}, MXY"></td>
     </tr>`).join("");
   tbody.querySelectorAll("input").forEach(inp=>{
     inp.addEventListener("input", ()=>{
@@ -10580,6 +10664,36 @@ function initBindings(){
       controlsAcero.update();
     });
   });
+  // Vista 3D de la deformada del preview del Motor FEM (fase 10 adelantada) —
+  // mismos botones Isométrica/Planta que Acero 3D, reposicionando la cámara
+  // sobre el último centro/tamaño calculado en updateFemDeformada3D.
+  document.getElementById("btnFemDeformadaIso").addEventListener("click", ()=>{
+    if(!cameraFemDef || !controlsFemDef) return;
+    const c = femDeformadaUltimoCentro || new THREE.Vector3(0,0,0), tam = femDeformadaUltimoTam;
+    // Girada 180° en planta respecto a la isométrica "de libro" (a pedido del
+    // usuario: la pata P1 debe quedar arriba en la vista por defecto) — mismo
+    // ángulo de elevación (tam*0.68), signos de x/z invertidos.
+    cameraFemDef.position.set(c.x - tam*0.95, tam*0.68, c.z + tam*0.75);
+    controlsFemDef.target.copy(c);
+    controlsFemDef.update();
+  });
+  document.getElementById("btnFemDeformadaPlanta").addEventListener("click", ()=>{
+    if(!cameraFemDef || !controlsFemDef) return;
+    const c = femDeformadaUltimoCentro || new THREE.Vector3(0,0,0), tam = femDeformadaUltimoTam;
+    cameraFemDef.position.set(c.x+0.001, tam, c.z+0.001);
+    controlsFemDef.target.copy(c);
+    controlsFemDef.update();
+  });
+  document.getElementById("femDeformadaEscala").addEventListener("input", (e)=>{
+    femDeformadaEscalaFactor = +e.target.value;
+    document.getElementById("femDeformadaEscalaTxt").textContent = `×${fmt(femDeformadaEscalaFactor/5,2)}`;
+    if(lastMallaMesh){
+      const malla = femBuildMeshAdapter(lastMallaMesh);
+      if(malla.nodos.length && lastFemPreviewResultado && lastPlanArgs){
+        updateFemDeformada3D(malla, lastFemPreviewResultado.u, lastFemPreviewMaxW, lastPlanArgs.outerC, lastFemPreviewResultado.activos);
+      }
+    }
+  });
   document.getElementById("btnAceroExportPng").addEventListener("click", ()=>{
     if(!rendererAcero || !sceneAcero || !cameraAcero) return;
     rendererAcero.render(sceneAcero, cameraAcero);
@@ -10925,9 +11039,7 @@ function femPlacaStiffness(nodosTriangulo, espesor, E, nu){
   const { area } = femPlacaGeom(nodosTriangulo);
   const { Bb, Bs } = femPlacaB(nodosTriangulo);
   const Db = femPlacaDb(espesor, E, nu);
-  const G = E/(2*(1+nu));
-  const kShear = 5/6; // factor de corrección por cortante (Reissner-Mindlin)
-  const Gs = kShear*G*espesor;
+  const Gs = femPlacaGs(espesor, E, nu);
   const Ke = Array.from({length:9}, ()=> new Array(9).fill(0));
   for(let i=0;i<9;i++){
     for(let j=0;j<9;j++){
@@ -11220,11 +11332,13 @@ function femPreviewRamp(t){
 // nodo (femRunPreview les agrega muInferior/muSuperior a momentosPorNodo),
 // así que el resto del código los trata todos igual, sin casos especiales.
 const FEM_MOMENTO_COMPONENTES = [
-  { key:"Mx", label:"Mx" },
-  { key:"My", label:"My" },
-  { key:"Mxy", label:"Mxy" },
-  { key:"muInferior", label:"Mu inferior (Wood-Armer)" },
-  { key:"muSuperior", label:"Mu superior (Wood-Armer)" }
+  { key:"Mx", label:"Mx", unidad:"Tn·m/m" },
+  { key:"My", label:"My", unidad:"Tn·m/m" },
+  { key:"Mxy", label:"Mxy", unidad:"Tn·m/m" },
+  { key:"muInferior", label:"Mu inferior (Wood-Armer)", unidad:"Tn·m/m" },
+  { key:"muSuperior", label:"Mu superior (Wood-Armer)", unidad:"Tn·m/m" },
+  { key:"Qx", label:"Qx (cortante transversal)", unidad:"Tn/m" },
+  { key:"Qy", label:"Qy (cortante transversal)", unidad:"Tn/m" }
 ];
 // Mismos 17 colores leídos del legend de STAAD.Pro (capturas de MX/MY/MXY
 // local), pero invertidos (de mínimo a máximo ahora: rojo, naranja-rojizo,
@@ -11255,7 +11369,7 @@ function femMomentoRamp(t){ // t en [0,1]
 // (fase 07) y coloreado por elemento con el promedio de sus 3 nodos — mismo
 // patrón que femPreviewSvg (deflexión), pero con la escala tipo STAAD.Pro
 // (femMomentoRamp) normalizada sobre el rango real min-max del campo.
-function femMomentosSvg(outerC, holeC, momentosPorNodo, componente){
+function femMomentosSvg(outerC, holeC, momentosPorNodo, componente, dados){
   const idxByPointRef = new Map();
   lastMallaMesh.points.forEach((p,i)=>idxByPointRef.set(p,i));
   const pad = 0.4;
@@ -11277,9 +11391,16 @@ function femMomentosSvg(outerC, holeC, momentosPorNodo, componente){
   }).join("");
   const outerPts = outerC.map(p=>`${p.x},${-p.y}`).join(" ");
   const holePts = (holeC && holeC.length>=3) ? holeC.map(p=>`${p.x},${-p.y}`).join(" ") : "";
+  // Contorno de cada dado (pedestal) — mismo color naranja (stroke) que ya
+  // usa "Urdimbre Mesh" (4.4, CLASS_STYLE.pedestal) para resaltarlos, para
+  // ubicar de un vistazo dónde cae cada pico del mapa respecto al dado más
+  // cercano.
+  const dadosMarkup = (dados||[]).map(poly=>
+    `<polygon points="${poly.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="none" stroke="#8a5a1a" stroke-width="${strokeW*2}"/>`
+  ).join("");
   const r = Math.max(w,h)/70;
   const fs = Math.max(w,h)/38;
-  const label = FEM_MOMENTO_COMPONENTES.find(c=>c.key===componente).label;
+  const { label, unidad } = FEM_MOMENTO_COMPONENTES.find(c=>c.key===componente);
   // Leyenda: barra de degradado continuo (mismos colores de STAAD, ya
   // invertidos e interpolados — ver femMomentoRamp) con marcas de valor al
   // costado, en vez de la lista de 17 franjas planas de antes.
@@ -11293,23 +11414,28 @@ function femMomentosSvg(outerC, holeC, momentosPorNodo, componente){
   // analítica, porque el campo ya está discretizado por nodo (fase 07). El
   // valor se muestra en un <text> flotante que sigue al cursor (no en un
   // párrafo aparte) — pedido explícito del usuario.
-  return `<div style="display:flex; gap:14px; align-items:flex-start;">
-    <div>
-      <div style="font-size:11px; color:var(--muted); margin-bottom:4px;">${label}<br>Tn·m/m</div>
-      <div style="display:flex; gap:6px; align-items:stretch;">
-        <div style="width:16px; height:280px; border-radius:3px; border:1px solid rgba(128,128,128,.35); background:linear-gradient(to top, ${gradStops});"></div>
-        <div style="display:flex; flex-direction:column; justify-content:space-between; height:280px;">${tickRows}</div>
-      </div>
-    </div>
-    <svg id="femPreviewMomentoSvgEl" viewBox="${xmin} ${-ymax} ${w} ${h}" style="flex:1; min-width:0; height:520px; display:block; background:var(--panel); cursor:crosshair;">
+  return `<div style="position:relative;">
+    <svg id="femPreviewMomentoSvgEl" viewBox="${xmin} ${-ymax} ${w} ${h}" style="width:100%; height:520px; display:block; background:var(--panel); cursor:crosshair;">
       ${cellsMarkup}
       <polygon points="${outerPts}" fill="none" stroke="var(--accent)" stroke-width="${strokeW*2.5}"/>
       ${holePts ? `<polygon points="${holePts}" fill="var(--input-bg)" stroke="#c0392b" stroke-width="${strokeW*2.5}" stroke-dasharray="${Math.max(w,h)/120},${Math.max(w,h)/120}"/>` : ""}
+      ${dadosMarkup}
       <circle id="femPreviewMomentoCursor" class="hidden" r="${r*0.7}" fill="none" stroke="var(--danger-fg)" stroke-width="${strokeW*2}"/>
       <text id="femPreviewMomentoTexto" class="hidden" font-size="${fs}" font-weight="600" fill="#000" stroke="#fff" stroke-width="${fs/6}" paint-order="stroke" text-anchor="start"></text>
     </svg>
+    <div style="position:absolute; top:10px; left:10px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 10px; font-size:11px; z-index:5;">
+      <div style="color:var(--muted); margin-bottom:4px;">${label}<br>${unidad}</div>
+      <div style="display:flex; gap:6px; align-items:stretch;">
+        <div style="width:16px; height:220px; border-radius:3px; border:1px solid rgba(128,128,128,.35); background:linear-gradient(to top, ${gradStops});"></div>
+        <div style="display:flex; flex-direction:column; justify-content:space-between; height:220px;">${tickRows}</div>
+      </div>
+    </div>
   </div>
-  <p class="small" style="color:var(--muted); margin-top:6px;">${componente==="Mxy" ? "Mxy entra al diseño solo como |Mxy| (Wood-Armer, fase 08) — su signo no afecta el resultado." : "Signo verificado (fase 08, caso físico de carga puntual sobre resortes): positivo = tracción abajo = refuerzo inferior."}</p>`;
+  <p class="small" style="color:var(--muted); margin-top:6px;">${
+    componente==="Qx" || componente==="Qy" ? "Cortante transversal crudo por nodo (fuerza por unidad de ancho) — para la revisión de la sección 5.4 se evalúa en la sección crítica a distancia \"d\" de la cara del dado, ver tabla más abajo, no el pico de este mapa."
+    : componente==="Mxy" ? "Mxy entra al diseño solo como |Mxy| (Wood-Armer, fase 08) — su signo no afecta el resultado."
+    : "Signo verificado (fase 08, caso físico de carga puntual sobre resortes): positivo = tracción abajo = refuerzo inferior."
+  }</p>`;
 }
 // Arma el resumen (tabla max/min) + selector de componente + mapa de color,
 // a partir de la última corrida guardada en lastMomentosPreview — separado
@@ -11318,26 +11444,26 @@ function femMomentosSvg(outerC, holeC, momentosPorNodo, componente){
 function femPreviewRenderMomentos(){
   const wrap = document.getElementById("femPreviewMomentosWrap");
   if(!lastMomentosPreview){ wrap.innerHTML = ""; return; }
-  const { momentosPorNodo, outerC, holeC } = lastMomentosPreview;
-  const filas = FEM_MOMENTO_COMPONENTES.map(({key,label})=>{
+  const { momentosPorNodo, outerC, holeC, dados } = lastMomentosPreview;
+  const filas = FEM_MOMENTO_COMPONENTES.map(({key,label,unidad})=>{
     let mx=-Infinity, mn=Infinity;
     momentosPorNodo.forEach(m=>{ if(m[key]>mx) mx=m[key]; if(m[key]<mn) mn=m[key]; });
-    return [label, mx, mn];
+    return [label, mx, mn, unidad];
   });
-  wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:6px;">Momentos por nodo (fase 07, promedio ponderado por área entre los elementos vecinos) + Mu de diseño por Wood-Armer (fase 08, mismo criterio que la sección 5.3):</p>
+  wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:6px;">Momentos por nodo (fase 07, promedio ponderado por área entre los elementos vecinos) + Mu de diseño por Wood-Armer (fase 08, mismo criterio que la sección 5.3) + cortante transversal Qx/Qy (mismo criterio, para la sección 5.4):</p>
     <div style="overflow-x:auto; margin-bottom:12px;"><table class="em-table">
       <thead><tr><th>Componente</th><th>Máximo</th><th>Mínimo</th></tr></thead>
-      <tbody>${filas.map(([label,mx,mn])=>`<tr><td>${label}</td><td>${fmt(mx/1000,3)} Tn·m/m</td><td>${fmt(mn/1000,3)} Tn·m/m</td></tr>`).join("")}</tbody>
+      <tbody>${filas.map(([label,mx,mn,unidad])=>`<tr><td>${label}</td><td>${fmt(mx/1000,3)} ${unidad}</td><td>${fmt(mn/1000,3)} ${unidad}</td></tr>`).join("")}</tbody>
     </table></div>
-    <label class="field" style="max-width:320px; margin-bottom:8px;"><span class="lbl">Mapa de momento</span><select id="femPreviewMomentoSelect">${FEM_MOMENTO_COMPONENTES.map(({key,label})=>`<option value="${key}"${femPreviewMomentosComponente===key?" selected":""}>${label}</option>`).join("")}</select></label>
+    <label class="field" style="max-width:400px; margin-bottom:8px; justify-content:flex-start; gap:10px;"><span class="lbl" style="white-space:nowrap;">Mapa de solicitaciones</span><select id="femPreviewMomentoSelect">${FEM_MOMENTO_COMPONENTES.map(({key,label})=>`<option value="${key}"${femPreviewMomentosComponente===key?" selected":""}>${label}</option>`).join("")}</select></label>
     <div id="femPreviewMomentoSvg"></div>`;
   const dibujarSvg = ()=>{
-    document.getElementById("femPreviewMomentoSvg").innerHTML = femMomentosSvg(outerC, holeC, momentosPorNodo, femPreviewMomentosComponente);
+    document.getElementById("femPreviewMomentoSvg").innerHTML = femMomentosSvg(outerC, holeC, momentosPorNodo, femPreviewMomentosComponente, dados);
     const svg = document.getElementById("femPreviewMomentoSvgEl");
     const cursor = document.getElementById("femPreviewMomentoCursor");
     const texto = document.getElementById("femPreviewMomentoTexto");
     const off = svg.viewBox.baseVal.width/45; // desplazamiento del texto respecto al cursor, en unidades del propio viewBox
-    const labelSel = FEM_MOMENTO_COMPONENTES.find(c=>c.key===femPreviewMomentosComponente).label;
+    const { label: labelSel, unidad: unidadSel } = FEM_MOMENTO_COMPONENTES.find(c=>c.key===femPreviewMomentosComponente);
     svg.addEventListener("mousemove", (e)=>{
       const p = svgEventToPlan(svg, e);
       const dentro = pointInPolygon(p, outerC) && !(holeC && holeC.length>=3 && pointInPolygon(p, holeC));
@@ -11351,7 +11477,7 @@ function femPreviewRenderMomentos(){
       cursor.setAttribute("cx", p.x); cursor.setAttribute("cy", -p.y);
       cursor.classList.remove("hidden");
       texto.setAttribute("x", p.x + off); texto.setAttribute("y", -p.y - off);
-      texto.textContent = `${labelSel}: ${fmt(valor/1000,3)} Tn·m/m`;
+      texto.textContent = `${labelSel}: ${fmt(valor/1000,3)} ${unidadSel}`;
       texto.classList.remove("hidden");
     });
     svg.addEventListener("mouseleave", ()=>{
@@ -11365,43 +11491,169 @@ function femPreviewRenderMomentos(){
     dibujarSvg();
   });
 }
-function femPreviewSvg(u, maxW, outerC, activos){
-  const idxByPointRef = new Map();
-  lastMallaMesh.points.forEach((p,i)=>idxByPointRef.set(p,i));
-  const pad = 0.4;
+// Fase 10 (adelantada a pedido del usuario) — vista 3D interactiva de la
+// deformada, mismo patrón de Three.js que "Acero 3D" (renderer/cámara/luces/
+// OrbitControls, ver initAcero3D más arriba): un plano de referencia plano
+// (la forma SIN deformar, semitransparente) más la superficie deformada de
+// verdad (vértices desplazados w·escala, coloreados con femPreviewRamp por
+// vértice) — igual que un diagrama de deformada de STAAD, con el original y
+// la deformada juntos en la misma escena orbitable, en vez de un mapa de
+// color plano en 2D (que no puede mostrar la forma real del hundimiento,
+// perpendicular a la vista en planta).
+function initFemDeformada3D(){
+  const canvas = document.getElementById("canvasFemDeformada");
+  if(!canvas || sceneFemDef) return;
+  let gl = null;
+  try{ gl = canvas.getContext("webgl2") || canvas.getContext("webgl"); }catch(e){ gl = null; }
+  if(!gl){
+    document.getElementById("femDeformadaNoWebgl").classList.remove("hidden");
+    return;
+  }
+  rendererFemDef = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+  rendererFemDef.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  sceneFemDef = new THREE.Scene();
+  cameraFemDef = new THREE.PerspectiveCamera(45, 1, 0.05, 1000);
+  sceneFemDef.add(new THREE.AmbientLight(0xffffff, 0.75));
+  const dl1 = new THREE.DirectionalLight(0xffffff, 0.6); dl1.position.set(5,10,5); sceneFemDef.add(dl1);
+  const dl2 = new THREE.DirectionalLight(0xffffff, 0.35); dl2.position.set(-4,6,-6); sceneFemDef.add(dl2);
+  controlsFemDef = new THREE.OrbitControls(cameraFemDef, canvas);
+  controlsFemDef.enableDamping = true;
+  femDefGroup = new THREE.Group();
+  sceneFemDef.add(femDefGroup);
+  resizeFemDeformada3D();
+  startFemDeformada3DLoop();
+
+  // Lectura de asentamiento por nodo al pasar el mouse (fase 10): raycast
+  // contra la malla deformada, se toma el vértice de la cara intersectada
+  // más cercano al punto de impacto (el campo es por nodo, no hay nada que
+  // interpolar dentro de la cara). Este gráfico es solo de desplazamientos —
+  // los esfuerzos/momentos tienen su propio cursor de lectura en el mapa 2D
+  // de más abajo (femPreviewRenderMomentos).
+  const readout = document.getElementById("femDeformadaReadout");
+  canvas.addEventListener("mousemove", (e)=>{
+    const meshDef = femDefGroup && femDefGroup.children.find(o=>o.isMesh && o.material && o.material.vertexColors);
+    if(!meshDef){ readout.classList.add("hidden"); return; }
+    const rect = canvas.getBoundingClientRect();
+    femRaycasterMouse.x = ((e.clientX-rect.left)/rect.width)*2-1;
+    femRaycasterMouse.y = -((e.clientY-rect.top)/rect.height)*2+1;
+    femRaycaster.setFromCamera(femRaycasterMouse, cameraFemDef);
+    const hits = femRaycaster.intersectObject(meshDef);
+    if(!hits.length){ readout.classList.add("hidden"); return; }
+    const hit = hits[0];
+    const pos = meshDef.geometry.attributes.position;
+    const idxs = [hit.face.a, hit.face.b, hit.face.c];
+    let best = idxs[0], bestD = Infinity;
+    idxs.forEach(ix=>{
+      const dx=pos.getX(ix)-hit.point.x, dy=pos.getY(ix)-hit.point.y, dz=pos.getZ(ix)-hit.point.z;
+      const d = dx*dx+dy*dy+dz*dz;
+      if(d<bestD){ bestD=d; best=ix; }
+    });
+    readout.classList.remove("hidden");
+    const wCm = femDeformadaUltimoU ? -femDeformadaUltimoU[3*best+0]*100 : 0;
+    readout.textContent = `Nodo ${best+1} · asentamiento ${fmt(wCm,3)} cm`;
+  });
+  canvas.addEventListener("mouseleave", ()=> readout.classList.add("hidden"));
+}
+function resizeFemDeformada3D(){
+  if(!rendererFemDef || !cameraFemDef) return;
+  const canvas = document.getElementById("canvasFemDeformada");
+  if(!canvas) return;
+  const w = canvas.clientWidth||1, h = canvas.clientHeight||1;
+  rendererFemDef.setSize(w, h, false);
+  cameraFemDef.aspect = w/h;
+  cameraFemDef.updateProjectionMatrix();
+}
+function startFemDeformada3DLoop(){
+  animFemDefRunning = true;
+  function loop(){
+    if(!animFemDefRunning) return;
+    requestAnimationFrame(loop);
+    if(controlsFemDef) controlsFemDef.update();
+    if(rendererFemDef && sceneFemDef && cameraFemDef) rendererFemDef.render(sceneFemDef, cameraFemDef);
+  }
+  loop();
+}
+// Barra de degradado + ticks para la leyenda de un componente de momento/
+// cortante — mismos colores/criterio que la leyenda del mapa 2D
+// malla/u/maxW/outerC/activos: mismos datos que ya arma femRunPreview. El
+// mapeo planta(x,y) -> mundo 3D es (x, w·escala, -y) — Three usa Y como
+// vertical, igual convención que el resto de la app (ver Acero 3D/Visor 3D).
+// Este gráfico SOLO representa desplazamientos (asentamiento w) — a pedido
+// explícito del usuario no se combina con esfuerzos/momentos acá (esos
+// tienen su propio mapa de color en 2D, femMomentosSvg/femPreviewMomentoSvg,
+// más abajo).
+function updateFemDeformada3D(malla, u, maxW, outerC, activos){
+  if(!sceneFemDef) return;
+  femDeformadaUltimoU = u;
+  sceneFemDef.remove(femDefGroup);
+  femDefGroup.traverse(obj=>{
+    if(obj.geometry) obj.geometry.dispose();
+    if(obj.material) obj.material.dispose();
+  });
+  femDefGroup = new THREE.Group();
+  sceneFemDef.add(femDefGroup);
+
   let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
   outerC.forEach(p=>{ xmin=Math.min(xmin,p.x); xmax=Math.max(xmax,p.x); ymin=Math.min(ymin,p.y); ymax=Math.max(ymax,p.y); });
-  xmin-=pad; xmax+=pad; ymin-=pad; ymax+=pad;
-  const w = xmax-xmin, h = ymax-ymin;
-  const strokeW = Math.max(w,h)/450;
-  let hayLevantados = false;
-  const cellsMarkup = lastMallaMesh.elements.map(el=>{
-    const idxs = el.poly.map(p=>idxByPointRef.get(p));
-    const ws = idxs.map(i => -u[3*i+0]);
-    const avg = ws.reduce((a,b)=>a+b,0)/ws.length;
-    const t = maxW>0 ? Math.max(0, Math.min(1, avg/maxW)) : 0;
-    const col = femPreviewRamp(t);
-    const base = `<polygon points="${el.poly.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="${col}" stroke="${col}" stroke-width="${strokeW}"/>`;
-    // Elemento con al menos un nodo sin contacto (resorte desactivado por la
-    // fase 05 — no linealidad compression-only): se resalta aparte, porque
-    // el asentamiento casi-cero de esa zona se vería igual de "blanco" que
-    // un punto simplemente poco cargado si no se marca explícitamente.
-    const levantado = activos && idxs.some(i => !activos[i]);
-    if(levantado) hayLevantados = true;
-    const overlay = levantado
-      ? `<polygon points="${el.poly.map(p=>`${p.x},${-p.y}`).join(" ")}" fill="#d9432e" fill-opacity="0.4" stroke="none"/>`
-      : "";
-    return base + overlay;
-  }).join("");
-  const outerPts = outerC.map(p=>`${p.x},${-p.y}`).join(" ");
-  const leyendaLevantados = hayLevantados
-    ? ` · <span style="color:#d9432e;">■</span> zona sin contacto con el suelo (resorte desactivado, sin tracción posible)`
-    : "";
-  return `<svg viewBox="${xmin} ${-ymax} ${w} ${h}" style="width:100%; height:520px; display:block; background:var(--panel);">
-    ${cellsMarkup}
-    <polygon points="${outerPts}" fill="none" stroke="var(--accent)" stroke-width="${strokeW*2.5}"/>
-  </svg>
-  <p class="small" style="color:var(--muted); margin-top:6px;">Escala de flecha: 0 (blanco) → ${fmt(maxW*100,3)} cm hacia abajo (azul oscuro)${leyendaLevantados}.</p>`;
+  const tam = Math.max(xmax-xmin, ymax-ymin) || 1;
+  // Escala automática: que la flecha máxima ocupe ~12% del tamaño en planta
+  // (si no, a escala real sería invisible — un asentamiento de centímetros
+  // sobre una losa de varios metros) — el slider (1-9, centrado en 5) la
+  // multiplica entre ~0.2x y ~1.8x.
+  const escalaAuto = maxW>0 ? (tam*0.12)/maxW : 1;
+  const escala = escalaAuto * (femDeformadaEscalaFactor/5);
+
+  const nNodos = malla.nodos.length;
+  const posDef = new Float32Array(nNodos*3), posFlat = new Float32Array(nNodos*3), colores = new Float32Array(nNodos*3);
+  for(let i=0;i<nNodos;i++){
+    const p = malla.nodos[i];
+    const w = -u[3*i+0]; // positivo = hundimiento (misma convención que el resto de la app)
+    // u ya viene en convención "positivo=arriba" (confirmada en fase 08 con
+    // el caso físico de carga puntual) — igual que el eje Y de Three acá,
+    // así que la posición 3D es proporcional a u directo, sin negar de nuevo.
+    posDef[3*i]=p.x; posDef[3*i+1]=u[3*i+0]*escala; posDef[3*i+2]=-p.y;
+    posFlat[3*i]=p.x; posFlat[3*i+1]=0; posFlat[3*i+2]=-p.y;
+    const t = maxW>0 ? Math.max(0, Math.min(1, w/maxW)) : 0;
+    const activo = !activos || activos[i];
+    const col = activo ? femPreviewRamp(t) : "#d9432e";
+    const m = col.match(/rgb\((\d+),(\d+),(\d+)\)/);
+    if(m){ colores[3*i]=+m[1]/255; colores[3*i+1]=+m[2]/255; colores[3*i+2]=+m[3]/255; }
+  }
+  const indices = [];
+  malla.elementos.forEach(el=>{ indices.push(el.n[0], el.n[1], el.n[2]); });
+
+  const geoDef = new THREE.BufferGeometry();
+  geoDef.setAttribute("position", new THREE.BufferAttribute(posDef, 3));
+  geoDef.setAttribute("color", new THREE.BufferAttribute(colores, 3));
+  geoDef.setIndex(indices);
+  geoDef.computeVertexNormals();
+  const matDef = new THREE.MeshStandardMaterial({ vertexColors:true, side:THREE.DoubleSide, roughness:0.85, metalness:0.05 });
+  femDefGroup.add(new THREE.Mesh(geoDef, matDef));
+
+  // Plano de referencia SIN deformar (la "figura original") — semitransparente,
+  // más el contorno marcado, para comparar contra la superficie hundida.
+  const geoFlat = new THREE.BufferGeometry();
+  geoFlat.setAttribute("position", new THREE.BufferAttribute(posFlat, 3));
+  geoFlat.setIndex(indices);
+  const matFlat = new THREE.MeshBasicMaterial({ color:0x9aa5b1, transparent:true, opacity:0.18, side:THREE.DoubleSide, depthWrite:false });
+  femDefGroup.add(new THREE.Mesh(geoFlat, matFlat));
+
+  const outerPts = outerC.map(p=> new THREE.Vector3(p.x, 0, -p.y));
+  outerPts.push(outerPts[0]);
+  const geoOutline = new THREE.BufferGeometry().setFromPoints(outerPts);
+  femDefGroup.add(new THREE.Line(geoOutline, new THREE.LineBasicMaterial({ color:0x4a90d9 })));
+
+  const centro = new THREE.Vector3((xmin+xmax)/2, 0, -(ymin+ymax)/2);
+  femDeformadaUltimoCentro = centro; femDeformadaUltimoTam = tam;
+  // Isométrica por defecto girada 180° respecto a Acero 3D/Visor 3D (a pedido
+  // del usuario: la pata P1 debe quedar arriba en la vista) — mismo ángulo de
+  // elevación (tam*0.68), signos de x/z invertidos frente al patrón "de libro".
+  cameraFemDef.position.set(centro.x - tam*0.95, tam*0.68, centro.z + tam*0.75);
+  controlsFemDef.target.copy(centro);
+  controlsFemDef.update();
+
+  const hayLevantados = activos && Array.from(activos).some(a=>!a);
+  document.getElementById("femDeformadaLeyenda").innerHTML = `Escala de la deformada: ×${fmt(femDeformadaEscalaFactor/5,2)} sobre la automática (flecha máx. ${fmt(maxW*100,3)} cm → ${fmt(maxW*escala*100,1)} cm dibujados)${hayLevantados ? ` · <span style="color:#d9432e;">■</span> sin contacto con el suelo` : ""}. Plano gris: forma original sin deformar.`;
 }
 // Barra de progreso del preview (5.10) — el único paso costoso es el loop
 // de la fase 05 (varias resoluciones lineales sucesivas), y no se conoce de
@@ -11425,17 +11677,58 @@ function femPreviewOcultarProgreso(){
   document.getElementById("femPreviewProgressWrap").classList.add("hidden");
 }
 
+// Pastilla de estado del panel (fase 10, dashboard) — refleja el ciclo de
+// vida de la corrida (sin correr -> corriendo -> convergió/con avisos/error)
+// sin depender de leer los mensajes de abajo.
+function femPreviewSetStatus(kind, texto){
+  const pill = document.getElementById("femPreviewStatusPill");
+  if(!pill) return;
+  pill.className = `fem-status-pill${kind ? " "+kind : ""}`;
+  pill.innerHTML = `<span class="dot"></span>${texto}`;
+}
+
+function femPreviewKpiCard(eyebrow, valor, caption, accent){
+  return `<div class="fem-kpi${accent ? ` accent-${accent}` : ""}"><div class="eyebrow">${eyebrow}</div><div class="value">${valor}</div><div class="caption">${caption}</div></div>`;
+}
+// Resumen numérico como tarjetas tipo dashboard (fase 10) — reemplaza el
+// props-grid plano de antes; misma información, jerarquía visual más clara.
+function femPreviewRenderKpis({ nNodos, nEq, maxW, cargaTotalAplicada, pesoUniformeTn, factorRelleno, diffEquilibrio, nLevantados, resultado }){
+  const wrap = document.getElementById("femPreviewKpis");
+  if(!wrap) return;
+  const okEquilibrio = Math.abs(diffEquilibrio) < Math.max(1e-3, cargaTotalAplicada*1e-6);
+  const cards = [
+    femPreviewKpiCard("Malla", `${nNodos} / ${nEq}`, "nodos / ecuaciones"),
+    femPreviewKpiCard("Flecha máxima", `${fmt(maxW*100,3)} cm`, "asentamiento en el nodo más comprimido"),
+    femPreviewKpiCard("Carga total aplicada", `${fmt(cargaTotalAplicada/1000,2)} Tn`, "reacciones de patas + peso propio/relleno"),
+    femPreviewKpiCard("Peso propio + relleno", `${fmt(pesoUniformeTn,2)} Tn`, `factor ${fmt(factorRelleno,1)} · ANSI/TIA-222-H §9.4`),
+    femPreviewKpiCard("Equilibrio", `${fmt(diffEquilibrio,4)} kg`, "ΣReacciones − ΣCargas", okEquilibrio ? "ok" : "warn"),
+    femPreviewKpiCard("Nodos sin contacto", `${nLevantados} / ${nNodos}`, `${fmt(100*nLevantados/nNodos,1)}% de la malla levantada`, nLevantados>0 ? "warn" : "ok"),
+    femPreviewKpiCard("Convergencia", resultado.estado==="convergio" ? "Convergió" : "No estabilizó", `${resultado.iter} iteración${resultado.iter===1?"":"es"} (fase 05)`, resultado.estado==="convergio" ? "ok" : "fail"),
+  ];
+  wrap.innerHTML = `<div class="fem-kpi-grid">${cards.join("")}</div>`;
+}
+// Limpia todos los paneles de resultado — usado en cada salida temprana
+// (geometría no soportada, combo sin elegir, solver que falla, etc.) para
+// que no quede un resultado viejo mezclado con el mensaje de error nuevo.
+function femPreviewLimpiarResultados(){
+  ["femPreviewKpis","femPreviewTablas","femPreviewAvisos","femPreviewMomentosWrap","femPreviewCortante"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = "";
+  });
+  lastMomentosPreview = null;
+}
+
 async function femRunPreview(){
   const noSoportado = document.getElementById("femPreviewNoSoportado");
   const controles = document.getElementById("femPreviewControles");
   const resumenEl = document.getElementById("femPreviewResumen");
-  const svgWrapEl = document.getElementById("femPreviewSvgWrap");
   const tipoKey = reactionTypeKey(state.tipoEstructura);
   const cfg = TOWER_TYPES[tipoKey];
   if(!cfg || cfg.kind !== "legs" || !lastMallaMesh || !lastMallaMesh.elements.length || !lastPlanArgs){
     noSoportado.classList.remove("hidden");
     controles.classList.add("hidden");
-    resumenEl.innerHTML = ""; svgWrapEl.innerHTML = ""; document.getElementById("femPreviewMomentosWrap").innerHTML = ""; lastMomentosPreview = null;
+    resumenEl.innerHTML = ""; femPreviewLimpiarResultados();
+    femPreviewSetStatus("", "No disponible");
     return;
   }
   noSoportado.classList.add("hidden");
@@ -11444,7 +11737,8 @@ async function femRunPreview(){
   const malla = femBuildMeshAdapter(lastMallaMesh);
   if(!malla.nodos.length){
     resumenEl.innerHTML = `<div class="message-bar error"><span>La malla (sección 4.4) está vacía — revisa la geometría.</span></div>`;
-    svgWrapEl.innerHTML = ""; document.getElementById("femPreviewMomentosWrap").innerHTML = ""; lastMomentosPreview = null;
+    femPreviewLimpiarResultados();
+    femPreviewSetStatus("fail", "Error");
     return;
   }
 
@@ -11462,8 +11756,9 @@ async function femRunPreview(){
   const comboIdx = cfg.combos.indexOf(comboElegido);
   const reacciones = getCurrentReacciones();
   if(comboIdx < 0 || !reacciones){
-    resumenEl.innerHTML = `<div class="message-bar error"><span>Elegí un caso de carga (combo 1.2D) antes de correr el análisis.</span></div>`;
-    svgWrapEl.innerHTML = ""; document.getElementById("femPreviewMomentosWrap").innerHTML = ""; lastMomentosPreview = null;
+    resumenEl.innerHTML = `<div class="message-bar error"><span>Elige un caso de carga (combo 1.2D) antes de correr el análisis.</span></div>`;
+    femPreviewLimpiarResultados();
+    femPreviewSetStatus("fail", "Error");
     return;
   }
   const filaCombo = reacciones[comboIdx];
@@ -11565,16 +11860,19 @@ async function femRunPreview(){
 
   if(!cargas.length){
     resumenEl.innerHTML = `<div class="message-bar error"><span>No se pudo aplicar ninguna carga. ${avisos.join(" ")}</span></div>`;
-    svgWrapEl.innerHTML = ""; document.getElementById("femPreviewMomentosWrap").innerHTML = ""; lastMomentosPreview = null;
+    femPreviewLimpiarResultados();
+    femPreviewSetStatus("fail", "Error");
     return;
   }
 
+  resumenEl.innerHTML = "";
   const btnRun = document.getElementById("btnFemPreviewRun");
   btnRun.disabled = true;
+  femPreviewSetStatus("running", "Corriendo…");
   femPreviewMostrarProgreso();
   let resultado;
   try{
-    resultado = await femSolveNoLinealConProgreso(malla, { espesor, E, nu, restringidos:[], cargas, resortesBase }, (iter, tope)=>{
+    resultado = await femRunSolverEnWorker(malla, { espesor, E, nu, restringidos:[], cargas, resortesBase }, (iter, tope)=>{
       const frac = 1 - Math.pow(0.7, iter);
       femPreviewSetProgreso(frac, `Resolviendo (no linealidad compression-only) — iteración ${iter} de máx. ${tope}…`);
     });
@@ -11582,11 +11880,12 @@ async function femRunPreview(){
     femPreviewOcultarProgreso();
     btnRun.disabled = false;
     resumenEl.innerHTML = `<div class="message-bar error"><span>El solver falló: ${err.message}</span></div>`;
-    svgWrapEl.innerHTML = ""; document.getElementById("femPreviewMomentosWrap").innerHTML = ""; lastMomentosPreview = null;
+    femPreviewLimpiarResultados();
+    femPreviewSetStatus("fail", "Error");
     return;
   }
   femPreviewSetProgreso(1, "Listo.");
-  setTimeout(femPreviewOcultarProgreso, 500);
+  setTimeout(femPreviewOcultarProgreso, 900);
   btnRun.disabled = false;
   const u = resultado.u;
   const activos = resultado.activos;
@@ -11603,17 +11902,9 @@ async function femRunPreview(){
   }
   const diffEquilibrio = sumReacciones - cargaTotalAplicada;
 
-  resumenEl.innerHTML = "";
-  const grid = document.createElement("div");
-  grid.className = "props-grid";
-  propRow(grid, "Nodos / ecuaciones", `${malla.nodos.length} / ${resultado.nEq}`, "");
-  propRow(grid, "Flecha máxima", fmt(maxW*100,4), "cm");
-  propRow(grid, "Carga total aplicada", fmt(cargaTotalAplicada,0), "kg");
-  propRow(grid, "Peso propio+relleno incluido", fmt(pesoUniformeTn,2), `Tn (factor ${fmt(factorRelleno,1)} sobre pesoTotal, ANSI/TIA-222-H §9.4)`);
-  propRow(grid, "Equilibrio (ΣReacciones − ΣCargas)", fmt(diffEquilibrio,6), "kg");
-  propRow(grid, "Nodos levantados (sin contacto)", `${nLevantados} / ${malla.nodos.length}`, `${fmt(100*nLevantados/malla.nodos.length,1)}%`);
-  propRow(grid, "Convergencia (fase 05)", `${resultado.estado}, ${resultado.iter} iteración${resultado.iter===1?"":"es"}`, "");
-  resumenEl.appendChild(grid);
+  femPreviewRenderKpis({ nNodos: malla.nodos.length, nEq: resultado.nEq, maxW, cargaTotalAplicada, pesoUniformeTn, factorRelleno, diffEquilibrio, nLevantados, resultado });
+  const tablasEl = document.getElementById("femPreviewTablas");
+  tablasEl.innerHTML = "";
 
   // Reacción total POR DADO (todos los nodos del dado, no solo el anillo
   // del grupo JOINT del export STAAD — la malla de cada dado tiene su
@@ -11648,7 +11939,6 @@ async function femRunPreview(){
   });
   if(filasDado.length){
     const wrap = document.createElement("div");
-    wrap.style.marginTop = "12px";
     wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:2px;">Reacción por dado, <b>solo anillo</b> — mismos nodos que el grupo "Dados" (<code>_P1</code>/<code>_P1a</code>/<code>_P1b</code>) del export STAAD, sección 4.7.</p>
       <p class="small" style="color:var(--muted); margin-bottom:8px;">Para validar: en STAAD, selecciona ese mismo grupo y saca la <b>Summation</b> de reacciones (L/C del combo elegido aquí) — ese número es el que se compara contra la columna <b>"Reacción del solver"</b>. Las 3 primeras columnas son la carga aplicada, no lo que hay que comparar contra STAAD; la diferencia entre "Carga total" y "Reacción del solver" es redistribución por flexión de la losa (la carga puntual se reparte a un área más grande que el anillo), no un error de esta tabla.</p>
       <div style="overflow-x:auto;"><table class="em-table">
@@ -11669,40 +11959,82 @@ async function femRunPreview(){
         </thead>
         <tbody>${filasDado.map(f=>`<tr><td>${f.legKey}</td><td>${f.staadJoints}</td><td>${fmt(f.P,2)} kg</td><td>${fmt(f.pesoDado,2)} kg</td><td>${fmt(f.cargaTotalDado,2)} kg</td><td><b>${fmt(f.reaccionDado,2)} kg</b></td><td>${fmt(f.reaccionDado-f.cargaTotalDado,4)} kg</td></tr>`).join("")}</tbody>
       </table></div>`;
-    resumenEl.appendChild(wrap);
+    tablasEl.appendChild(wrap);
   }
 
-  // Momentos por nodo (fase 07) + Wood-Armer por nodo (fase 08) — se
-  // recalculan siempre que corre el preview; el selector de componente
-  // (Mx/My/Mxy/MuInferior/MuSuperior) solo redibuja el SVG, sin volver a
-  // resolver el sistema (femPreviewRenderMomentos). muInferior/muSuperior
-  // se agregan como campos extra del mismo objeto por nodo para que el
+  // Momentos por nodo (fase 07) + Wood-Armer por nodo (fase 08) — ya vienen
+  // calculados desde el Worker (fase 09), con muInferior/muSuperior
+  // agregados como campos extra del mismo objeto por nodo, para que el
   // resto del código (tabla, mapa de color, hover) los trate igual que
-  // Mx/My/Mxy, sin casos especiales.
-  const momentosPorNodo = femMomentosPorNodo(malla, u, espesor, E, nu);
-  const woodArmerPorNodo = femWoodArmerGlobal(momentosPorNodo);
-  momentosPorNodo.forEach((m,i)=>{ m.muInferior = woodArmerPorNodo[i].muInferior; m.muSuperior = woodArmerPorNodo[i].muSuperior; });
-  lastMomentosPreview = { momentosPorNodo, outerC: lastPlanArgs.outerC, holeC: state.holeEnabled ? lastPlanArgs.holeC : null };
+  // Mx/My/Mxy sin casos especiales. El selector de componente solo redibuja
+  // el SVG, sin volver a resolver el sistema (femPreviewRenderMomentos).
+  lastMomentosPreview = { momentosPorNodo: resultado.momentosPorNodo, outerC: lastPlanArgs.outerC, holeC: state.holeEnabled ? lastPlanArgs.holeC : null, dados: Object.values(lastPlanArgs.dados || {}) };
   femPreviewRenderMomentos();
 
+  // Cortante en una dirección, en la sección crítica real (ACI 318-19
+  // §22.5.5.1.2: a distancia "d" de la cara de cada dado, evaluada en el
+  // eje LOCAL de ESE dado, no en los ejes globales) — a partir del campo
+  // Qx/Qy real del solver (femVuCriticoDado). Complementa a
+  // getVuCortantePorEje/calcularCortante1D (sección 5.4, que usa el pico de
+  // la tabla manual 5.1 sin ubicación geométrica) — no lo reemplaza, φVc
+  // se reusa igual de esa misma función para no duplicar la fórmula ACI.
+  // La banda de búsqueda alrededor de la línea crítica se toma de la mitad
+  // del tamaño de elemento actual, para asegurar que caiga al menos una
+  // fila real de nodos cerca de esa línea sin importar qué tan fina o
+  // gruesa sea la malla.
+  const cdSeccion = getCriteriosDiseno();
+  const phiVcFem = calcularCortante1D(cdSeccion).phiVc;
+  const bandaCriticaM = Math.max(0.05, (state.geom.mallaTamElem||20)/100/2);
+  const filasCortante = dadosFisicos(lastPlanArgs.legs, state.tipoEstructura).map(dadoInfo=>{
+    const { vux, vuy } = femVuCriticoDado(malla, resultado.momentosPorNodo, dadoInfo.center, dadoInfo.angleDeg, state.geom.AD, state.geom.LD, bandaCriticaM, cdSeccion.d);
+    const vuxTn = vux/1000, vuyTn = vuy/1000; // kg/m -> Tn/m (fuerza por ancho, no tensión todavía)
+    const eficienciaX = phiVcFem>0 ? (vuxTn/cdSeccion.d)/phiVcFem : Infinity; // /d -> Tn/m² (tensión), comparable contra φVc
+    const eficienciaY = phiVcFem>0 ? (vuyTn/cdSeccion.d)/phiVcFem : Infinity;
+    return { nombre: dadoInfo.nombre, vuxTn, vuyTn, eficienciaX, eficienciaY };
+  });
+  // Puesta al final del panel (a pedido del usuario, mientras Fx/Fz y el
+  // momento local por dado no se aplican como carga — ver "Qué falta" en el
+  // detalle de alcance) — no arriba con la tabla de reacción por dado.
+  const cortanteEl = document.getElementById("femPreviewCortante");
+  cortanteEl.innerHTML = "";
+  if(filasCortante.length){
+    const wrapCort = document.createElement("div");
+    wrapCort.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:6px;">Cortante en una dirección en la sección crítica (ACI 318-19 §22.5.5.1.2, a distancia "d" de la cara de cada dado, en su propio eje local) — complementa la revisión manual de la sección 5.4, no la reemplaza.</p>
+      <div style="overflow-x:auto;"><table class="em-table">
+        <thead><tr><th>Dado</th><th>Vu eje X local</th><th>Vu eje Y local</th><th>Eficiencia X</th><th>Eficiencia Y</th></tr></thead>
+        <tbody>${filasCortante.map(f=>`<tr><td>${f.nombre}</td><td>${fmt(f.vuxTn,3)} Tn/m</td><td>${fmt(f.vuyTn,3)} Tn/m</td><td>${isFinite(f.eficienciaX)?fmt(f.eficienciaX*100,0)+"%":"—"}</td><td>${isFinite(f.eficienciaY)?fmt(f.eficienciaY*100,0)+"%":"—"}</td></tr>`).join("")}</tbody>
+      </table></div>`;
+    cortanteEl.appendChild(wrapCort);
+  }
+
+  const avisosEl = document.getElementById("femPreviewAvisos");
+  avisosEl.innerHTML = "";
   if(resultado.estado !== "convergio"){
     const avEstado = document.createElement("div");
     avEstado.className = "message-bar warning";
-    avEstado.style.marginTop = "8px";
     avEstado.innerHTML = resultado.estado === "ciclo"
       ? `<span>El set de nodos en contacto no se estabilizó — quedó "aleteando" entre iteraciones (ciclo detectado). El resultado mostrado es de la última iteración, tomarlo como orientativo.</span>`
       : `<span>Se alcanzó el límite de iteraciones sin estabilizar el set de nodos en contacto. El resultado mostrado es de la última iteración, tomarlo como orientativo.</span>`;
-    resumenEl.appendChild(avEstado);
+    avisosEl.appendChild(avEstado);
   }
   if(avisos.length){
     const av = document.createElement("div");
     av.className = "message-bar warning";
-    av.style.marginTop = "8px";
     av.innerHTML = `<span>${avisos.join(" ")}</span>`;
-    resumenEl.appendChild(av);
+    avisosEl.appendChild(av);
+  }
+  if(resultado.estado !== "convergio"){
+    femPreviewSetStatus("fail", "No estabilizó");
+  } else if(avisos.length){
+    femPreviewSetStatus("warn", "Convergió, con avisos");
+  } else {
+    femPreviewSetStatus("ok", "Convergió");
   }
 
-  svgWrapEl.innerHTML = femPreviewSvg(u, maxW, lastPlanArgs.outerC, activos);
+  lastFemPreviewResultado = resultado; lastFemPreviewMaxW = maxW;
+  initFemDeformada3D();
+  resizeFemDeformada3D();
+  updateFemDeformada3D(malla, u, maxW, lastPlanArgs.outerC, activos);
 }
 
 // Fase 05 — no linealidad compression-only (loop tipo ENT, elastic-no-
@@ -11760,7 +12092,7 @@ async function femRunPreview(){
 // forzar la secuencia 11→10→01→10, un ciclo real de longitud 3 que nunca
 // vuelve a un punto fijo): el loop corta correctamente con estado "ciclo" en
 // la iteración 3 en vez de repetir para siempre.
-function femSolveNoLineal(malla, opts){
+function femSolveNoLineal(malla, opts, onIter){
   const { espesor, E, nu, restringidos, cargas, resortesBase, maxIter } = opts;
   const nNodos = malla.nodos.length;
   const tope = maxIter || 50;
@@ -11775,6 +12107,7 @@ function femSolveNoLineal(malla, opts){
     } catch(err){
       throw new Error(`FEM: no linealidad no converge — ${err.message} (¿la carga volcó completamente la zapata, sin ningún punto en compresión?)`);
     }
+    if(onIter) onIter(iter, tope); // fase 09: hook opcional para reportar progreso (usado por el Worker); no cambia el comportamiento si se omite
     const siguiente = new Uint8Array(nNodos);
     let cambio = false;
     for(let i=0;i<nNodos;i++){
@@ -11796,51 +12129,16 @@ function femSolveNoLineal(malla, opts){
   return { u: ultimo.u, activos, iter: tope, estado:"max-iteraciones", nEq: ultimo.nEq, stats: ultimo.stats };
 }
 
-// Variante asíncrona de femSolveNoLineal, SOLO para la UI del preview (5.10):
-// mismo loop, misma lógica de desactivación de resortes y de detección de
-// ciclos, pero cede el hilo entre iteraciones (await + requestAnimationFrame)
-// para que el navegador pueda repintar una barra de progreso, y reporta cada
-// iteración terminada vía onProgress(iter, tope). La referencia validada
-// (harness documentado en fem/roadmap.html) sigue siendo la síncrona
-// femSolveNoLineal de arriba — esta es un envoltorio de UI, no una
-// reimplementación distinta del algoritmo.
-async function femSolveNoLinealConProgreso(malla, opts, onProgress){
-  const { espesor, E, nu, restringidos, cargas, resortesBase, maxIter } = opts;
-  const nNodos = malla.nodos.length;
-  const tope = maxIter || 50;
-  let activos = new Uint8Array(nNodos).fill(1);
-  const vistos = new Set([activos.join("")]);
-  let ultimo = null;
-  for(let iter=1; iter<=tope; iter++){
-    const resortes = new Float64Array(nNodos);
-    for(let i=0;i<nNodos;i++) if(activos[i]) resortes[i] = resortesBase[i];
-    try{
-      ultimo = femSolveLineal(malla, { espesor, E, nu, restringidos, cargas, resortes });
-    } catch(err){
-      throw new Error(`FEM: no linealidad no converge — ${err.message} (¿la carga volcó completamente la zapata, sin ningún punto en compresión?)`);
-    }
-    if(onProgress) onProgress(iter, tope);
-    await new Promise(r => requestAnimationFrame(r));
-    const siguiente = new Uint8Array(nNodos);
-    let cambio = false;
-    for(let i=0;i<nNodos;i++){
-      const asentamiento = -ultimo.u[3*i];
-      const nuevoEstado = asentamiento >= 0 ? 1 : 0;
-      siguiente[i] = nuevoEstado;
-      if(nuevoEstado !== activos[i]) cambio = true;
-    }
-    if(!cambio){
-      return { u: ultimo.u, activos, iter, estado:"convergio", nEq: ultimo.nEq, stats: ultimo.stats };
-    }
-    const clave = siguiente.join("");
-    if(vistos.has(clave)){
-      return { u: ultimo.u, activos: siguiente, iter, estado:"ciclo", nEq: ultimo.nEq, stats: ultimo.stats };
-    }
-    vistos.add(clave);
-    activos = siguiente;
-  }
-  return { u: ultimo.u, activos, iter: tope, estado:"max-iteraciones", nEq: ultimo.nEq, stats: ultimo.stats };
-}
+// Fase 09 — la vieja femSolveNoLinealConProgreso (variante async con
+// requestAnimationFrame) queda retirada: cedía el hilo entre iteraciones
+// solo para que el navegador pudiera repintar la barra de progreso sin
+// mover el trabajo pesado del hilo principal — con malla fina, esa espera
+// no evitaba que la pestaña se sintiera trabada durante cada resolución
+// individual (la parte cara). femRunSolverEnWorker (más abajo) hace el
+// trabajo real: corre el ensamblaje + loop no lineal (fases 03-05) y la
+// recuperación de momentos/Wood-Armer (fases 07-08) en un Web Worker
+// aparte, así el hilo principal queda libre de verdad, no solo entre
+// iteraciones.
 
 // Fase 07 — recuperación de momentos [Mx,My,Mxy] por elemento y suavizado
 // nodal. NO hace falta rotación de Mohr (a diferencia de lo que decía el
@@ -11895,6 +12193,86 @@ function femMomentosPorNodo(malla, u, espesor, E, nu){
   return out;
 }
 
+// Cortante transversal (Qx,Qy) por nodo — para alimentar la revisión de
+// cortante en una dirección (5.4, calcularCortante1D/getVuCortantePorEje),
+// mismo criterio que Mx/My/Mxy (fase 07): femPlacaCurvatura ya calcula
+// gxz,gyz (deformación de corte transversal), hoy usados solo para la
+// rigidez de la placa (femPlacaStiffness) y nunca expuestos como fuerza.
+// Qx=Gs·gxz, Qy=Gs·gyz, con la misma Gs (rigidez al corte, extraída acá
+// aparte por la misma razón que femPlacaDb) que usa femPlacaStiffness.
+// Salen en fuerza por unidad de ancho (kg/m, mismo criterio que Mx en
+// kg·m/m) — para compararlos contra φVc (una TENSIÓN, Tn/m²) hay que
+// dividir por el peralte efectivo "d", eso lo hace femVuCriticoDado más
+// abajo, no esta función (que devuelve la fuerza cruda, sin asumir "d").
+function femPlacaGs(espesor, E, nu){
+  const G = E/(2*(1+nu));
+  const kShear = 5/6; // factor de corrección por cortante (Reissner-Mindlin), igual que femPlacaStiffness
+  return kShear*G*espesor;
+}
+function femCortanteElemento(nodosTriangulo, dofs9, espesor, E, nu){
+  const { gxz, gyz } = femPlacaCurvatura(nodosTriangulo, dofs9);
+  const Gs = femPlacaGs(espesor, E, nu);
+  return { Qx: Gs*gxz, Qy: Gs*gyz };
+}
+function femCortantePorNodo(malla, u, espesor, E, nu){
+  const nNodos = malla.nodos.length;
+  const sumQx = new Float64Array(nNodos), sumQy = new Float64Array(nNodos), sumArea = new Float64Array(nNodos);
+  malla.elementos.forEach(el=>{
+    const nodosTriangulo = el.n.map(i=>malla.nodos[i]);
+    const dofs9 = [];
+    el.n.forEach(i=>{ dofs9.push(u[3*i], u[3*i+1], u[3*i+2]); });
+    const { area } = femPlacaGeom(nodosTriangulo);
+    const aAbs = Math.abs(area);
+    const { Qx, Qy } = femCortanteElemento(nodosTriangulo, dofs9, espesor, E, nu);
+    el.n.forEach(i=>{
+      sumQx[i] += Qx*aAbs; sumQy[i] += Qy*aAbs; sumArea[i] += aAbs;
+    });
+  });
+  const out = new Array(nNodos);
+  for(let i=0;i<nNodos;i++){
+    out[i] = sumArea[i]>0
+      ? { Qx: sumQx[i]/sumArea[i], Qy: sumQy[i]/sumArea[i] }
+      : { Qx:0, Qy:0 };
+  }
+  return out;
+}
+
+// Sección crítica de cortante en una dirección (ACI 318-19 §22.5.5.1.2): a
+// distancia "d" de la cara del dado, revisada en el eje LOCAL de cada dado
+// (rotado por su azimut angleDeg — no se asume que esté alineado a los
+// ejes globales, a diferencia de tomar Qx/Qy globales tal cual). Para cada
+// eje local (x: caras a ±AD/2, y: caras a ±LD/2) se buscan los nodos de la
+// malla cuya coordenada LOCAL en esa dirección cae dentro de una banda
+// angosta alrededor de la línea crítica (±bandaM, para capturar nodos
+// reales de la malla — no hay garantía de que caiga uno justo en "d" exacto),
+// se rota su Qx/Qy global a la componente local correspondiente, y se toma
+// el máximo |Q| entre esos nodos como Vu de esa cara. Se revisan las 2
+// caras de cada eje y se toma la peor — mismo espíritu que
+// getVuCortantePorEje (también toma el máximo, ahí sobre toda la tabla
+// manual en vez de sobre una línea geométrica). Devuelve la fuerza cruda
+// por unidad de ancho (kg/m); dividir por "d" para compararla contra φVc.
+function femVuCriticoDado(malla, cortantePorNodo, centro, anguloDeg, AD, LD, bandaM, d){
+  const rad = anguloDeg * Math.PI/180;
+  const ex = { x: Math.cos(rad), y: Math.sin(rad) };
+  const ey = { x: -Math.sin(rad), y: Math.cos(rad) };
+  let vux = 0, vuy = 0;
+  malla.nodos.forEach((p, i)=>{
+    const rx = p.x - centro.x, ry = p.y - centro.y;
+    const dx = rx*ex.x + ry*ex.y; // coordenada del nodo en el eje local del dado
+    const dy = rx*ey.x + ry*ey.y;
+    const { Qx, Qy } = cortantePorNodo[i];
+    if(Math.abs(Math.abs(dx) - (AD/2 + d)) <= bandaM){
+      const qLocalX = Qx*ex.x + Qy*ex.y;
+      vux = Math.max(vux, Math.abs(qLocalX));
+    }
+    if(Math.abs(Math.abs(dy) - (LD/2 + d)) <= bandaM){
+      const qLocalY = Qx*ey.x + Qy*ey.y;
+      vuy = Math.max(vuy, Math.abs(qLocalY));
+    }
+  });
+  return { vux, vuy };
+}
+
 // Fase 08 — Wood-Armer sobre los momentos ya suavizados por nodo (fase 07),
 // como alternativa/complemento a la carga manual de 5.3. Misma fórmula que
 // getMomentosDisenoFlexion (Mu_inferior=MAX(Mx+|Mxy|,My+|Mxy|),
@@ -11915,6 +12293,78 @@ function femWoodArmerNodo(m){
 }
 function femWoodArmerGlobal(momentosGlobalesPorNodo){
   return momentosGlobalesPorNodo.map(femWoodArmerNodo);
+}
+
+// Fase 09 — Worker: arma el script del worker en runtime a partir del
+// código FUENTE REAL de las funciones ya validadas (fn.toString()) — no
+// hay una segunda copia mantenida a mano que pueda divergir en silencio de
+// la versión documentada en fem/roadmap.html (fases 02-08). Lo único nuevo
+// es el onmessage del final, que llama a femSolveNoLineal con un callback
+// de progreso que hace postMessage en vez de requestAnimationFrame (un
+// Worker no bloquea el hilo principal, así que no hace falta ceder el
+// control para repintar).
+function femCrearWorkerSolver(){
+  const funcs = [
+    femPlacaGeom, femPlacaB, femPlacaCurvatura, femPlacaDb, femPlacaGs, femPlacaStiffness,
+    femMapaEcuaciones, femListaDofElemento, femPerfilSkyline, femIdx,
+    femEnsamblarSkyline, femFactorizarSkyline, femResolverSkyline, femSolveLineal,
+    femSolveNoLineal, femMomentosElemento, femMomentosPorNodo, femCortanteElemento,
+    femCortantePorNodo, femWoodArmerNodo, femWoodArmerGlobal
+  ];
+  const src = funcs.map(f => f.toString()).join("\n") + `
+self.onmessage = function(e){
+  const { malla, espesor, E, nu, restringidos, cargas, resortesBase, maxIter } = e.data;
+  try{
+    const resultado = femSolveNoLineal(malla, { espesor, E, nu, restringidos, cargas, resortesBase, maxIter }, (iter, tope) => {
+      self.postMessage({ type:"progress", iter, tope });
+    });
+    const momentosPorNodo = femMomentosPorNodo(malla, resultado.u, espesor, E, nu);
+    const cortantePorNodo = femCortantePorNodo(malla, resultado.u, espesor, E, nu);
+    const woodArmer = femWoodArmerGlobal(momentosPorNodo);
+    momentosPorNodo.forEach((m,i)=>{ m.muInferior = woodArmer[i].muInferior; m.muSuperior = woodArmer[i].muSuperior; m.Qx = cortantePorNodo[i].Qx; m.Qy = cortantePorNodo[i].Qy; });
+    self.postMessage({ type:"done", u: resultado.u, activos: resultado.activos, iter: resultado.iter, estado: resultado.estado, nEq: resultado.nEq, momentosPorNodo });
+  } catch(err){
+    self.postMessage({ type:"error", message: err.message });
+  }
+};
+`;
+  const url = URL.createObjectURL(new Blob([src], { type: "application/javascript" }));
+  return { worker: new Worker(url), url };
+}
+// Reemplaza a femSolveNoLinealConProgreso: misma firma (malla, opts,
+// onProgress) pero corriendo en un Worker aparte, así una malla fina no
+// congela la pestaña mientras resuelve. Crea y termina un worker nuevo por
+// corrida — el costo de arranque es insignificante frente al propio solve
+// en mallas finas.
+function femRunSolverEnWorker(malla, opts, onProgress){
+  return new Promise((resolve, reject) => {
+    const { worker, url } = femCrearWorkerSolver();
+    const limpiar = () => { worker.terminate(); URL.revokeObjectURL(url); };
+    // El worker resuelve mucho más rápido que antes (sin el
+    // requestAnimationFrame artificial de la vieja femSolveNoLinealConProgreso),
+    // al punto de que en mallas chicas los mensajes de progreso pasan
+    // demasiado rápido para leerlos. Se encolan TODOS los mensajes (progreso
+    // y "listo" por igual) en una cadena secuencial, cada uno esperando un
+    // mínimo desde que se mostró el anterior — así ninguna iteración se
+    // salta, solo se demora CUÁNDO se refleja en pantalla; el cálculo real
+    // del worker no se frena, ya terminó de mandar todos los mensajes.
+    const MIN_INTERVALO_MS = 120;
+    let cola = Promise.resolve(), ultimoMostrado = 0;
+    const agendar = (fn) => {
+      cola = cola.then(() => new Promise(r => {
+        const espera = Math.max(0, MIN_INTERVALO_MS - (performance.now() - ultimoMostrado));
+        setTimeout(() => { ultimoMostrado = performance.now(); fn(); r(); }, espera);
+      }));
+    };
+    worker.onmessage = (e) => {
+      const msg = e.data;
+      if(msg.type === "progress"){ if(onProgress) agendar(() => onProgress(msg.iter, msg.tope)); }
+      else if(msg.type === "done"){ agendar(() => { limpiar(); resolve(msg); }); }
+      else if(msg.type === "error"){ limpiar(); reject(new Error(msg.message)); }
+    };
+    worker.onerror = (e) => { limpiar(); reject(new Error(e.message || "Error desconocido en el Worker del solver")); };
+    worker.postMessage({ malla, ...opts });
+  });
 }
 
 document.getElementById("btnFemPreviewRun").addEventListener("click", femRunPreview);
