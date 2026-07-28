@@ -3773,6 +3773,23 @@ function defaultElementosMecanicos(){
   }));
 }
 
+// Extrae el usuario de la ruta file:// (C:\Users\<usuario>\... en Windows, /Users/<usuario>/...
+// en Mac) para autocompletar el campo "Ingeniero" sin preguntar y para identificar al ingeniero
+// en el registro de uso por correo (más abajo, cerca de "Ayuda embebida"). location.pathname sí
+// es accesible sin restricción porque es la URL propia del documento — no existe otra forma de
+// leer el usuario del sistema operativo desde el navegador. Si la ruta no sigue el patrón
+// "/Users/<algo>/" (ej. una unidad de red, u otra estructura de carpetas), devuelve null y el
+// campo del formulario se deja editable a mano como respaldo (ver AUTO_ENGINEER más abajo).
+function engineerFromPath(){
+  try{
+    const path = decodeURIComponent(location.pathname);
+    const m = path.match(/\/Users\/([^/]+)\//i);
+    if(!m) return null;
+    return m[1].replace(/[._]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  }catch{ return null; }
+}
+const AUTO_ENGINEER = engineerFromPath();
+
 function defaultState(){
   return {
     tipoEstructura: "Autosoportada 3P",
@@ -3829,6 +3846,7 @@ function mergeState(defaults, saved){
 // página arranca en blanco (confirmado con el usuario) — para retomar un
 // proyecto hay que abrirlo con "Abrir proyecto…" (.gfem) o cargar "Ejemplo".
 let state = defaultState();
+if(AUTO_ENGINEER) state.proyecto.engineer = AUTO_ENGINEER;
 let planZoom = 1; // nivel de zoom de la vista en planta (no se persiste)
 let lastPlanArgs = null;
 
@@ -8917,16 +8935,20 @@ function initTheme(){
 // desde una ruta sin "/Users/<algo>/" (ej. una unidad de red), queda como "(sin nombre)".
 (function(){
   const USAGE_LOG_URL = "https://formspree.io/f/xdaqbpek";
+  const DEV_SKIP_KEY = "cimentacionesFEM.noUsageLog";
   const sessionStart = new Date();
   let sent = false;
 
-  function engineerFromPath(){
+  // Para probar la app sin disparar un correo real: abrir el archivo agregando "?dev=1" al
+  // final de la URL (una sola vez), o correr en la consola
+  // localStorage.setItem("cimentacionesFEM.noUsageLog","1") para dejarlo desactivado en esa
+  // máquina/ruta de forma permanente (localStorage.removeItem(...) para reactivarlo).
+  function isDevSession(){
     try{
-      const path = decodeURIComponent(location.pathname);
-      const m = path.match(/\/Users\/([^/]+)\//i);
-      if(!m) return "(sin nombre)";
-      return m[1].replace(/[._]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-    }catch{ return "(sin nombre)"; }
+      if(new URLSearchParams(location.search).has("dev")) return true;
+      if(localStorage.getItem(DEV_SKIP_KEY) === "1") return true;
+    }catch{}
+    return false;
   }
 
   function fileLabel(){
@@ -8945,12 +8967,12 @@ function initTheme(){
   }
 
   function sendUsageLog(){
-    if(sent) return;
+    if(sent || isDevSession()) return;
     sent = true;
     const end = new Date();
     const fd = new FormData();
     fd.append("_subject", "Registro de uso - Hoja FEM");
-    fd.append("Ingeniero", engineerFromPath());
+    fd.append("Ingeniero", AUTO_ENGINEER || "(sin nombre)");
     fd.append("Archivo", fileLabel());
     fd.append("Fecha", sessionStart.toLocaleDateString("es-CO"));
     fd.append("Hora inicio", sessionStart.toLocaleTimeString("es-CO"));
@@ -10398,6 +10420,14 @@ function initBindings(){
       state.proyecto[field] = e.target.value;
     });
   });
+  // Si se pudo detectar el ingeniero desde la ruta file:// (ver AUTO_ENGINEER), el campo
+  // queda bloqueado para que no se pueda pisar a mano; si no se pudo (ruta sin "/Users/<algo>/",
+  // ej. una unidad de red), se deja editable como siempre.
+  if(AUTO_ENGINEER){
+    const engInput = document.getElementById("proy_engineer");
+    engInput.readOnly = true;
+    engInput.title = "Detectado automáticamente — no editable.";
+  }
   document.getElementById("proy_country").addEventListener("change", (e)=>{
     state.proyecto.country = e.target.value;
     document.getElementById("calcHeaderFlag").innerHTML = flagSvgMarkup(state.proyecto.country);
@@ -10572,6 +10602,7 @@ function initBindings(){
     try{
       const loaded = JSON.parse(await file.text());
       state = mergeState(defaultState(), loaded);
+      if(AUTO_ENGINEER) state.proyecto.engineer = AUTO_ENGINEER;
       planZoom = 1;
       renderReaccionesTable();
       renderAll();
@@ -10648,6 +10679,7 @@ function initBindings(){
   document.getElementById("btnReset").addEventListener("click", ()=>{
     if(confirm("¿Restaurar la geometría de ejemplo? Se perderán los cambios no exportados.")){
       state = exampleState();
+      if(AUTO_ENGINEER) state.proyecto.engineer = AUTO_ENGINEER;
       planZoom = 1;
       if(autosaveEnabled) disableAutosave("Autoguardado desactivado al cargar el ejemplo.");
       renderReaccionesTable();
