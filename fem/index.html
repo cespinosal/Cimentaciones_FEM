@@ -9095,6 +9095,63 @@ function initTheme(){
   document.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && !overlay.classList.contains("hidden")) cerrar(); });
 })();
 
+// ---------- Registro de uso: al cerrar la pestaña, manda por correo (Formspree, mismo
+// patrón sin-backend que TSA/viewer.html) fecha/hora de inicio y fin, duración total y el
+// ingeniero. No hay API de navegador para leer el usuario del sistema operativo (por
+// privacidad), así que el "ingeniero" se extrae de la ruta file:// de la que se abrió el
+// archivo (C:\Users\<usuario>\... en Windows, /Users/<usuario>/... en Mac) — location.pathname
+// sí es accesible sin restricción porque es la URL propia del documento. Si el archivo se abre
+// desde una ruta sin "/Users/<algo>/" (ej. una unidad de red), queda como "(sin nombre)".
+(function(){
+  const USAGE_LOG_URL = "https://formspree.io/f/xdaqbpek";
+  const sessionStart = new Date();
+  let sent = false;
+
+  function engineerFromPath(){
+    try{
+      const path = decodeURIComponent(location.pathname);
+      const m = path.match(/\/Users\/([^/]+)\//i);
+      if(!m) return "(sin nombre)";
+      return m[1].replace(/[._]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    }catch{ return "(sin nombre)"; }
+  }
+
+  function fileLabel(){
+    try{
+      const path = decodeURIComponent(location.pathname);
+      return path.split("/").pop() || "(desconocido)";
+    }catch{ return "(desconocido)"; }
+  }
+
+  function fmtDuration(ms){
+    const totalSec = Math.max(0, Math.round(ms/1000));
+    const h = Math.floor(totalSec/3600);
+    const m = Math.floor((totalSec%3600)/60);
+    const s = totalSec%60;
+    return [h,m,s].map(n=>String(n).padStart(2,"0")).join(":");
+  }
+
+  function sendUsageLog(){
+    if(sent) return;
+    sent = true;
+    const end = new Date();
+    const fd = new FormData();
+    fd.append("_subject", "Registro de uso - Hoja FEM");
+    fd.append("Ingeniero", engineerFromPath());
+    fd.append("Archivo", fileLabel());
+    fd.append("Fecha", sessionStart.toLocaleDateString("es-CO"));
+    fd.append("Hora inicio", sessionStart.toLocaleTimeString("es-CO"));
+    fd.append("Hora fin", end.toLocaleTimeString("es-CO"));
+    fd.append("Duración total", fmtDuration(end - sessionStart));
+    if(navigator.sendBeacon){
+      if(navigator.sendBeacon(USAGE_LOG_URL, fd)) return;
+    }
+    try{ fetch(USAGE_LOG_URL, { method:"POST", body: fd, keepalive:true }); }catch{}
+  }
+
+  window.addEventListener("pagehide", sendUsageLog);
+})();
+
 /* ---------- Navegación lateral (resalta la sección visible) ---------- */
 // La pestaña activa NO se persiste a propósito: cada carga/refresh del archivo
 // debe arrancar siempre en "Revisiones", sin importar qué pestaña quedó abierta antes.
