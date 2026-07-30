@@ -341,6 +341,28 @@ tbody tr:hover{background:var(--brand-tint);}
 .formula-box .frac .num{padding:0 5px 2px; border-bottom:1.3px solid currentColor;}
 .formula-box .frac .den{padding:2px 5px 0;}
 
+/* ---------- Tooltip de fórmula (encabezados de tabla, ej. 4.2.1) ----------
+   Mismo truco "LaTeX sin librería" de .formula-box de arriba, en una tarjeta
+   flotante posicionada con JS en vez de estar embebida en el flujo normal. */
+#thFormulaTip{
+  position:fixed; z-index:60; max-width:320px; display:none;
+  background:var(--panel); border:1px solid var(--border-strong); border-radius:var(--radius-md);
+  box-shadow:var(--shadow8); padding:10px 12px; pointer-events:none;
+}
+#thFormulaTip.show{display:block;}
+#thFormulaTip .eq{
+  display:flex; align-items:center; flex-wrap:wrap; gap:4px;
+  font-family:'Cambria Math','STIX Two Math',Georgia,'Times New Roman',serif;
+  font-size:15px; color:var(--accent); margin-bottom:6px;
+}
+#thFormulaTip .eq .var{font-style:italic;}
+#thFormulaTip .eq .op{margin:0 2px;}
+#thFormulaTip .eq sub{font-size:0.7em;}
+#thFormulaTip .eq .frac{display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; margin:0 3px; line-height:1.2;}
+#thFormulaTip .eq .frac .num{padding:0 4px 1px; border-bottom:1.2px solid currentColor;}
+#thFormulaTip .eq .frac .den{padding:1px 4px 0;}
+#thFormulaTip .desc{font-size:12px; line-height:1.4; color:var(--muted);}
+
 /* ---------- Diagramas de esfuerzo (Ley de Navier, sección 4.3) ---------- */
 .navier-card{position:relative; border:1px solid var(--border); border-radius:var(--radius-md); padding:4px; background:var(--canvas);}
 .navier-card .navier-title{text-align:center; font-weight:600; font-size:12.5px; color:var(--text); margin:2px 0 4px;}
@@ -1712,12 +1734,12 @@ document.addEventListener("click", (e) => {
             <table id="tblVolteoMomento1">
               <thead><tr>
                 <th scope="col">Combinación</th>
-                <th scope="col">M<sub>RX</sub></th><th scope="col">M<sub>RZ</sub></th>
-                <th scope="col">M<sub>X</sub>·F<sub>Y</sub></th><th scope="col">M<sub>Z</sub>·F<sub>X</sub></th>
-                <th scope="col">R<sub>FY</sub></th>
-                <th scope="col">X<sub>CC</sub>·F<sub>Y</sub></th><th scope="col">Y<sub>CC</sub>·F<sub>Y</sub></th>
-                <th scope="col">e<sub>x</sub></th><th scope="col">e<sub>y</sub></th>
-                <th scope="col">M<sub>x</sub> Adic</th><th scope="col">M<sub>z</sub> Adic</th>
+                <th scope="col" data-tip="mrx">M<sub>RX</sub></th><th scope="col" data-tip="mrz">M<sub>RZ</sub></th>
+                <th scope="col" data-tip="mxfy">M<sub>X</sub>·F<sub>Y</sub></th><th scope="col" data-tip="mzfx">M<sub>Z</sub>·F<sub>X</sub></th>
+                <th scope="col" data-tip="rfy">R<sub>FY</sub></th>
+                <th scope="col" data-tip="xcc">X<sub>CC</sub>·F<sub>Y</sub></th><th scope="col" data-tip="ycc">Y<sub>CC</sub>·F<sub>Y</sub></th>
+                <th scope="col" data-tip="ex"><span style="text-transform:lowercase;">e</span><sub>X</sub></th><th scope="col" data-tip="ey"><span style="text-transform:lowercase;">e</span><sub>Y</sub></th>
+                <th scope="col" data-tip="mxadic">M<sub>x</sub> Adic</th><th scope="col" data-tip="mzadic">M<sub>z</sub> Adic</th>
               </tr></thead>
               <tbody></tbody>
             </table>
@@ -1726,11 +1748,11 @@ document.addEventListener("click", (e) => {
             <table id="tblVolteoMomento2">
               <thead><tr>
                 <th scope="col">Combinación</th>
-                <th scope="col">M<sub>x</sub> Total</th><th scope="col">M<sub>z</sub> Total</th>
-                <th scope="col">R<sub>FY</sub> Total</th>
-                <th scope="col">e<sub>xT</sub></th><th scope="col">e<sub>yT</sub></th>
-                <th scope="col">Ángulo</th><th scope="col">M<sub>act</sub> Total</th>
-                <th scope="col"><a href="#" id="brazoHeaderLink" style="color:inherit; text-decoration:underline; cursor:pointer;">Brazo</a></th><th scope="col">M<sub>R</sub></th>
+                <th scope="col" data-tip="mxtotal">M<sub>x</sub> Total</th><th scope="col" data-tip="mztotal">M<sub>z</sub> Total</th>
+                <th scope="col" data-tip="rfytotal">R<sub>FY</sub> Total</th>
+                <th scope="col" data-tip="ext"><span style="text-transform:lowercase;">e</span><sub>XT</sub></th><th scope="col" data-tip="eyt"><span style="text-transform:lowercase;">e</span><sub>YT</sub></th>
+                <th scope="col" data-tip="angulo">Ángulo</th><th scope="col" data-tip="mact">M<sub>act</sub> Total</th>
+                <th scope="col" data-tip="brazo"><a href="#" id="brazoHeaderLink" style="color:inherit; text-decoration:underline; cursor:pointer;">Brazo</a></th><th scope="col" data-tip="mr">M<sub>R</sub></th>
               </tr></thead>
               <tbody></tbody>
             </table>
@@ -1739,7 +1761,7 @@ document.addEventListener("click", (e) => {
           <p class="small" style="margin:14px 0 10px; color:var(--muted); font-weight:700;">4.2.2.- Eficiencias a volteo</p>
           <div class="table-scroll">
             <table id="tblVolteoEficiencia">
-              <thead><tr><th scope="col">Combinación</th><th scope="col">FSV</th><th scope="col">Eficiencia</th><th scope="col">Resultado</th></tr></thead>
+              <thead><tr><th scope="col">Combinación</th><th scope="col" data-tip="fsv">FSV</th><th scope="col" data-tip="eficienciavolteo">Eficiencia</th><th scope="col" data-tip="resultadovolteo">Resultado</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -2208,7 +2230,7 @@ document.addEventListener("click", (e) => {
         <svg id="areaEfectivaSvg"></svg>
         <div id="areaEfectivaLegend">
           <div class="item"><span class="swatch" style="background:#1a6fa3;"></span>Contorno original</div>
-          <div class="item"><span class="swatch" style="background:#c98a1a;"></span>Copia desplazada (e<sub>xT</sub>, e<sub>yT</sub>)</div>
+          <div class="item"><span class="swatch" style="background:#c98a1a;"></span>Copia desplazada (e<sub>XT</sub>, e<sub>YT</sub>)</div>
           <div class="item"><span class="swatch" style="background:#2e9e4f;"></span>Área efectiva (traslape)</div>
         </div>
         <div id="areaEfectivaResultados"></div>
@@ -7003,7 +7025,14 @@ function computeGeotecnico(props, legs){
     const RFY = sumFy;
     const Xcc = momX / RFY;
     const Ycc = momY / RFY;
-    const ex = Xcc, ey = Ycc; // centroide de la zapata = origen en este marco de coordenadas
+    // ex/ey = excentricidad real respecto al centroide de LA FIGURA (Xo/Yo =
+    // props.cx/cy), no respecto al origen del sistema de coordenadas — Xcc/
+    // Ycc son el centro de cargas en el marco absoluto (mismo marco que
+    // legs[...].x/y), así que hace falta restarle el centroide real de la
+    // zapata para obtener la excentricidad (pedido explícito del usuario:
+    // antes se asumía Xo=Yo=0, válido solo si la figura ya está centrada en
+    // el origen).
+    const ex = Xcc - props.cx, ey = Ycc - props.cy;
     const MxAdic = RFY*ey, MzAdic = RFY*ex;
     return { combo, MRX, MRZ, MxFy:momY, MzFy:momX, RFY, Xcc, Ycc, ex, ey, MxAdic, MzAdic };
   });
@@ -9950,6 +9979,102 @@ function initTheme(){
   }
 
   window.addEventListener("pagehide", sendUsageLog);
+})();
+
+// ---------- Tooltip de fórmula para encabezados de tabla (4.2.1) ----------
+// Mismo patrón "LaTeX sin librería" de .formula-box (fórmula de Navier,
+// 4.3) pero en una tarjeta flotante posicionada con JS en vez de vivir en
+// el flujo normal — así el encabezado sigue siendo compacto (M_RX, M_RZ,
+// etc.) y la fórmula completa, con fracción/subíndices reales, aparece
+// solo al pasar el cursor por él.
+(function(){
+  const FORMULAS = {
+    mrx: { eq: `<span class="var">M</span><sub>RX</sub><span class="op">=</span><span class="op">Σ</span><span class="var">F</span><sub>z</sub><span class="op">·</span>(<span class="var">P</span><sub>d</sub><span class="op">+</span><span class="var">H</span><sub>D</sub>)`,
+      desc: "Momento de volteo por la reacción vertical (Fz) de cada pata, con brazo igual a la profundidad de desplante (Pd) más el afloramiento del dado (HD)." },
+    mrz: { eq: `<span class="var">M</span><sub>RZ</sub><span class="op">=</span><span class="op">Σ</span><span class="var">F</span><sub>x</sub><span class="op">·</span>(<span class="var">P</span><sub>d</sub><span class="op">+</span><span class="var">H</span><sub>D</sub>)`,
+      desc: "Momento de volteo por la reacción horizontal en X (Fx) de cada pata, mismo brazo (Pd + HD)." },
+    mxfy: { eq: `<span class="var">M</span><sub>X</sub><span class="op">=</span><span class="op">Σ</span>(<span class="var">F</span><sub>y</sub><span class="op">·</span><span class="var">Y</span>)`,
+      desc: "Momento sobre el eje X por la reacción vertical (Fy) de cada pata, con brazo igual a su coordenada Y respecto al centroide de la zapata." },
+    mzfx: { eq: `<span class="var">M</span><sub>Z</sub><span class="op">=</span><span class="op">Σ</span>(<span class="var">F</span><sub>y</sub><span class="op">·</span><span class="var">X</span>)`,
+      desc: "Momento sobre el eje Z por la reacción vertical (Fy) de cada pata, con brazo igual a su coordenada X respecto al centroide de la zapata." },
+    rfy: { eq: `<span class="var">R</span><sub>FY</sub><span class="op">=</span><span class="op">Σ</span><span class="var">F</span><sub>y</sub>`,
+      desc: "Suma de las reacciones verticales (Fy) de todas las patas para esta combinación — sin el peso propio de la cimentación, que se suma después en RFY Total." },
+    xcc: { eq: `<span class="var">X</span><sub>CC</sub><span class="op">=</span><span class="frac"><span class="num"><span class="var">M</span><sub>Z</sub></span><span class="den"><span class="var">R</span><sub>FY</sub></span></span>`,
+      desc: "Coordenada X del centro de cargas verticales de esta combinación." },
+    ycc: { eq: `<span class="var">Y</span><sub>CC</sub><span class="op">=</span><span class="frac"><span class="num"><span class="var">M</span><sub>X</sub></span><span class="den"><span class="var">R</span><sub>FY</sub></span></span>`,
+      desc: "Coordenada Y del centro de cargas verticales de esta combinación." },
+    ex: { eq: `<span class="var">e</span><sub>X</sub><span class="op">=</span><span class="var">X</span><sub>CC</sub><span class="op">−</span><span class="var">X</span><sub>o</sub>`,
+      desc: "Excentricidad en X del centro de cargas respecto al centroide de la figura (Xo), usada para calcular Mz Adic." },
+    ey: { eq: `<span class="var">e</span><sub>Y</sub><span class="op">=</span><span class="var">Y</span><sub>CC</sub><span class="op">−</span><span class="var">Y</span><sub>o</sub>`,
+      desc: "Excentricidad en Y del centro de cargas respecto al centroide de la figura (Yo), usada para calcular Mx Adic." },
+    mxadic: { eq: `<span class="var">M</span><sub>x</sub>&nbsp;Adic<span class="op">=</span><span class="var">R</span><sub>FY</sub><span class="op">·</span><span class="var">e</span><sub>Y</sub>`,
+      desc: "Momento adicional sobre X por la excentricidad de la carga vertical respecto al centroide." },
+    mzadic: { eq: `<span class="var">M</span><sub>z</sub>&nbsp;Adic<span class="op">=</span><span class="var">R</span><sub>FY</sub><span class="op">·</span><span class="var">e</span><sub>X</sub>`,
+      desc: "Momento adicional sobre Z por la excentricidad de la carga vertical respecto al centroide." },
+    mxtotal: { eq: `<span class="var">M</span><sub>x</sub>&nbsp;Total<span class="op">=</span><span class="var">M</span><sub>x</sub>&nbsp;Adic<span class="op">+</span><span class="var">M</span><sub>RX</sub>`,
+      desc: "Momento total sobre X: el adicional por excentricidad (Mx Adic, tabla 4.2.1) más el de volteo por Fz (MRX)." },
+    mztotal: { eq: `<span class="var">M</span><sub>z</sub>&nbsp;Total<span class="op">=</span><span class="var">M</span><sub>z</sub>&nbsp;Adic<span class="op">+</span><span class="var">M</span><sub>RZ</sub>`,
+      desc: "Momento total sobre Z: el adicional por excentricidad (Mz Adic, tabla 4.2.1) más el de volteo por Fx (MRZ)." },
+    rfytotal: { eq: `<span class="var">R</span><sub>FY</sub>&nbsp;Total<span class="op">=</span><span class="var">W</span><sub>total</sub><span class="op">+</span><span class="var">R</span><sub>FY</sub>`,
+      desc: "Reacción vertical total: peso propio de la cimentación (zapata + relleno + dados + ciclópeo/adicional, sección 4.1) más RFY de la tabla 4.2.1." },
+    ext: { eq: `<span class="var">e</span><sub>XT</sub><span class="op">=</span><span class="frac"><span class="num"><span class="var">M</span><sub>z</sub>&nbsp;Total</span><span class="den"><span class="var">R</span><sub>FY</sub>&nbsp;Total</span></span>`,
+      desc: "Excentricidad total en X, ya con el peso propio de la cimentación incluido." },
+    eyt: { eq: `<span class="var">e</span><sub>YT</sub><span class="op">=</span><span class="frac"><span class="num"><span class="var">M</span><sub>x</sub>&nbsp;Total</span><span class="den"><span class="var">R</span><sub>FY</sub>&nbsp;Total</span></span>`,
+      desc: "Excentricidad total en Y, ya con el peso propio de la cimentación incluido." },
+    angulo: { eq: `<span class="var">θ</span><span class="op">=</span>atan2(<span class="op">−</span><span class="var">M</span><sub>x</sub>&nbsp;Total,&nbsp;<span class="var">M</span><sub>z</sub>&nbsp;Total)`,
+      desc: "Ángulo, en el plano de la zapata, de la dirección de mayor volteo — define hacia dónde se mide el Brazo de palanca." },
+    mact: { eq: `<span class="var">M</span><sub>act</sub>&nbsp;Total<span class="op">=</span><span class="op">√</span>(<span class="var">M</span><sub>x</sub>&nbsp;Total<span class="op">²</span><span class="op">+</span><span class="var">M</span><sub>z</sub>&nbsp;Total<span class="op">²</span>)`,
+      desc: "Momento actuante resultante: magnitud del vector (Mx Total, Mz Total)." },
+    brazo: { eq: `<span class="var">Brazo</span><span class="op">=</span>dist(<span class="var">centroide</span>&nbsp;→&nbsp;<span class="var">borde</span>,&nbsp;<span class="var">θ</span>)`,
+      desc: "Distancia desde el centroide de la zapata hasta el borde del contorno, medida en la dirección del ángulo θ — se calcula con la animación de \"Brazo de palanca\" (clic en el encabezado)." },
+    mr: { eq: `<span class="var">M</span><sub>R</sub><span class="op">=</span><span class="var">Brazo</span><span class="op">·</span><span class="var">R</span><sub>FY</sub>&nbsp;Total`,
+      desc: "Momento resistente al volteo: Brazo de palanca multiplicado por la reacción vertical total." },
+    fsv: { eq: `<span class="var">FSV</span><span class="op">=</span><span class="frac"><span class="num"><span class="var">M</span><sub>R</sub></span><span class="den"><span class="var">M</span><sub>act</sub>&nbsp;Total</span></span>`,
+      desc: "Factor de seguridad al volteo: momento resistente (MR) sobre el momento actuante (Mact Total)." },
+    eficienciavolteo: { eq: `<span class="var">Eficiencia</span><span class="op">=</span><span class="frac"><span class="num">1</span><span class="den"><span class="var">FSV</span></span></span>`,
+      desc: "Inverso del factor de seguridad al volteo — mientras más alto, más cerca (o por encima) del límite de 1.0." },
+    resultadovolteo: { eq: `<span class="var">Resultado</span><span class="op">=</span>CUMPLE&nbsp;si&nbsp;<span class="var">FSV</span>&nbsp;≥&nbsp;1`,
+      desc: "Compara el factor de seguridad al volteo (FSV) contra el mínimo exigido (1.0); si no lo alcanza, marca NO CUMPLE." }
+  };
+
+  const tip = document.createElement("div");
+  tip.id = "thFormulaTip";
+  document.body.appendChild(tip);
+
+  function positionTip(x, y){
+    const margin = 14;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let left = x + margin, top = y + margin;
+    if(left + w > window.innerWidth - 8) left = x - w - margin;
+    if(top + h > window.innerHeight - 8) top = y - h - margin;
+    tip.style.left = Math.max(4, left) + "px";
+    tip.style.top = Math.max(4, top) + "px";
+  }
+  function showTip(th, x, y){
+    const data = FORMULAS[th.dataset.tip];
+    if(!data) return;
+    tip.innerHTML = `<div class="eq">${data.eq}</div><div class="desc">${data.desc}</div>`;
+    tip.classList.add("show");
+    positionTip(x, y);
+  }
+  function hideTip(){ tip.classList.remove("show"); }
+
+  // Selector genérico (no atado a una tabla puntual): cualquier th con
+  // data-tip usa este mismo tooltip flotante.
+  document.addEventListener("mouseover", (e)=>{
+    const th = e.target.closest("th[data-tip]");
+    if(th) showTip(th, e.clientX, e.clientY);
+  });
+  document.addEventListener("mousemove", (e)=>{
+    if(!tip.classList.contains("show")) return;
+    if(!e.target.closest("th[data-tip]")) return;
+    positionTip(e.clientX, e.clientY);
+  });
+  document.addEventListener("mouseout", (e)=>{
+    if(e.target.closest("th[data-tip]") && !e.relatedTarget?.closest("th[data-tip]")){
+      hideTip();
+    }
+  });
 })();
 
 // ---------- Aviso nativo de "salir sin guardar" ----------
