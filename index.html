@@ -3673,6 +3673,11 @@ const EXAMPLE_GFEM = {
   },
   "proyecto": { "assetNum": "123456", "assetName": "ABCDE", "engineer": "X", "date": "Hoy", "country": "Costa Rica", "request": "12345678" },
   "materiales": { "fc": 210, "gc": 2400, "gr": 1600, "fy": 4200, "existeCiclopeo": "No", "espesorCiclopeo": 1, "gcc": 2200, "pesoAdicional": 0 },
+  // phiFlexion/phiCortante NO se incluyen a propósito (quedan en 0.9/0.75 por
+  // defaultState() — ver comentario ahí): son constantes de ACI 318-19, no
+  // datos de ejemplo, y no tienen campo de edición en la UI.
+  "diseno": { "r": 7.5, "alphaS": 40, "varInf": "#6", "varSup": "#6", "varInfExist": "#6", "sepInfExist": 20, "varSupExist": "#6", "sepSupExist": 20,
+    "dadoN1": 14, "dadoVar1": "#6", "dadoN2": 12, "dadoVar2": "#6", "dadoEstribosRamas": 2, "dadoEstriboVar": "#3", "dadoEstriboSep": 15, "dadoRecubrimiento": 5 },
   "tipoTorre": "Autosoportada 3P"
 };
 
@@ -4149,16 +4154,23 @@ function defaultState(){
     holeEnabled: false,
     hole: [],
     elementosMecanicos: defaultElementosMecanicos(),
-    geom: { PZ:0.65, Pd:3, Lo:4, AD:0.6, LD:0.6, HD:0.25, CX:0, CY:0, QADM:8, FS:3, mallaTamElem:50, metodoBalasto:"", asentamiento:0, moduloK:0, moduloKUnidad:"kg/cm3" },
+    // Pestaña "Cálculos" en blanco al abrir (pedido explícito del usuario):
+    // ningún campo numérico/de selección trae un valor típico de ejemplo —
+    // el ingeniero llena todo desde cero para cada proyecto real.
+    geom: { PZ:0, Pd:0, Lo:0, AD:0, LD:0, HD:0, CX:0, CY:0, QADM:0, FS:0, mallaTamElem:0, metodoBalasto:"", asentamiento:0, moduloK:0, moduloKUnidad:"kg/cm3" },
     angles: { P1:45, P1a:-30, P1b:30, P1c:0 },
     reaccionesPorTipo: {
       "Autosoportada 3P": defaultReacciones("Autosoportada 3P"),
       "Autosoportada 4P": defaultReacciones("Autosoportada 4P")
     },
     proyecto: { assetNum:"", assetName:"", engineer:"", date:"", country:"Colombia", request:"" },
-    materiales: { fc:210, gc:2400, gr:1600, fy:4200, existeCiclopeo:"No", espesorCiclopeo:1.00, gcc:2200, pesoAdicional:0 },
-    diseno: { r:7.5, phiFlexion:0.9, phiCortante:0.75, alphaS:40, varInf:"#5", varSup:"#5", varInfExist:"#5", sepInfExist:15, varSupExist:"#5", sepSupExist:15,
-      dadoN1:14, dadoVar1:"#4", dadoN2:10, dadoVar2:"#4", dadoEstribosRamas:1, dadoEstriboVar:"#3", dadoEstriboSep:15, dadoRecubrimiento:5 },
+    materiales: { fc:0, gc:0, gr:0, fy:0, existeCiclopeo:"No", espesorCiclopeo:0, gcc:0, pesoAdicional:0 },
+    // phiFlexion/phiCortante NO son datos de proyecto: son constantes fijas de
+    // ACI 318-19 (φ=0.9 flexión, φ=0.75 cortante) que se muestran de solo
+    // lectura en la UI, sin ningún campo para que el ingeniero las edite — si
+    // arrancaran en 0 quedarían así para siempre, sin forma de corregirlas.
+    diseno: { r:0, phiFlexion:0.9, phiCortante:0.75, alphaS:0, varInf:"", varSup:"", varInfExist:"", sepInfExist:0, varSupExist:"", sepSupExist:0,
+      dadoN1:0, dadoVar1:"", dadoN2:0, dadoVar2:"", dadoEstribosRamas:0, dadoEstriboVar:"", dadoEstriboSep:0, dadoRecubrimiento:0 },
     // Resultados de las animaciones de Brazo de palanca (4.2.1) y Área
     // efectiva (4.3.2), por combinación — al vivir en state quedan incluidos
     // en "Guardar como…" y ya aparecen al reabrir ese mismo .gfem.
@@ -4259,7 +4271,7 @@ const DXF_FILE_TYPES = [{ description: "Archivos DXF", accept: {"application/x-g
 function nombreArchivoProyecto(ext){
   const num = (state.proyecto.assetNum||"").trim();
   const name = (state.proyecto.assetName||"").trim();
-  const base = (num && name) ? `${num}+${name}` : (num || name || "cimentacion");
+  const base = (num && name) ? `${num}_${name}` : (num || name || "cimentacion");
   return `${base}.${ext}`;
 }
 
@@ -8815,6 +8827,12 @@ function shapeLine(layer, x1,y1,x2,y2){ return {type:"line", layer, x1,y1,x2,y2}
 function shapeCircle(layer, cx,cy,r){ return {type:"circle", layer, cx,cy,r}; }
 function shapeText(layer, x,y,h,txt){ return {type:"text", layer, x,y,h,txt}; }
 
+// Recubrimiento LATERAL de la losa (a cualquier cara vertical, exterior u
+// hueco): fijo en 5 cm, igual que en Acero 3D (recLateral_m allá) — toda
+// barra debe quedar despegada de la cara antes de doblar el gancho, nunca a
+// ras. Compartido entre la malla en planta y el corte real entre dados.
+const REC_LATERAL_LOSA_M = 0.05;
+
 function shapesBBox(shapes){
   let xmin=Infinity, xmax=-Infinity, ymin=Infinity, ymax=-Infinity;
   const consider = (x,y)=>{ xmin=Math.min(xmin,x); xmax=Math.max(xmax,x); ymin=Math.min(ymin,y); ymax=Math.max(ymax,y); };
@@ -8893,12 +8911,18 @@ function shapesMallaLosa(layer, sepM, outerC, holeC, holeEnabled){
   for(let y=ymin+sepM/2; y<ymax; y+=sepM){
     let iv = crucesAIntervalos(crucesPoligono(outerC, "y", y));
     if(huecoOk) iv = restarIntervalos(iv, crucesAIntervalos(crucesPoligono(holeC, "y", y)));
-    iv.forEach(([x1,x2])=>{ if(x2>x1) shapes.push(shapeLine(layer, x1,y,x2,y)); });
+    iv.forEach(([x1,x2])=>{
+      const xx1=x1+REC_LATERAL_LOSA_M, xx2=x2-REC_LATERAL_LOSA_M;
+      if(xx2>xx1) shapes.push(shapeLine(layer, xx1,y,xx2,y));
+    });
   }
   for(let x=xmin+sepM/2; x<xmax; x+=sepM){
     let iv = crucesAIntervalos(crucesPoligono(outerC, "x", x));
     if(huecoOk) iv = restarIntervalos(iv, crucesAIntervalos(crucesPoligono(holeC, "x", x)));
-    iv.forEach(([y1,y2])=>{ if(y2>y1) shapes.push(shapeLine(layer, x,y1,x,y2)); });
+    iv.forEach(([y1,y2])=>{
+      const yy1=y1+REC_LATERAL_LOSA_M, yy2=y2-REC_LATERAL_LOSA_M;
+      if(yy2>yy1) shapes.push(shapeLine(layer, x,yy1,x,yy2));
+    });
   }
   return shapes;
 }
@@ -8987,8 +9011,11 @@ function shapesVistaPlanta(){
   Object.keys(dados).forEach(nombre=>{
     shapes.push(shapePolyline("DADOS", dados[nombre], true));
     const cx = dados[nombre].reduce((s,p)=>s+p.x,0)/dados[nombre].length;
-    const cy = dados[nombre].reduce((s,p)=>s+p.y,0)/dados[nombre].length;
-    shapes.push(shapeText("TEXTO", cx, cy, Math.max(state.geom.AD, state.geom.LD)*0.15, nombre));
+    const dadoYmax = Math.max(...dados[nombre].map(p=>p.y));
+    const fhNombre = Math.max(state.geom.AD, state.geom.LD)*0.15;
+    // Letrero (no es cota) por ARRIBA del dado, no encima de su símbolo —
+    // si no, se confunde con la malla de acero que pasa por debajo.
+    shapes.push(shapeText("TEXTO", cx, dadoYmax+fhNombre*0.4, fhNombre, nombre));
   });
   if(props){
     const r = 0.05;
@@ -9063,8 +9090,15 @@ function shapesVistaCorte(legA, legB){
   if(!lastPlanArgs) return [];
   const { legs, dados, outerC, holeC } = lastPlanArgs;
   if(!legs || !legs[legA] || !legs[legB] || !dados[legA] || !dados[legB]) return [];
-  const PZ = state.geom.PZ, HD = state.geom.HD;
+  const PZ = state.geom.PZ, HD = state.geom.HD, Pd = state.geom.Pd;
   if(!(PZ>0) || !(HD>0)) return [];
+  // Altura TOTAL del dado dibujada en el corte: no es solo HD (afloramiento
+  // sobre el terreno) — el dado también ocupa, enterrado, la diferencia
+  // entre la profundidad de desplante y el peralte de la losa (mismo "Hr"
+  // que usa Acero 3D para dadoAltura = Hr + HD). Dibujar solo hasta HD deja
+  // el dado incompleto (cortado a la altura del afloramiento).
+  const HrDado = Math.max(0, Pd - PZ);
+  const alturaDado = HrDado + HD;
   const p0 = legs[legA], p1 = legs[legB];
   const dx = p1.x-p0.x, dy = p1.y-p0.y;
   const dist = Math.hypot(dx,dy);
@@ -9106,7 +9140,7 @@ function shapesVistaCorte(legA, legB){
     const rectL = dados[nombre].map(toLocal);
     const us = rectL.map(p=>p.x);
     const u1 = Math.min(...us), u2 = Math.max(...us);
-    shapes.push(shapePolyline("CONCRETO", [{x:u1,y:0},{x:u2,y:0},{x:u2,y:HD},{x:u1,y:HD}], true));
+    shapes.push(shapePolyline("CONCRETO", [{x:u1,y:0},{x:u2,y:0},{x:u2,y:alturaDado},{x:u1,y:alturaDado}], true));
 
     const center = legs[nombre];
     const angleDeg = (state.angles && state.angles[nombre]) || 0;
@@ -9117,13 +9151,17 @@ function shapesVistaCorte(legA, legB){
       const key = Math.round(local.x*1000); // 1mm de tolerancia
       if(vistos.has(key)) return;
       vistos.add(key);
-      shapes.push(shapeLine("ACERO_DADO", local.x, HD-0.02, local.x, yEmbebido));
+      // El extremo superior de la barra queda a un recubrimiento VERTICAL
+      // real (recDado_m, el mismo "r" del dado) por debajo del tope del
+      // dado completo (alturaDado) — antes usaba un margen fijo de 2 cm sin
+      // relación con el recubrimiento configurado.
+      shapes.push(shapeLine("ACERO_DADO", local.x, alturaDado-recDado_m, local.x, yEmbebido));
       shapes.push(shapeLine("ACERO_DADO", local.x, yEmbebido, local.x+dirHook*hookDado, yEmbebido));
     });
     const sepEstribo_m = state.diseno.dadoEstriboSep/100;
     const uEstribo1 = u1+recDado_m, uEstribo2 = u2-recDado_m;
     if(sepEstribo_m>0 && uEstribo2>uEstribo1){
-      for(let y=recDado_m; y<=HD-recDado_m+1e-6; y+=sepEstribo_m){
+      for(let y=recDado_m; y<=alturaDado-recDado_m+1e-6; y+=sepEstribo_m){
         shapes.push(shapeLine("ACERO_DADO", uEstribo1, y, uEstribo2, y));
       }
     }
@@ -9132,28 +9170,42 @@ function shapesVistaCorte(legA, legB){
     // no a la escala general del dibujo, o el texto sale más grande que la
     // distancia que está acotando.
     const fhDado = Math.max(recDado_m*0.35, 0.012);
-    shapes.push(...shapesCotaH("COTAS", u1, uEstribo1, HD*0.5, HD*0.5-0.001, `r = ${fmt(rDado_cm,1)} cm`, fhDado));
+    shapes.push(...shapesCotaH("COTAS", u1, uEstribo1, alturaDado*0.5, alturaDado*0.5-0.001, `r = ${fmt(rDado_cm,1)} cm`, fhDado));
+    // Escala de fuente para la cota de altura de abajo, proporcional al
+    // propio dado (envolvente u1-u2 en este corte y su altura total).
+    const fhLen = Math.max(u2-u1, alturaDado)*0.06;
+    // Altura TOTAL del dado (enterrado Hr + afloramiento HD) — cota vertical
+    // a la izquierda de su silueta, mismo estilo que la cota de PZ. Se
+    // rotula "Altura dado" (no "HD") porque HD por sí solo es solo la parte
+    // que aflora, y acá se dibuja el dado completo.
+    shapes.push(...shapesCotaV("COTAS", 0, alturaDado, u1-fhLen*1.8, u1, `Altura dado = ${fmt(alturaDado,2)} m`, fhLen*0.85));
   });
 
   // Recubrimiento de la losa: cota corta de la cara de concreto al eje del
   // refuerzo, inferior y superior — mismo "r" (state.diseno.r) que usa
   // getCriteriosDiseno() para el peralte efectivo d = PZ − r.
+  // Recubrimiento LATERAL (a la cara vertical de la losa, exterior u hueco):
+  // fijo en 5 cm, igual que en Acero 3D y en la malla en planta
+  // (REC_LATERAL_LOSA_M) — la barra debe quedar despegada de la cara ANTES
+  // de doblar el gancho, nunca a ras.
   function filaBarraLosa(layer, y, sepCm, diamCm){
     if(!(sepCm>0) || !(diamCm>0)) return;
     const hookMax = Math.max((PZ - 2*r_m)/2, 0.03);
     const hook = Math.min(Math.max(diamCm/100*8, 0.08), hookMax);
     const dy = y < -PZ/2 ? hook : -hook; // hacia el medio del espesor
     ivLosa.forEach(([u1,u2])=>{
-      shapes.push(shapeLine(layer, u1, y, u2, y));
-      shapes.push(shapeLine(layer, u1, y, u1, y+dy));
-      shapes.push(shapeLine(layer, u2, y, u2, y+dy));
+      const uu1 = u1+REC_LATERAL_LOSA_M, uu2 = u2-REC_LATERAL_LOSA_M;
+      if(!(uu2>uu1)) return;
+      shapes.push(shapeLine(layer, uu1, y, uu2, y));
+      shapes.push(shapeLine(layer, uu1, y, uu1, y+dy));
+      shapes.push(shapeLine(layer, uu2, y, uu2, y+dy));
     });
   }
   filaBarraLosa("ACERO_LOSA_EXIST", -PZ+r_m, state.diseno.sepInfExist, diametroVarillaCm(state.diseno.varInfExist));
   filaBarraLosa("ACERO_LOSA_EXIST", -r_m, state.diseno.sepSupExist, diametroVarillaCm(state.diseno.varSupExist));
 
-  const bb = shapesBBox(shapes) || {xmin:0,xmax:dist,ymin:-PZ,ymax:HD};
-  const fh = Math.max(bb.xmax-bb.xmin, HD+PZ)*0.035;
+  const bb = shapesBBox(shapes) || {xmin:0,xmax:dist,ymin:-PZ,ymax:alturaDado};
+  const fh = Math.max(bb.xmax-bb.xmin, alturaDado+PZ)*0.035;
   shapes.push(...shapesCotaV("COTAS", -PZ, 0, bb.xmin-fh*1.8, bb.xmin, `PZ = ${fmt(PZ,2)} m`, fh*0.85));
   if(ivLosa.length){
     const [uL1] = ivLosa[0];
@@ -9161,9 +9213,12 @@ function shapesVistaCorte(legA, legB){
     // no a la escala general del corte (que puede ser varios metros).
     const fhCover = Math.max(r_m*0.35, 0.012);
     shapes.push(...shapesCotaV("COTAS", -PZ, -PZ+r_m, uL1-fhCover*3.2, uL1-fhCover*1.8, `r = ${fmt(state.diseno.r,1)} cm`, fhCover));
+    // Cota lateral junto al lecho SUPERIOR (parte de arriba del corte).
+    const fhLat = Math.max(REC_LATERAL_LOSA_M*0.35, 0.012);
+    shapes.push(...shapesCotaH("COTAS", uL1, uL1+REC_LATERAL_LOSA_M, -r_m*0.5+fhLat*3.2, -r_m*0.5+fhLat*1.8, `r = ${fmt(REC_LATERAL_LOSA_M*100,1)} cm`, fhLat));
   }
-  shapes.push(...shapesCotaH("COTAS", 0, dist, HD+fh*0.6, HD, `${fmt(dist,2)} m (${legA} a ${legB})`, fh*0.85));
-  shapes.push(shapeText("TEXTO", bb.xmin, HD+fh*2.4, fh*1.25, `CORTE ${legA} - ${legB} (real, por la linea entre dados)`));
+  shapes.push(...shapesCotaH("COTAS", 0, dist, alturaDado+fh*0.6, alturaDado, `${fmt(dist,2)} m`, fh*0.85));
+  shapes.push(shapeText("TEXTO", bb.xmin, alturaDado+fh*2.4, fh*1.25, `CORTE ${legA} - ${legB}`));
   return shapes;
 }
 
@@ -9854,6 +9909,9 @@ function initTheme(){
       if(localStorage.getItem(DEV_SKIP_KEY) === "1") return true;
       const path = decodeURIComponent(location.pathname).toLowerCase();
       if(DEV_USERNAMES.some(u => path.includes("/" + u + "/"))) return true;
+      // Cuando se abre por http (no file://) vía el puente local de la VM
+      // (http://localhost:8080/...) también es una sesión de prueba del desarrollador.
+      if(location.hostname === "localhost" || location.hostname === "127.0.0.1") return true;
     }catch{}
     return false;
   }
