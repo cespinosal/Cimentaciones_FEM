@@ -2306,6 +2306,11 @@ document.addEventListener("click", (e) => {
                 <button class="btn subtle" id="btnAceroVistaAlzadoX" type="button">Alzado X</button>
                 <button class="btn subtle" id="btnAceroVistaAlzadoZ" type="button">Alzado Z</button>
                 <button class="btn subtle" id="btnAceroExportPng" type="button">Exportar PNG</button>
+                <!-- A propósito en esta pestaña y no en 4.7 (Exportación de modelo): para
+                     cuando el DXF incluya cortes/detalle de armado (etapas 2-3, pendientes),
+                     necesita que el ingeniero ya haya declarado varillas/diámetros en 5.3/5.6
+                     — llegar hasta acá en el flujo de pestañas ya lo garantiza. -->
+                <button class="btn" id="btnExportDxfPlanta" type="button">Exportar planos a DXF</button>
               </div>
             </div>
             <div style="flex:0 0 220px;">
@@ -4114,24 +4119,31 @@ function defaultElementosMecanicos(){
 }
 
 // Extrae el usuario de la ruta file:// (C:\Users\<usuario>\... en Windows, /Users/<usuario>/...
-// en Mac) para autocompletar el campo "Ingeniero" sin preguntar y para identificar al ingeniero
-// en el registro de uso por correo (más abajo, cerca de "Ayuda embebida"). location.pathname sí
-// es accesible sin restricción porque es la URL propia del documento — no existe otra forma de
-// leer el usuario del sistema operativo desde el navegador. Si la ruta no sigue el patrón
-// "/Users/<algo>/" (ej. una unidad de red, u otra estructura de carpetas), devuelve null y el
+// en Mac, /home/<usuario>/ en Linux) para autocompletar el campo "Ingeniero" sin preguntar y para
+// identificar al ingeniero en el registro de uso por correo (más abajo, cerca de "Ayuda
+// embebida"). location.pathname sí es accesible sin restricción porque es la URL propia del
+// documento — no existe otra forma de leer el usuario del sistema operativo desde el navegador.
+// Además del patrón estándar, cubre laptops corporativas con carpetas redirigidas por política de
+// dominio (el perfil vive en un share de red tipo "\\servidor\Redirigidos$\<usuario>\Desktop\...",
+// sin ningún "Users" en la ruta): busca el segmento justo antes de una carpeta conocida
+// (Desktop/Escritorio/Documents/Documentos/Downloads/Descargas/OneDrive). Si la ruta no coincide
+// con ninguno de los dos patrones (ej. una unidad de red sin esa estructura), devuelve null y el
 // campo del formulario se deja editable a mano como respaldo (ver AUTO_ENGINEER más abajo).
 function engineerFromPath(){
   try{
     const path = decodeURIComponent(location.pathname);
-    const m = path.match(/\/Users\/([^/]+)\//i);
-    if(!m) return null;
-    return m[1].replace(/[._]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    const direct = path.match(/\/(?:Users|home)\/([^/]+)\//i);
+    if(direct) return direct[1].replace(/[._]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    const redirected = path.match(/\/([^/]+)\/(?:Desktop|Escritorio|Documents|Documentos|Downloads|Descargas|OneDrive[^/]*)\//i);
+    if(redirected) return redirected[1].replace(/[._]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    return null;
   }catch{ return null; }
 }
 const AUTO_ENGINEER = engineerFromPath();
 
 function defaultState(){
   return {
+    formatVersion: SCHEMA_VERSION,
     tipoEstructura: "Autosoportada 3P",
     outer: [],
     holeEnabled: false,
@@ -4156,30 +4168,57 @@ function defaultState(){
 }
 
 function exampleState(){
-  const s = mergeState(defaultState(), EXAMPLE_GFEM);
-  // reaccionesPorTipo no está en la lista de sub-objetos que mergeState()
-  // combina en profundidad (solo geom/materiales/angles/proyecto) — se
-  // combina acá aparte para no perder las tablas por defecto (en blanco)
-  // de "Autosoportada 4P"/"Monopolo", que EXAMPLE_GFEM no trae (solo trae
-  // la de "Autosoportada 3P", la única con datos reales).
-  s.reaccionesPorTipo = Object.assign({}, defaultState().reaccionesPorTipo, EXAMPLE_GFEM.reaccionesPorTipo);
+  const s = mergeState(defaultState(), migrateLoadedState(EXAMPLE_GFEM));
+  s.formatVersion = SCHEMA_VERSION;
   return s;
 }
 
 const THEME_KEY = "cimentacionesFEM.theme";
-// Merge con defaultState() para completar campos nuevos que no existían en un
-// proyecto .gfem viejo (evita "Cannot read properties of undefined" al
-// agregar features nuevas, ej. state.reaccionesPorTipo). El merge de nivel
-// superior no alcanza para los sub-objetos (geom, materiales, angles,
-// proyecto): si el guardado viejo ya tenía, ej., "geom" pero sin el campo
-// "QADM" agregado después, un Object.assign de nivel superior reemplaza TODO
-// "geom" por el guardado y pierde el default de "QADM" (quedaba "undefined"
-// en el input) — por eso esos 4 sub-objetos se fusionan aparte.
+
+// Formato de los archivos .gfem: número de versión + tabla de migraciones,
+// para cuando el SIGNIFICADO de un campo cambie entre versiones (ej. una
+// unidad, o un formato) y ya no baste con rellenar valores faltantes —
+// mergeState() de abajo solo cubre campos NUEVOS, no campos que cambian de
+// sentido. Cada migración recibe el objeto crudo recién leído del .gfem (con
+// el N° de versión con el que fue guardado) y devuelve el objeto ya
+// adaptado a la versión siguiente; migrateLoadedState() las encadena todas
+// hasta llegar a SCHEMA_VERSION. Hoy no hay ninguna migración escrita porque
+// no ha habido ningún cambio de significado todavía — es el lugar donde
+// agregarla cuando llegue el caso, en vez de dejar que el .gfem viejo cargue
+// con un valor técnicamente presente pero ya incorrecto.
+const SCHEMA_VERSION = 1;
+const STATE_MIGRATIONS = {
+  // 2: (loaded) => ({ ...loaded, campoNuevo: transformar(loaded.campoViejo) }),
+};
+function migrateLoadedState(loaded){
+  let v = Number(loaded && loaded.formatVersion) || 0;
+  while(v < SCHEMA_VERSION){
+    v += 1;
+    const migrate = STATE_MIGRATIONS[v];
+    if(migrate) loaded = migrate(loaded);
+  }
+  return loaded;
+}
+
+// Merge recursivo con defaultState() para completar campos nuevos que no
+// existían en un proyecto .gfem viejo (evita "Cannot read properties of
+// undefined" al agregar features nuevas). Recorre cualquier objeto plano
+// anidado (no solo una lista fija de nombres) y rellena ahí lo que falte;
+// los arrays (outer, hole, elementosMecanicos, cada tabla dentro de
+// reaccionesPorTipo, etc.) se toman completos del guardado si están
+// presentes, porque fusionarlos elemento a elemento no tiene sentido. Antes
+// esto solo cubría geom/materiales/angles/proyecto/diseno por nombre
+// explícito — un sub-objeto nuevo que no estuviera en esa lista perdía sus
+// defaults igual que "geom" sin fusionar (ver el workaround que esto
+// reemplaza en exampleState()).
+function isPlainObject(v){ return v !== null && typeof v === "object" && !Array.isArray(v); }
 function mergeState(defaults, saved){
-  const merged = Object.assign({}, defaults, saved || {});
-  ["geom","materiales","angles","proyecto","diseno"].forEach(key=>{
-    merged[key] = Object.assign({}, defaults[key], (saved && saved[key]) || {});
-  });
+  if(!isPlainObject(saved)) return defaults;
+  const merged = Object.assign({}, defaults);
+  for(const key of Object.keys(saved)){
+    const d = defaults[key], s = saved[key];
+    merged[key] = (isPlainObject(d) && isPlainObject(s)) ? mergeState(d, s) : s;
+  }
   return merged;
 }
 // Sin persistencia en localStorage a propósito: cada apertura/refresh de la
@@ -4209,6 +4248,10 @@ let lastPlanArgs = null;
 // .bin, etc.), aunque acá no se pidan. Con un MIME que no existe en el
 // registro no hay nada que mezclar, así que el filtro queda solo en .gfem.
 const GFEM_FILE_TYPES = [{ description: "Archivos GeoCimFEM", accept: {"application/x-geocimfem": [".gfem"]} }];
+// Mismo truco del MIME inventado que GFEM_FILE_TYPES (ver comentario arriba)
+// para que el diálogo de "Guardar como…" del DXF no mezcle extensiones
+// registradas de otros programas (AutoCAD, etc.) bajo un MIME real de .dxf.
+const DXF_FILE_TYPES = [{ description: "Archivos DXF", accept: {"application/x-geocimfem-dxf": [".dxf"]} }];
 
 // Nombre por default para Guardar/Guardar como/autoguardado: <Asset Number>+
 // <Asset Name> (pedido explícito del usuario) — si falta alguno de los dos
@@ -8669,6 +8712,516 @@ function generarStaadModel(){
   return aplicarAnchoStaad79([header, nodos, elementos, grupos, propiedades, materiales, constantes, apoyos, cargas, load3, combinaciones].filter(Boolean).join("\n")).toUpperCase();
 }
 
+/* ---------- Exportación a DXF (planos de la cimentación) ----------
+   Escritor DXF mínimo en ASCII, versión R12 (AC1009) — no AC1015: esa
+   primera versión salía "Error de procesamiento / drawing file is invalid"
+   en el visor de Autodesk porque AC1015+ exige handles (5), punteros a
+   dueño (330) y marcadores de subclase (100) en cada entidad, y una capa
+   con linetype "CONTINUOUS" solo es válida si existe una tabla LTYPE real
+   con esa entrada — nada de eso estaba. R12 es el formato pre-base de datos
+   de objetos: sin handles, sin CLASSES, sin BLOCK_RECORD, mucho más simple
+   y tolerante para un escritor hecho a mano, y lo abre cualquier versión de
+   AutoCAD (hacia adelante y hacia atrás). Igual necesita que LAYER
+   referencie un LTYPE que exista (por eso la tabla LTYPE/CONTINUOUS) y que
+   TEXT tenga un STYLE que exista (tabla STYLE/STANDARD) — validado con un
+   parser DXF real (ezdxf) antes de confirmar este formato.
+   Coordenadas en metros porque state.geom ya trabaja en metros (mismas que
+   usa renderPlan() para el SVG en planta, pero SIN invertir Y: DXF/AutoCAD
+   son Y-arriba de por sí, la inversión de renderPlan es solo para que el
+   SVG se vea "derecho" en pantalla). Implementación propia (no una
+   librería de terceros) para mantener el patrón "todo inline, sin CDN".
+*/
+function dxfPair(code, value){ return `${code}\n${value}\n`; }
+
+function dxfHeaderSection(){
+  return dxfPair(0,"SECTION") + dxfPair(2,"HEADER")
+    + dxfPair(9,"$ACADVER") + dxfPair(1,"AC1009")
+    + dxfPair(0,"ENDSEC");
+}
+
+function dxfTablesSection(layers){
+  let s = dxfPair(0,"SECTION") + dxfPair(2,"TABLES");
+  // LTYPE: toda capa que declare linetype "CONTINUOUS" necesita que esta
+  // entrada exista de verdad — sin esto el visor de Autodesk lo rechazaba.
+  s += dxfPair(0,"TABLE") + dxfPair(2,"LTYPE") + dxfPair(70,1)
+    + dxfPair(0,"LTYPE") + dxfPair(2,"CONTINUOUS") + dxfPair(70,0)
+    + dxfPair(3,"Solid line") + dxfPair(72,65) + dxfPair(73,0) + dxfPair(40,"0.0")
+    + dxfPair(0,"ENDTAB");
+  // STYLE: mismo motivo, para que los TEXT (que no declaran style propio,
+  // caen al default "STANDARD") tengan una entrada real que los respalde.
+  s += dxfPair(0,"TABLE") + dxfPair(2,"STYLE") + dxfPair(70,1)
+    + dxfPair(0,"STYLE") + dxfPair(2,"STANDARD") + dxfPair(70,0)
+    + dxfPair(40,"0.0") + dxfPair(41,"1.0") + dxfPair(50,"0.0") + dxfPair(71,0) + dxfPair(42,"1.0")
+    + dxfPair(3,"txt") + dxfPair(4,"")
+    + dxfPair(0,"ENDTAB");
+  s += dxfPair(0,"TABLE") + dxfPair(2,"LAYER") + dxfPair(70,layers.length);
+  layers.forEach(L=>{
+    s += dxfPair(0,"LAYER") + dxfPair(2,L.name) + dxfPair(70,0)
+      + dxfPair(62,L.color||7) + dxfPair(6,"CONTINUOUS");
+  });
+  s += dxfPair(0,"ENDTAB");
+  s += dxfPair(0,"ENDSEC");
+  return s;
+}
+
+function dxfEntitiesSection(entitiesText){
+  return dxfPair(0,"SECTION") + dxfPair(2,"ENTITIES") + entitiesText + dxfPair(0,"ENDSEC");
+}
+
+function dxfBuild(layers, entitiesText){
+  return dxfHeaderSection() + dxfTablesSection(layers) + dxfEntitiesSection(entitiesText) + dxfPair(0,"EOF");
+}
+
+function dxfNum(n){ return (Math.round(n*10000)/10000).toFixed(4); }
+
+// Polígono cerrado o abierto como POLYLINE+VERTEX+SEQEND (LWPOLYLINE no
+// existía todavía en R12 — usarla junto con $ACADVER=AC1009 es justo el
+// tipo de inconsistencia que hacía fallar la validación).
+function dxfPolyline(layer, pts, closed){
+  let s = dxfPair(0,"POLYLINE") + dxfPair(8,layer)
+    + dxfPair(10,"0.0") + dxfPair(20,"0.0") + dxfPair(30,"0.0")
+    + dxfPair(66,1) + dxfPair(70, closed?1:0);
+  pts.forEach(p=>{
+    s += dxfPair(0,"VERTEX") + dxfPair(8,layer) + dxfPair(10,dxfNum(p.x)) + dxfPair(20,dxfNum(p.y)) + dxfPair(30,"0.0");
+  });
+  s += dxfPair(0,"SEQEND") + dxfPair(8,layer);
+  return s;
+}
+
+function dxfLineEnt(layer, x1,y1,x2,y2){
+  return dxfPair(0,"LINE") + dxfPair(8,layer)
+    + dxfPair(10,dxfNum(x1)) + dxfPair(20,dxfNum(y1))
+    + dxfPair(11,dxfNum(x2)) + dxfPair(21,dxfNum(y2));
+}
+
+function dxfCircleEnt(layer, cx,cy,r){
+  return dxfPair(0,"CIRCLE") + dxfPair(8,layer)
+    + dxfPair(10,dxfNum(cx)) + dxfPair(20,dxfNum(cy)) + dxfPair(40,dxfNum(r));
+}
+
+function dxfTextEnt(layer, x,y,h,txt){
+  return dxfPair(0,"TEXT") + dxfPair(8,layer)
+    + dxfPair(10,dxfNum(x)) + dxfPair(20,dxfNum(y)) + dxfPair(40,dxfNum(h)) + dxfPair(1,txt);
+}
+
+/* ---------- Vistas del plano (shapes en coordenadas locales) ----------
+   Cada vista se arma primero como una lista de "shapes" (objetos planos, no
+   texto DXF todavía) en SU PROPIO sistema local — así se puede medir su
+   caja delimitadora y desplazarla (traducir X/Y) para acomodar las 4 vistas
+   una junto a otra en un solo archivo, sin que se encimen, antes de recién
+   ahí emitir las entidades DXF reales. */
+function shapePolyline(layer, pts, closed){ return {type:"polyline", layer, pts, closed}; }
+function shapeLine(layer, x1,y1,x2,y2){ return {type:"line", layer, x1,y1,x2,y2}; }
+function shapeCircle(layer, cx,cy,r){ return {type:"circle", layer, cx,cy,r}; }
+function shapeText(layer, x,y,h,txt){ return {type:"text", layer, x,y,h,txt}; }
+
+function shapesBBox(shapes){
+  let xmin=Infinity, xmax=-Infinity, ymin=Infinity, ymax=-Infinity;
+  const consider = (x,y)=>{ xmin=Math.min(xmin,x); xmax=Math.max(xmax,x); ymin=Math.min(ymin,y); ymax=Math.max(ymax,y); };
+  shapes.forEach(s=>{
+    if(s.type==="polyline") s.pts.forEach(p=>consider(p.x,p.y));
+    else if(s.type==="line"){ consider(s.x1,s.y1); consider(s.x2,s.y2); }
+    else if(s.type==="circle"){ consider(s.cx-s.r,s.cy-s.r); consider(s.cx+s.r,s.cy+s.r); }
+    else if(s.type==="text"){ consider(s.x,s.y); consider(s.x+s.txt.length*s.h*0.65, s.y+s.h); }
+  });
+  return isFinite(xmin) ? {xmin,xmax,ymin,ymax} : null;
+}
+
+function emitShapes(shapes, dx, dy){
+  let ent = "";
+  shapes.forEach(s=>{
+    if(s.type==="polyline") ent += dxfPolyline(s.layer, s.pts.map(p=>({x:p.x+dx, y:p.y+dy})), s.closed);
+    else if(s.type==="line") ent += dxfLineEnt(s.layer, s.x1+dx, s.y1+dy, s.x2+dx, s.y2+dy);
+    else if(s.type==="circle") ent += dxfCircleEnt(s.layer, s.cx+dx, s.cy+dy, s.r);
+    else if(s.type==="text") ent += dxfTextEnt(s.layer, s.x+dx, s.y+dy, s.h, s.txt);
+  });
+  return ent;
+}
+
+// Cruces de una recta horizontal (eje="y", fijo=Y0) o vertical (eje="x",
+// fijo=X0) con los lados de un polígono cerrado — algoritmo de rayo
+// estándar, usado para recortar la malla de acero de la losa al contorno
+// real (y descontar el hueco) en vez de dibujar barras "de pared a pared"
+// del rectángulo envolvente, que en una losa no rectangular se saldrían
+// del concreto real.
+function crucesPoligono(polygon, eje, fijo){
+  const cruces = [];
+  const n = polygon.length;
+  for(let i=0;i<n;i++){
+    const a = polygon[i], b = polygon[(i+1)%n];
+    const av = eje==="y" ? a.y : a.x, bv = eje==="y" ? b.y : b.x;
+    if((av<=fijo && bv>fijo) || (bv<=fijo && av>fijo)){
+      const t = (fijo-av)/(bv-av);
+      const oa = eje==="y" ? a.x : a.y, ob = eje==="y" ? b.x : b.y;
+      cruces.push(oa + t*(ob-oa));
+    }
+  }
+  cruces.sort((p,q)=>p-q);
+  return cruces;
+}
+// Regla par-impar: cada par consecutivo de cruces es un tramo "adentro".
+function crucesAIntervalos(cruces){
+  const out = [];
+  for(let i=0; i+1<cruces.length; i+=2) out.push([cruces[i], cruces[i+1]]);
+  return out;
+}
+// Resta los intervalos del hueco de los intervalos del contorno (para que
+// la malla no se dibuje encima del hueco).
+function restarIntervalos(base, restar){
+  let result = base.map(iv=>iv.slice());
+  restar.forEach(([hs,he])=>{
+    const next = [];
+    result.forEach(([s,e])=>{
+      if(he<=s || hs>=e){ next.push([s,e]); return; }
+      if(hs>s) next.push([s,hs]);
+      if(he<e) next.push([he,e]);
+    });
+    result = next;
+  });
+  return result;
+}
+// Malla de acero de la losa (ambos sentidos, mismo bar/separación — así la
+// reporta 5.3, "ambos sentidos") recortada al contorno real menos el
+// hueco. sepM en metros; layer distingue nuevo/existente.
+function shapesMallaLosa(layer, sepM, outerC, holeC, holeEnabled){
+  const shapes = [];
+  if(!(sepM>0)) return shapes;
+  let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
+  outerC.forEach(p=>{ xmin=Math.min(xmin,p.x); xmax=Math.max(xmax,p.x); ymin=Math.min(ymin,p.y); ymax=Math.max(ymax,p.y); });
+  if(!isFinite(xmin)) return shapes;
+  const huecoOk = holeEnabled && holeC.length>=3;
+  for(let y=ymin+sepM/2; y<ymax; y+=sepM){
+    let iv = crucesAIntervalos(crucesPoligono(outerC, "y", y));
+    if(huecoOk) iv = restarIntervalos(iv, crucesAIntervalos(crucesPoligono(holeC, "y", y)));
+    iv.forEach(([x1,x2])=>{ if(x2>x1) shapes.push(shapeLine(layer, x1,y,x2,y)); });
+  }
+  for(let x=xmin+sepM/2; x<xmax; x+=sepM){
+    let iv = crucesAIntervalos(crucesPoligono(outerC, "x", x));
+    if(huecoOk) iv = restarIntervalos(iv, crucesAIntervalos(crucesPoligono(holeC, "x", x)));
+    iv.forEach(([y1,y2])=>{ if(y2>y1) shapes.push(shapeLine(layer, x,y1,x,y2)); });
+  }
+  return shapes;
+}
+
+// Planta: contorno, hueco (si aplica), footprint de cada dado (con su
+// nombre de pata), el centroide y la malla de acero inferior (nuevo +
+// existente, recortada al contorno real) — misma geometría que
+// lastPlanArgs usa para pintar el SVG en pantalla (ver renderAll()), así
+// que el DXF siempre coincide con lo que se ve en la pestaña "Definición
+// de la zapata" al momento de exportar.
+// Cota simple a mano (extensión + línea + flechas tipo caret + texto) — NO
+// es una entidad DIMENSION paramétrica de verdad (esas piden un BLOCK
+// anónimo para la flecha, más riesgo en un escritor DXF hecho a mano); con
+// LINE simples alcanza para leer la medida en el plano.
+function shapesCotaH(layer, x1, x2, y, yDesde, texto, fh){
+  const shapes = [];
+  shapes.push(shapeLine(layer, x1, yDesde, x1, y));
+  shapes.push(shapeLine(layer, x2, yDesde, x2, y));
+  shapes.push(shapeLine(layer, x1, y, x2, y));
+  const a = fh*0.5;
+  shapes.push(shapeLine(layer, x1, y, x1+a, y+a*0.4));
+  shapes.push(shapeLine(layer, x1, y, x1+a, y-a*0.4));
+  shapes.push(shapeLine(layer, x2, y, x2-a, y+a*0.4));
+  shapes.push(shapeLine(layer, x2, y, x2-a, y-a*0.4));
+  shapes.push(shapeText(layer, (x1+x2)/2 - texto.length*fh*0.3, y+fh*0.3, fh, texto));
+  return shapes;
+}
+function shapesCotaV(layer, y1, y2, x, xDesde, texto, fh){
+  const shapes = [];
+  shapes.push(shapeLine(layer, xDesde, y1, x, y1));
+  shapes.push(shapeLine(layer, xDesde, y2, x, y2));
+  shapes.push(shapeLine(layer, x, y1, x, y2));
+  const a = fh*0.5;
+  shapes.push(shapeLine(layer, x, y1, x-a*0.4, y1+a));
+  shapes.push(shapeLine(layer, x, y1, x+a*0.4, y1+a));
+  shapes.push(shapeLine(layer, x, y2, x-a*0.4, y2-a));
+  shapes.push(shapeLine(layer, x, y2, x+a*0.4, y2-a));
+  shapes.push(shapeText(layer, x+fh*0.4, (y1+y2)/2, fh, texto));
+  return shapes;
+}
+// Cota entre dos puntos a cualquier ángulo (lados del contorno, separación
+// entre dados) — misma idea que shapesCotaH/V pero sin asumir horizontal ni
+// vertical: (nx,ny) es la normal unitaria hacia donde se desplaza la línea
+// de cota. El texto queda siempre horizontal (sin rotar) por simplicidad —
+// legible igual, solo no queda alineado al lado que mide.
+function shapesCotaGeneral(layer, ax,ay,bx,by, nx,ny, offsetDist, texto, fh){
+  const shapes = [];
+  const oAx=ax+nx*offsetDist, oAy=ay+ny*offsetDist;
+  const oBx=bx+nx*offsetDist, oBy=by+ny*offsetDist;
+  shapes.push(shapeLine(layer, ax,ay, oAx,oAy));
+  shapes.push(shapeLine(layer, bx,by, oBx,oBy));
+  shapes.push(shapeLine(layer, oAx,oAy, oBx,oBy));
+  const dx=oBx-oAx, dy=oBy-oAy, len=Math.hypot(dx,dy)||1;
+  const ux=dx/len, uy=dy/len;
+  const a = fh*0.5, beta = 22*Math.PI/180;
+  const rot = (vx,vy,ang)=>{ const c=Math.cos(ang), s=Math.sin(ang); return {x:vx*c-vy*s, y:vx*s+vy*c}; };
+  [1,-1].forEach(sg=>{
+    const r = rot(ux,uy, sg*beta);
+    shapes.push(shapeLine(layer, oAx,oAy, oAx+r.x*a, oAy+r.y*a));
+    const r2 = rot(-ux,-uy, sg*beta);
+    shapes.push(shapeLine(layer, oBx,oBy, oBx+r2.x*a, oBy+r2.y*a));
+  });
+  shapes.push(shapeText(layer, (oAx+oBx)/2 - texto.length*fh*0.3, (oAy+oBy)/2+fh*0.3, fh, texto));
+  return shapes;
+}
+
+// Planta: contorno, hueco (si aplica), footprint de cada dado (con su
+// nombre de pata), el centroide, la malla de acero EXISTENTE (declarada por
+// el usuario, recortada al contorno real) y cotas — de cada lado del
+// contorno (y del hueco) y de la separación entre dados consecutivos. Misma
+// geometría que lastPlanArgs usa para pintar el SVG en pantalla (ver
+// renderAll()), así que el DXF siempre coincide con lo que se ve en la
+// pestaña "Definición de la zapata" al momento de exportar. Solo el acero
+// EXISTENTE (no el "nuevo" calculado en 5.3): es lo instalado de verdad.
+function shapesVistaPlanta(){
+  if(!lastPlanArgs) throw new Error("Todavía no hay geometría calculada — completa la definición de la zapata primero.");
+  const { props, legs, dados, outerC, holeC } = lastPlanArgs;
+  const shapes = [];
+
+  shapes.push(...shapesMallaLosa("ACERO_LOSA_EXIST", state.diseno.sepInfExist/100, outerC, holeC, state.holeEnabled));
+
+  shapes.push(shapePolyline("CONTORNO", closedPoints(outerC), true));
+  if(state.holeEnabled && holeC.length>=3){
+    shapes.push(shapePolyline("HUECO", closedPoints(holeC), true));
+  }
+  Object.keys(dados).forEach(nombre=>{
+    shapes.push(shapePolyline("DADOS", dados[nombre], true));
+    const cx = dados[nombre].reduce((s,p)=>s+p.x,0)/dados[nombre].length;
+    const cy = dados[nombre].reduce((s,p)=>s+p.y,0)/dados[nombre].length;
+    shapes.push(shapeText("TEXTO", cx, cy, Math.max(state.geom.AD, state.geom.LD)*0.15, nombre));
+  });
+  if(props){
+    const r = 0.05;
+    shapes.push(shapeCircle("EJES", props.cx, props.cy, r));
+    shapes.push(shapeLine("EJES", props.cx-r*2, props.cy, props.cx+r*2, props.cy));
+    shapes.push(shapeLine("EJES", props.cx, props.cy-r*2, props.cx, props.cy+r*2));
+  }
+
+  // Cotas de todos los lados del contorno (y del hueco, si aplica),
+  // desplazadas hacia afuera del polígono (normal aprox.: desde el
+  // centroide hacia el punto medio de cada lado).
+  const escGeo = Math.max(...outerC.map(p=>Math.hypot(p.x-(props?props.cx:0), p.y-(props?props.cy:0)))) || 1;
+  const offCota = Math.max(escGeo*0.08, 0.25);
+  const fhCota = Math.max(offCota*0.4, 0.08);
+  function cotasLados(poly, cx, cy, signo){
+    const n = poly.length;
+    for(let i=0;i<n;i++){
+      const a = poly[i], b = poly[(i+1)%n];
+      const len = Math.hypot(b.x-a.x, b.y-a.y);
+      if(!(len>0.02)) continue;
+      const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+      let nx=mx-cx, ny=my-cy; const nl=Math.hypot(nx,ny)||1; nx=nx/nl*signo; ny=ny/nl*signo;
+      shapes.push(...shapesCotaGeneral("COTAS", a.x,a.y, b.x,b.y, nx,ny, offCota, `${fmt(len,2)} m`, fhCota));
+    }
+  }
+  cotasLados(outerC, props?props.cx:0, props?props.cy:0, 1);
+  if(state.holeEnabled && holeC.length>=3){
+    const hcx = holeC.reduce((s,p)=>s+p.x,0)/holeC.length, hcy = holeC.reduce((s,p)=>s+p.y,0)/holeC.length;
+    cotasLados(holeC, hcx, hcy, -1); // hacia adentro del hueco (cavidad), no hacia afuera del contorno
+  }
+  // Cadena de cotas entre dados consecutivos (mismo orden que las patas).
+  const nombresDados = Object.keys(legs||{});
+  for(let i=0;i<nombresDados.length;i++){
+    const nA = nombresDados[i], nB = nombresDados[(i+1)%nombresDados.length];
+    if(nombresDados.length<2 || (nombresDados.length===2 && i>0)) break;
+    const A = legs[nA], B = legs[nB];
+    const dist = Math.hypot(B.x-A.x, B.y-A.y);
+    if(!(dist>0.02)) continue;
+    let nx=-(B.y-A.y), ny=(B.x-A.x); const nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
+    shapes.push(...shapesCotaGeneral("COTAS", A.x,A.y, B.x,B.y, nx,ny, offCota*0.6, `${fmt(dist,2)} m`, fhCota));
+  }
+
+  const bb = shapesBBox(shapes);
+  if(bb){
+    const fh = Math.max(bb.xmax-bb.xmin, bb.ymax-bb.ymin)*0.035;
+    shapes.push(shapeText("TEXTO", bb.xmin, bb.ymax+fh*0.8, fh*1.25,
+      `PLANTA - acero inferior existente ${state.diseno.varInfExist} @ ${state.diseno.sepInfExist} cm, ambos sentidos`));
+  }
+  return shapes;
+}
+
+// Corte real entre los dados de dos patas (legA -> legB, ej. "P1a"/"P1b"):
+// simula literalmente una línea recta de un dado al otro y dibuja lo que esa
+// línea corta de verdad — no un detalle típico simétrico. Se arma
+// transformando toda la geometría a un sistema LOCAL propio del corte
+// (u = distancia a lo largo de la línea legA→legB, v = offset perpendicular)
+// y reutilizando crucesPoligono()/restarIntervalos() con "v=0" (la propia
+// línea de corte) para sacar el perfil real de la losa (recortado al
+// contorno, hueco descontado) y el ancho real de CADA dado en ese corte
+// (contempla su rotación real, angleDeg de state.angles — un dado girado
+// respecto a la línea sale con el ancho que de verdad se ve en ese plano,
+// no AD/LD "de frente"). El acero longitudinal de cada dado se proyecta a
+// esta misma línea rotando su posición local por la orientación real de ESE
+// dado (misma rotación que ya usa dadoRect()) y ancla dentro de la losa una
+// longitud de desarrollo Ld real (ACI 25.4.2, misma función de "Acero 3D"),
+// con gancho hacia el otro dado. Solo refuerzo EXISTENTE en la losa (lo
+// instalado de verdad) — el refuerzo de losa se dibuja como línea continua
+// en cada tramo donde la losa realmente está presente (puede haber más de
+// un tramo si el hueco corta la línea), con gancho corto en los extremos de
+// cada tramo apuntando hacia el medio del espesor.
+function shapesVistaCorte(legA, legB){
+  if(!lastPlanArgs) return [];
+  const { legs, dados, outerC, holeC } = lastPlanArgs;
+  if(!legs || !legs[legA] || !legs[legB] || !dados[legA] || !dados[legB]) return [];
+  const PZ = state.geom.PZ, HD = state.geom.HD;
+  if(!(PZ>0) || !(HD>0)) return [];
+  const p0 = legs[legA], p1 = legs[legB];
+  const dx = p1.x-p0.x, dy = p1.y-p0.y;
+  const dist = Math.hypot(dx,dy);
+  if(!(dist>0.02)) return [];
+  const ang = Math.atan2(dy,dx), cosA = Math.cos(ang), sinA = Math.sin(ang);
+  function toLocal(p){
+    const ddx = p.x-p0.x, ddy = p.y-p0.y;
+    return { x: ddx*cosA + ddy*sinA, y: -ddx*sinA + ddy*cosA };
+  }
+  const shapes = [];
+  const r_m = state.diseno.r/100;
+
+  const outerL = outerC.map(toLocal);
+  const holeL = (state.holeEnabled && holeC.length>=3) ? holeC.map(toLocal) : [];
+  let ivLosa = crucesAIntervalos(crucesPoligono(outerL, "y", 0));
+  if(holeL.length>=3) ivLosa = restarIntervalos(ivLosa, crucesAIntervalos(crucesPoligono(holeL, "y", 0)));
+  ivLosa.forEach(([u1,u2])=>{
+    shapes.push(shapePolyline("CONCRETO", [{x:u1,y:-PZ},{x:u2,y:-PZ},{x:u2,y:0},{x:u1,y:0}], true));
+  });
+
+  const rDado_cm = state.diseno.dadoRecubrimiento;
+  const ldDado_cm = Math.max(
+    calcularLongitudDesarrolloACI(state.diseno.dadoVar1, rDado_cm, false).ld_cm,
+    calcularLongitudDesarrolloACI(state.diseno.dadoVar2, rDado_cm, false).ld_cm
+  );
+  const margenLosa = Math.max(PZ - r_m, 0.05);
+  const yEmbebido = -Math.min(ldDado_cm/100, margenLosa);
+  const hookDado = Math.max(state.geom.AD, state.geom.LD, PZ)*0.06;
+  const { barras, rec } = generarBarrasDado(); // cm, locales al dado (sin rotar)
+
+  const recDado_m = rec/100;
+  [{nombre:legA, dirHook:1}, {nombre:legB, dirHook:-1}].forEach(({nombre, dirHook})=>{
+    // Ancho del dado en este corte: la ENVOLVENTE completa (min/max de sus
+    // 4 esquinas ya rotadas al sistema local), no la rebanada literal que
+    // corta la línea v=0 — esa rebanada es geométricamente correcta pero
+    // dibuja el dado como una franja angosta/oblicua difícil de leer; una
+    // elevación técnica muestra el miembro completo (su silueta), no un
+    // corte diagonal a través de él.
+    const rectL = dados[nombre].map(toLocal);
+    const us = rectL.map(p=>p.x);
+    const u1 = Math.min(...us), u2 = Math.max(...us);
+    shapes.push(shapePolyline("CONCRETO", [{x:u1,y:0},{x:u2,y:0},{x:u2,y:HD},{x:u1,y:HD}], true));
+
+    const center = legs[nombre];
+    const angleDeg = (state.angles && state.angles[nombre]) || 0;
+    const vistos = new Set();
+    barras.forEach(br=>{
+      const worldPt = rotatePoint(center.x+br.x/100, center.y+br.y/100, center.x, center.y, angleDeg);
+      const local = toLocal(worldPt);
+      const key = Math.round(local.x*1000); // 1mm de tolerancia
+      if(vistos.has(key)) return;
+      vistos.add(key);
+      shapes.push(shapeLine("ACERO_DADO", local.x, HD-0.02, local.x, yEmbebido));
+      shapes.push(shapeLine("ACERO_DADO", local.x, yEmbebido, local.x+dirHook*hookDado, yEmbebido));
+    });
+    const sepEstribo_m = state.diseno.dadoEstriboSep/100;
+    const uEstribo1 = u1+recDado_m, uEstribo2 = u2-recDado_m;
+    if(sepEstribo_m>0 && uEstribo2>uEstribo1){
+      for(let y=recDado_m; y<=HD-recDado_m+1e-6; y+=sepEstribo_m){
+        shapes.push(shapeLine("ACERO_DADO", uEstribo1, y, uEstribo2, y));
+      }
+    }
+    // Recubrimiento del dado: cota corta desde su cara hasta el estribo —
+    // tamaño de fuente proporcional al propio tramo que mide (recDado_m),
+    // no a la escala general del dibujo, o el texto sale más grande que la
+    // distancia que está acotando.
+    const fhDado = Math.max(recDado_m*0.35, 0.012);
+    shapes.push(...shapesCotaH("COTAS", u1, uEstribo1, HD*0.5, HD*0.5-0.001, `r = ${fmt(rDado_cm,1)} cm`, fhDado));
+  });
+
+  // Recubrimiento de la losa: cota corta de la cara de concreto al eje del
+  // refuerzo, inferior y superior — mismo "r" (state.diseno.r) que usa
+  // getCriteriosDiseno() para el peralte efectivo d = PZ − r.
+  function filaBarraLosa(layer, y, sepCm, diamCm){
+    if(!(sepCm>0) || !(diamCm>0)) return;
+    const hookMax = Math.max((PZ - 2*r_m)/2, 0.03);
+    const hook = Math.min(Math.max(diamCm/100*8, 0.08), hookMax);
+    const dy = y < -PZ/2 ? hook : -hook; // hacia el medio del espesor
+    ivLosa.forEach(([u1,u2])=>{
+      shapes.push(shapeLine(layer, u1, y, u2, y));
+      shapes.push(shapeLine(layer, u1, y, u1, y+dy));
+      shapes.push(shapeLine(layer, u2, y, u2, y+dy));
+    });
+  }
+  filaBarraLosa("ACERO_LOSA_EXIST", -PZ+r_m, state.diseno.sepInfExist, diametroVarillaCm(state.diseno.varInfExist));
+  filaBarraLosa("ACERO_LOSA_EXIST", -r_m, state.diseno.sepSupExist, diametroVarillaCm(state.diseno.varSupExist));
+
+  const bb = shapesBBox(shapes) || {xmin:0,xmax:dist,ymin:-PZ,ymax:HD};
+  const fh = Math.max(bb.xmax-bb.xmin, HD+PZ)*0.035;
+  shapes.push(...shapesCotaV("COTAS", -PZ, 0, bb.xmin-fh*1.8, bb.xmin, `PZ = ${fmt(PZ,2)} m`, fh*0.85));
+  if(ivLosa.length){
+    const [uL1] = ivLosa[0];
+    // Mismo criterio que fhDado: fuente proporcional al tramo r_m que mide,
+    // no a la escala general del corte (que puede ser varios metros).
+    const fhCover = Math.max(r_m*0.35, 0.012);
+    shapes.push(...shapesCotaV("COTAS", -PZ, -PZ+r_m, uL1-fhCover*3.2, uL1-fhCover*1.8, `r = ${fmt(state.diseno.r,1)} cm`, fhCover));
+  }
+  shapes.push(...shapesCotaH("COTAS", 0, dist, HD+fh*0.6, HD, `${fmt(dist,2)} m (${legA} a ${legB})`, fh*0.85));
+  shapes.push(shapeText("TEXTO", bb.xmin, HD+fh*2.4, fh*1.25, `CORTE ${legA} - ${legB} (real, por la linea entre dados)`));
+  return shapes;
+}
+
+// Detalle de armado del dado: reutiliza exactamente generarBarrasDado() (la
+// misma geometría que ya alimenta el esquema 2D de la sección 5.6) — cada
+// varilla como círculo a su diámetro real, estribo como polígono, contorno
+// del dado y cotas AD/LD/recubrimiento con flechas de verdad (no solo
+// texto suelto).
+function shapesVistaDetalle(){
+  const { barras, b, h, rec, dEstribo } = generarBarrasDado(); // cm
+  if(!(b>0) || !(h>0)) return [];
+  const shapes = [];
+  const bm = b/100, hm = h/100;
+  shapes.push(shapePolyline("CONCRETO", [
+    {x:-bm/2,y:-hm/2}, {x:bm/2,y:-hm/2}, {x:bm/2,y:hm/2}, {x:-bm/2,y:hm/2}
+  ], true));
+  const recM = rec/100, destM = dEstribo/100;
+  const xE = bm/2-recM-destM/2, yE = hm/2-recM-destM/2;
+  shapes.push(shapePolyline("ESTRIBO", [
+    {x:-xE,y:-yE}, {x:xE,y:-yE}, {x:xE,y:yE}, {x:-xE,y:yE}
+  ], true));
+  barras.forEach(br=>{
+    shapes.push(shapeCircle("ACERO_DADO", br.x/100, br.y/100, br.d/200));
+  });
+  const fh = Math.max(bm,hm)*0.06;
+  shapes.push(...shapesCotaH("COTAS", -bm/2, bm/2, -hm/2-fh*2, -hm/2, `AD = ${fmt(state.geom.AD,2)} m`, fh));
+  shapes.push(...shapesCotaV("COTAS", -hm/2, hm/2, bm/2+fh*1.5, bm/2, `LD = ${fmt(state.geom.LD,2)} m`, fh));
+  shapes.push(...shapesCotaH("COTAS", -bm/2, -xE, -hm/2-fh*4, -hm/2, `r = ${fmt(rec,1)} cm`, fh*0.85));
+  shapes.push(shapeText("TEXTO", -bm/2, hm/2+fh*1.5, fh*1.25,
+    `DETALLE DE ARMADO - ${state.diseno.dadoN1}${state.diseno.dadoVar1} + ${state.diseno.dadoN2}${state.diseno.dadoVar2} long., estribo ${state.diseno.dadoEstriboVar} @ ${state.diseno.dadoEstriboSep} cm`));
+  return shapes;
+}
+
+// Ensambla las 3 vistas una junto a otra (Planta, Corte P1a-P1b, Detalle de
+// armado) en un único DXF: cada vista se desplaza para que su esquina
+// inferior izquierda quede en (cursorX, 0), y el cursor avanza su ancho +
+// un margen fijo antes de colocar la siguiente. Una vista vacía (ej. sin
+// geometría calculada todavía, o sin patas "P1a"/"P1b" en este tipo de
+// estructura) simplemente se omite, sin romper el layout.
+function generarPlanosDxf(){
+  const layers = [
+    {name:"CONTORNO", color:5}, {name:"HUECO", color:1}, {name:"DADOS", color:30},
+    {name:"EJES", color:8}, {name:"TEXTO", color:7}, {name:"CONCRETO", color:5},
+    {name:"ESTRIBO", color:30}, {name:"ACERO_DADO", color:30},
+    {name:"ACERO_LOSA_EXIST", color:6}, {name:"COTAS", color:7}
+  ];
+  const margen = 1.5; // m entre vistas
+  let ent = "", cursorX = 0;
+  [shapesVistaPlanta(), shapesVistaCorte("P1a","P1b"), shapesVistaDetalle()].forEach(shapes=>{
+    const bb = shapesBBox(shapes);
+    if(!bb) return;
+    const dx = cursorX - bb.xmin, dy = -bb.ymin;
+    ent += emitShapes(shapes, dx, dy);
+    cursorX += (bb.xmax-bb.xmin) + margen;
+  });
+  return dxfBuild(layers, ent);
+}
+
 function renderCapacidadPortante(cap, props, outerC, holeC){
   const wrap = document.getElementById("geoNavierDiagramas");
   const tbody = document.querySelector("#tblCapacidadEficiencia tbody");
@@ -9284,6 +9837,10 @@ function initTheme(){
 (function(){
   const USAGE_LOG_URL = "https://formspree.io/f/xdaqbpek";
   const DEV_SKIP_KEY = "cimentacionesFEM.noUsageLog";
+  // Usuarios del desarrollador (personal y laptop de trabajo): sus propias sesiones de prueba no
+  // deben contaminar el registro de uso real de los ingenieros en campo, así que se excluyen del
+  // envío sin necesidad de agregar "?dev=1" a mano cada vez.
+  const DEV_USERNAMES = ["cespi", "juan.espinosa"];
   const sessionStart = new Date();
   let sent = false;
 
@@ -9295,6 +9852,8 @@ function initTheme(){
     try{
       if(new URLSearchParams(location.search).has("dev")) return true;
       if(localStorage.getItem(DEV_SKIP_KEY) === "1") return true;
+      const path = decodeURIComponent(location.pathname).toLowerCase();
+      if(DEV_USERNAMES.some(u => path.includes("/" + u + "/"))) return true;
     }catch{}
     return false;
   }
@@ -10759,6 +11318,34 @@ function initBindings(){
     a.click();
     URL.revokeObjectURL(url);
   });
+  document.getElementById("btnExportDxfPlanta").addEventListener("click", async (e)=>{
+    e.preventDefault();
+    let texto;
+    try{
+      texto = generarPlanosDxf();
+    }catch(err){
+      alert(err.message);
+      return;
+    }
+    const nombre = nombreArchivoProyecto("dxf").replace(/\.dxf$/, "_planos.dxf");
+    if(window.showSaveFilePicker){
+      try{
+        const handle = await window.showSaveFilePicker({ suggestedName: nombre, types: DXF_FILE_TYPES });
+        const writable = await handle.createWritable();
+        await writable.write(texto);
+        await writable.close();
+        return;
+      }catch(err){
+        if(err.name === "AbortError") return; // el usuario cerró el diálogo, no es un error
+      }
+    }
+    const blob = new Blob([texto], {type:"application/dxf"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = nombre;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
   document.getElementById("btnDownloadLsp").addEventListener("click", (e)=>{
     e.preventDefault();
     const blob = new Blob([SHAPEPTS_LSP], {type:"text/plain"});
@@ -10970,8 +11557,9 @@ function initBindings(){
 
   async function loadProjectFromFile(file){
     try{
-      const loaded = JSON.parse(await file.text());
+      const loaded = migrateLoadedState(JSON.parse(await file.text()));
       state = mergeState(defaultState(), loaded);
+      state.formatVersion = SCHEMA_VERSION;
       if(AUTO_ENGINEER) state.proyecto.engineer = AUTO_ENGINEER;
       planZoom = 1;
       renderReaccionesTable();
