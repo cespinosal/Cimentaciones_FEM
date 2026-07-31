@@ -2457,14 +2457,24 @@ document.addEventListener("click", (e) => {
           <span>Este análisis solo corre para Autosoportada 3P/4P (necesita la tabla de reacciones por pata). Para Monopolo falta repartir momento/cortante del apoyo único en cargas nodales.</span>
         </div>
         <div id="femPreviewControles" class="fem-toolbar">
-          <label class="field" style="margin:0; flex-wrap:nowrap;"><span class="lbl" style="white-space:nowrap; margin-right:10px;">Caso de carga (combo)</span><select id="femPreviewComboSelect"></select></label>
           <button class="btn primary" id="btnFemPreviewRun" type="button">Correr análisis</button>
+          <!-- Oculto hasta terminar de correr TODOS los combos 1.2D: deja de ser
+               "elige qué correr" y pasa a ser "elige cuál resultado ya
+               calculado ver" (ver femRunPreviewTodos/femPreviewRenderResultado). -->
+          <label id="femPreviewComboWrap" class="field hidden" style="margin:0; flex-wrap:nowrap;"><span class="lbl" style="white-space:nowrap; margin-right:10px;">Caso de carga (combo)</span><select id="femPreviewComboSelect"></select></label>
         </div>
         <div id="femPreviewProgressWrap" class="hidden" style="margin-bottom:14px;">
           <div style="height:8px; border-radius:4px; background:var(--input-bg); border:1px solid var(--border); overflow:hidden;">
             <div id="femPreviewProgressBar" style="height:100%; width:0%; background:var(--accent); transition:width .2s ease;"></div>
           </div>
           <p class="small" id="femPreviewProgressTxt" style="color:var(--muted); margin-top:4px;">Preparando…</p>
+        </div>
+        <!-- Log estilo consola (mismo espíritu que el diálogo de progreso de
+             STAAD/ASMTower) — se va llenando línea por línea con hora, en vez
+             de pisar un solo renglón (femPreviewProgressTxt de arriba, que se
+             deja igual para la barra %). Oculto hasta la primera corrida. -->
+        <div id="femPreviewLogWrap" class="hidden" style="margin-bottom:14px;">
+          <div id="femPreviewLog" style="background:var(--canvas); color:var(--accent); font-family:var(--font-mono); font-size:11.5px; line-height:1.55; padding:10px 12px; border-radius:var(--radius-md); border:1px solid var(--border); max-height:220px; overflow-y:auto; white-space:pre-wrap;"></div>
         </div>
         <div id="femPreviewResumen"></div>
         <div id="femPreviewKpis"></div>
@@ -3817,7 +3827,7 @@ const EXAMPLE_GFEM = {
     { "x": 0.91256121, "y": 1.50005462 },
     { "x": -2.08743879, "y": 1.50005462 }
   ],
-  "geom": { "PZ": 0.7, "Pd": 3.5, "Lo": 5, "AD": 0.6, "LD": 0.6, "HD": 0.3, "CX": 0, "CY": 0, "QADM": 8, "FS": 3, "mallaTamElem": 20 },
+  "geom": { "PZ": 0.7, "Pd": 3.5, "Lo": 5, "AD": 0.6, "LD": 0.6, "HD": 0.3, "CX": 0, "CY": 0, "QADM": 8, "FS": 3, "mallaTamElem": 10, "metodoBalasto": "mecanicaSuelos", "moduloK": 200, "moduloKUnidad": "Tn/m3" },
   "angles": { "P1": 0, "P1a": 0, "P1b": 0 },
   "reaccionesPorTipo": {
     "Autosoportada 3P": [
@@ -4306,6 +4316,72 @@ function engineerFromPath(){
   }catch{ return null; }
 }
 const AUTO_ENGINEER = engineerFromPath();
+
+// Usuarios del desarrollador (personal, laptop de trabajo, VM de Oracle
+// Cloud): sus propias sesiones de prueba quedan exentas tanto del registro
+// de uso (más abajo, "Registro de uso") como de la restricción de
+// autorización de acá — declarado una sola vez para que ambos lo compartan.
+const DEV_USERNAMES = ["cespi", "juan.espinosa", "ubuntu"];
+function esRutaDev(){
+  try{
+    const path = decodeURIComponent(location.pathname).toLowerCase();
+    return DEV_USERNAMES.some(u => path.includes("/" + u + "/"));
+  }catch{ return false; }
+}
+
+// Restricción de uso — pedido explícito del usuario (2026-07-31) como
+// método para evitar que la app circule fuera de la empresa: si el usuario
+// detectado (mismo AUTO_ENGINEER de arriba) no está en USUARIOS_AUTORIZADOS,
+// o no se pudo determinar quién es (ruta sin "/Users/<algo>/"), se cuentan
+// los usos con un aviso visible; al superar 2 sin resolverse, se bloquea la
+// app por completo. NO es seguridad real — cualquiera con el archivo puede
+// editar este arreglo o abrir el visor de código (Ctrl+U) y saltárselo — es
+// una restricción simbólica/de política, para frenar una copia casual fuera
+// de la empresa, no a alguien que se lo proponga en serio.
+const USUARIOS_AUTORIZADOS = [
+  "Hugo.Ortega","Javier.Lopez","Rodrigo.Montalvo","Brenda.Guzman","Audiel.Alavez",
+  "Carlos.Marmolejo","David.Olvera","Juan.Gonzalezh","Luis.Vallejo","Pablo.Chavez",
+  "Shirley.Roque","Uriel.Gallardo","Alejandro.Luna","Angel.Vasquez","Ernesto.Basurto",
+  "Jose.Cervantes","Uriel.Dominguez","Zuleima.Torres","Griselda.Anaya","Ismael.Santiago",
+  "Jose.Carrillo","Juan.Espinosa","Juan.Lumbreras","Luis.Gonzalezr","Romario.Lopez"
+];
+function normalizarNombreUsuario(s){
+  return (s||"").toLowerCase().replace(/[._]+/g," ").trim();
+}
+(function verificarUsoAutorizado(){
+  if(esRutaDev()) return;
+  const autorizado = !!AUTO_ENGINEER && USUARIOS_AUTORIZADOS.some(
+    u => normalizarNombreUsuario(u) === normalizarNombreUsuario(AUTO_ENGINEER)
+  );
+  if(autorizado) return;
+
+  const KEY = "cimentacionesFEM.usosNoAutorizados";
+  let usos = 0;
+  try{ usos = parseInt(localStorage.getItem(KEY), 10) || 0; }catch{}
+  usos += 1;
+  try{ localStorage.setItem(KEY, String(usos)); }catch{}
+
+  if(usos > 2){
+    document.body.innerHTML = `<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center; padding:40px; font-family:sans-serif; background:#fde7e9; color:#a80000;">
+      <div style="max-width:480px;"><h1 style="margin:0 0 12px; font-size:22px;">Uso no autorizado</h1>
+      <p style="margin:0; line-height:1.5;">Esta aplicación es de uso interno para American Tower. Si crees que esto es un error, contacta al administrador de la aplicación.</p></div></div>`;
+    throw new Error("Uso no autorizado");
+  }
+  const banner = document.createElement("div");
+  banner.style.cssText = "position:sticky; top:0; z-index:9999; background:#fff4ce; color:#835c00; border-bottom:1px solid #f2d675; padding:8px 16px; font-size:13px; text-align:center; font-family:sans-serif;";
+  banner.textContent = `Uso no autorizado — quedan ${2-usos} uso(s) antes de bloquear esta aplicación. Si esto es un error, contacta al administrador.`;
+  document.body.prepend(banner);
+})();
+
+// El Motor FEM todavía está en desarrollo (fase 10, ver Anexo sección 9 de
+// la ayuda) — se oculta para cualquier sesión que no sea del propio
+// desarrollador (mismo esRutaDev() de arriba), para no exponer una función
+// a medio terminar a los ingenieros que ya tienen acceso autorizado al
+// resto de la app. El botón de la pestaña y su panel comparten
+// data-tab="motor", así que uno solo los oculta a los dos.
+if(!esRutaDev()){
+  document.querySelectorAll('[data-tab="motor"]').forEach(el => el.classList.add("hidden"));
+}
 
 function defaultState(){
   return {
@@ -7085,41 +7161,6 @@ function populateGeoComboSelector(){
   }
   sel.innerHTML = cfg.combos.map(c=>
     `<option value="${c}"${c===selectedVolteoCombo ? " selected" : ""}>${c}</option>`
-  ).join("");
-  femPreviewPoblarCombos(cfg);
-}
-
-// Selector propio de la vista previa del Motor FEM — independiente del de
-// 4.2 Volteo (geoComboSelector) para que el usuario elija a propósito qué
-// caso de carga analizar antes de tocar "Correr análisis", en vez de heredar
-// la combinación que haya quedado seleccionada en otra pestaña. Solo se
-// listan los combos estructurales (1.2D + 1.0W, TIA-222-H) — mismo filtro
-// que ya usan getCriteriosDisenoRevision()/computeCortante()/etc. para
-// "combosEstructurales" — porque acá interesa la carga última, no la de
-// servicio (0.9D/1.0D) que se usa para volteo/geotécnico en 4.2/4.3.
-//
-// La etiqueta visible lleva "+ Relleno" (el value sigue siendo el combo
-// tal cual, sin ese sufijo, para no romper las búsquedas contra
-// cfg.combos/reacciones) porque femRunPreview SIEMPRE suma peso propio +
-// relleno — no existe variante "solo reacciones" seleccionable, igual que
-// en el export a STAAD las cargas 3-5 (solo reacciones, sin relleno) no se
-// usan para ninguna revisión real, solo alimentan el REPEAT LOAD "... +
-// RELLENO" (cargas 8+) que sí es el caso completo. Mismo criterio acá: solo
-// se expone la variante completa.
-function femPreviewPoblarCombos(cfg){
-  const sel = document.getElementById("femPreviewComboSelect");
-  if(!sel) return;
-  if(!cfg || cfg.kind !== "legs"){
-    sel.innerHTML = "";
-    femPreviewSelectedCombo = null;
-    return;
-  }
-  const combosEstructurales = cfg.combos.filter(c => /1\.2\s*d/i.test(c));
-  if(!femPreviewSelectedCombo || !combosEstructurales.includes(femPreviewSelectedCombo)){
-    femPreviewSelectedCombo = combosEstructurales[0] || null;
-  }
-  sel.innerHTML = combosEstructurales.map(c=>
-    `<option value="${c}"${c===femPreviewSelectedCombo ? " selected" : ""}>${c} + Relleno</option>`
   ).join("");
 }
 
@@ -10113,10 +10154,10 @@ function initTheme(){
 (function(){
   const USAGE_LOG_URL = "https://formspree.io/f/xdaqbpek";
   const DEV_SKIP_KEY = "cimentacionesFEM.noUsageLog";
-  // Usuarios del desarrollador (personal y laptop de trabajo): sus propias sesiones de prueba no
-  // deben contaminar el registro de uso real de los ingenieros en campo, así que se excluyen del
-  // envío sin necesidad de agregar "?dev=1" a mano cada vez.
-  const DEV_USERNAMES = ["cespi", "juan.espinosa"];
+  // DEV_USERNAMES ya está declarado arriba (junto a AUTO_ENGINEER, compartido
+  // con la restricción de autorización) — sus propias sesiones de prueba no
+  // deben contaminar el registro de uso real de los ingenieros en campo, así
+  // que se excluyen del envío sin necesidad de agregar "?dev=1" a mano cada vez.
   const sessionStart = new Date();
   let sent = false;
 
@@ -12914,6 +12955,25 @@ function femPreviewMostrarProgreso(){
 }
 function femPreviewOcultarProgreso(){
   document.getElementById("femPreviewProgressWrap").classList.add("hidden");
+  document.getElementById("femPreviewLogWrap").classList.add("hidden");
+}
+
+// Log estilo consola (mismo espíritu que el diálogo de progreso de
+// STAAD/ASMTower): cada línea se AGREGA con su hora, no pisa a la anterior
+// como femPreviewSetProgreso (que sigue existiendo aparte, para la barra %).
+function femPreviewLogClear(){
+  const el = document.getElementById("femPreviewLog");
+  const wrap = document.getElementById("femPreviewLogWrap");
+  if(el) el.textContent = "";
+  if(wrap) wrap.classList.remove("hidden");
+}
+function femPreviewLogLinea(texto){
+  const el = document.getElementById("femPreviewLog");
+  if(!el) return;
+  const hora = new Date().toLocaleTimeString("es-CO", { hour12:false });
+  const relleno = " ".repeat(Math.max(1, 54-texto.length));
+  el.textContent += `${texto}${relleno}${hora}\n`;
+  el.scrollTop = el.scrollHeight;
 }
 
 // Pastilla de estado del panel (fase 10, dashboard) — refleja el ciclo de
@@ -12957,12 +13017,29 @@ function femPreviewLimpiarResultados(){
   lastMomentosPreview = null;
 }
 
-async function femRunPreview(){
+// Caché de resultados por combo — llenada por femRunPreviewTodos(), leída
+// por femPreviewRenderResultado(). Cambiar el selector después de correr
+// solo repinta desde acá, nunca vuelve a resolver el sistema.
+let femPreviewResultadosPorCombo = new Map();
+
+// Corre TODOS los combos estructurales (1.2D) de una vez — a pedido del
+// usuario, en vez de elegir un combo y correr uno por uno. La malla,
+// resortes y el peso propio/relleno son los mismos para cualquier combo
+// (todos son 1.2D, mismo factor 1.2 — ver nota original más abajo), así que
+// se calculan una sola vez; lo único que cambia por combo son las
+// reacciones de las patas. El selector de combo queda OCULTO mientras corre
+// y solo aparece al terminar, ya como "elegí cuál resultado ya calculado
+// ver" (femPreviewComboSelect "change" solo llama a
+// femPreviewRenderResultado, no dispara un nuevo cálculo).
+async function femRunPreviewTodos(){
   const noSoportado = document.getElementById("femPreviewNoSoportado");
   const controles = document.getElementById("femPreviewControles");
+  const comboWrap = document.getElementById("femPreviewComboWrap");
   const resumenEl = document.getElementById("femPreviewResumen");
   const tipoKey = reactionTypeKey(state.tipoEstructura);
   const cfg = TOWER_TYPES[tipoKey];
+  comboWrap.classList.add("hidden");
+  femPreviewResultadosPorCombo = new Map();
   if(!cfg || cfg.kind !== "legs" || !lastMallaMesh || !lastMallaMesh.elements.length || !lastPlanArgs){
     noSoportado.classList.remove("hidden");
     controles.classList.add("hidden");
@@ -12989,86 +13066,34 @@ async function femRunPreview(){
 
   const areaTrib = femAreaTributariaNodos(malla);
   const resortesBase = femResortesWinkler(malla, ks);
-
   const dadoNames = Object.keys(lastPlanArgs.dados || {});
-  const comboElegido = document.getElementById("femPreviewComboSelect").value;
-  const comboIdx = cfg.combos.indexOf(comboElegido);
-  const reacciones = getCurrentReacciones();
-  if(comboIdx < 0 || !reacciones){
-    resumenEl.innerHTML = `<div class="message-bar error"><span>Elige un caso de carga (combo 1.2D) antes de correr el análisis.</span></div>`;
-    femPreviewLimpiarResultados();
-    femPreviewSetStatus("fail", "Error");
-    return;
-  }
-  const filaCombo = reacciones[comboIdx];
   // M4 colapsa las 4 patas a un único pedestal físico (dadosFisicos) — en
   // ese caso dadoNames solo tiene "PEDESTAL" y todas las patas comparten
   // dadoIndex 0 en la malla.
   const colapsado = dadoNames.length === 1 && cfg.legs.length > 1;
-
-  const cargas = [];
-  let cargaTotalAplicada = 0;
-  const avisos = [];
-  // legKey -> {nodosAnillo:[idx...], P} — para el resumen por dado
-  // (comparación contra STAAD). nodosAnillo es SOLO el perímetro (mismos
-  // nodos que el grupo con nombre _P1/_P1a/_P1b del export STAAD, sección
-  // 4.7) — confirmado con el usuario que al comparar contra STAAD selecciona
-  // por ese grupo, que NO incluye la sub-grilla interior del dado (ver
-  // pedestalRingsByName en generateMallaFEM). La carga sigue repartiéndose
-  // por área tributaria sobre el dado COMPLETO (nodosDado más abajo, ring +
-  // interior) — eso no cambia, es física aparte de esta tabla de comparación.
-  // Sumar reacción sobre el dado completo contra una Summation de STAAD hecha
-  // por grupo daba un factor ~1.78x sistemático que no era un error del
-  // solver, sino comparar dos conjuntos de nodos distintos.
-  const dadoNodosPorPata = {};
-  cfg.legs.forEach(legKey=>{
-    const row = filaCombo[legKey];
-    if(!row) return;
-    // BUG corregido en fase 06: row.fz NO es la reacción vertical — es
-    // cortante horizontal (confirmado cruzando update3D, que la dibuja como
-    // flecha horizontal, y la tabla de reacciones, aria-label "Shear FZ").
-    // La axial/vertical es row.fy, ya en convención "positivo=compresión
-    // hacia abajo" (update3D: "const compresion = row.fy >= 0"; sin negar
-    // tampoco en computeGeotecnico: "sumFy += row.fy") — misma convención
-    // que usa el export a STAAD (bloqueJointLoadFy → reaccionFyPorPosicion
-    // → row.fy). Fx/Fz (cortante) y el momento local que generan en el dado
-    // (Fx·brazo, Fz·brazo) todavía no se aplican — ver "Mejoras futuras" en
-    // fem/roadmap.html.
-    const P = row.fy * 1000; // Tn -> kg (la tabla de Reacciones está en Tn; mismo factor que usa generarStaadModel: fyKg = fy*1000). row.fy ya viene positivo=compresión hacia abajo, sin negar.
-    // cfg.legs usa claves sin prefijo ("1","1a","1b"), pero dadosFisicos()
-    // nombra los dados con las claves de legKeysFor() ("P1","P1a","P1b") —
-    // dos espacios de nombres distintos para la misma pata (ver TOWER_TYPES
-    // vs. legKeysFor/computeLegCenters/state.angles, todos con prefijo "P").
-    const dadoIdx = colapsado ? 0 : dadoNames.indexOf("P"+legKey);
-    if(dadoIdx < 0){ avisos.push(`Pata ${legKey}: no se encontró su dado en la malla.`); return; }
-    const nodosDado = new Set();
-    malla.elementos.forEach(el=>{
-      if(el.cls === "pedestal" && el.dadoIndex === dadoIdx) el.n.forEach(ni=>nodosDado.add(ni));
-    });
-    if(nodosDado.size === 0){ avisos.push(`Pata ${legKey}: sin nodos de dado en la malla.`); return; }
-    let areaTotal = 0;
-    nodosDado.forEach(ni=>{ areaTotal += areaTrib[ni]; });
-    if(!(areaTotal>0)){ avisos.push(`Pata ${legKey}: área tributaria nula.`); return; }
-    nodosDado.forEach(ni=>{
-      cargas.push({ nodo: ni, dof:0, valor: -P*(areaTrib[ni]/areaTotal) });
-    });
-    cargaTotalAplicada += P;
-    const nombreDado = dadoNames[dadoIdx];
-    const anilloStaadIds = (lastMallaMesh && lastMallaMesh.pedestalRingsByName) ? (lastMallaMesh.pedestalRingsByName[nombreDado] || []) : [];
-    const nodosAnillo = anilloStaadIds.map(id => id - 1);
-    dadoNodosPorPata[legKey] = { nodosAnillo, P };
-  });
+  const reacciones = getCurrentReacciones();
+  // Combos estructurales (1.2D + 1.0W, TIA-222-H) — mismo filtro que ya usa
+  // getCriteriosDisenoRevision()/computeCortante()/etc.: acá interesa la
+  // carga última, no la de servicio (0.9D/1.0D) que usa volteo/geotécnico
+  // en 4.2/4.3.
+  const combosEstructurales = cfg.combos.filter(c => /1\.2\s*d/i.test(c));
+  if(!reacciones || !combosEstructurales.length){
+    resumenEl.innerHTML = `<div class="message-bar error"><span>No hay reacciones cargadas para ningún combo 1.2D.</span></div>`;
+    femPreviewLimpiarResultados();
+    femPreviewSetStatus("fail", "Error");
+    return;
+  }
 
   // Peso propio + relleno + ciclópeo + adicional (mismo pesoTotal que ya
   // calcula computeGeotecnico, section 4.- Diseño Geotécnico — se reusa
   // lastGeoData.geo en vez de recalcular las fórmulas de peso acá) —
   // repartido como presión uniforme por área tributaria sobre TODA la malla
   // (dados incluidos), mismo criterio que usa generarStaadModel para
-  // "LOAD 2 RELLENO". Antes de esto el preview solo aplicaba las reacciones
-  // de las patas y se olvidaba de esta carga, que para una zapata real es
-  // la dominante (~338 Tn de peso propio+relleno contra ~10 Tn de resultante
-  // de patas en el Ejemplo) — sin ella, el % de área en compresión que da
-  // la fase 05 no tiene sentido físico.
+  // "LOAD 2 RELLENO". Es el MISMO para cualquier combo de esta lista (todos
+  // ya son 1.2D, factor 1.2 fijo — antes se recalculaba por combo con
+  // /1.2D/i.test(comboElegido), pero como combosEstructurales ya filtra solo
+  // los que matchean esa regex, el resultado era siempre 1.2), así que se
+  // arma una sola vez y se reutiliza en cada corrida del loop de abajo.
   //
   // Factor 1.2 sobre TODO pesoTotal (zapata+dados+relleno+ciclópeo+adicional)
   // para los combos estructurales 1.2D+viento — confirmado en ANSI/TIA-222-H
@@ -13082,26 +13107,22 @@ async function femRunPreview(){
   // para zapata/dados vs. relleno/ciclópeo.
   const geoW = (lastGeoData && lastGeoData.geo && lastGeoData.geo.supported) ? lastGeoData.geo : null;
   const areaZapataPeso = (lastGeoData && lastGeoData.props) ? lastGeoData.props.area : 0;
-  let pesoUniformeTn = 0, factorRelleno = 1.0, presionKgM2 = 0;
+  const factorRelleno = 1.2;
+  let pesoUniformeTn = 0, presionKgM2 = 0;
+  const cargasPeso = [];
+  let cargaPesoSum = 0;
+  const avisosPeso = [];
   if(geoW && areaZapataPeso > 0){
-    factorRelleno = /1\.2\s*d/i.test(comboElegido) ? 1.2 : 1.0;
     pesoUniformeTn = (geoW.pesoTotal||0) * factorRelleno;
     presionKgM2 = (pesoUniformeTn*1000) / areaZapataPeso; // Tn -> kg, presión uniforme
     for(let i=0;i<malla.nodos.length;i++){
       const cargaNodo = presionKgM2 * areaTrib[i]; // kg, positivo hacia abajo
       if(cargaNodo === 0) continue;
-      cargas.push({ nodo: i, dof:0, valor: -cargaNodo });
-      cargaTotalAplicada += cargaNodo;
+      cargasPeso.push({ nodo: i, dof:0, valor: -cargaNodo });
+      cargaPesoSum += cargaNodo;
     }
   } else {
-    avisos.push("No se pudo calcular el peso propio/relleno (sección 4.-) — el preview corre solo con las reacciones de las patas.");
-  }
-
-  if(!cargas.length){
-    resumenEl.innerHTML = `<div class="message-bar error"><span>No se pudo aplicar ninguna carga. ${avisos.join(" ")}</span></div>`;
-    femPreviewLimpiarResultados();
-    femPreviewSetStatus("fail", "Error");
-    return;
+    avisosPeso.push("No se pudo calcular el peso propio/relleno (sección 4.-) — el preview corre solo con las reacciones de las patas.");
   }
 
   resumenEl.innerHTML = "";
@@ -13109,73 +13130,209 @@ async function femRunPreview(){
   btnRun.disabled = true;
   femPreviewSetStatus("running", "Corriendo…");
   femPreviewMostrarProgreso();
-  let resultado;
-  try{
-    resultado = await femRunSolverEnWorker(malla, { espesor, E, nu, restringidos:[], cargas, resortesBase }, (iter, tope)=>{
-      const frac = 1 - Math.pow(0.7, iter);
-      femPreviewSetProgreso(frac, `Resolviendo (no linealidad compression-only) — iteración ${iter} de máx. ${tope}…`);
+  femPreviewLogClear();
+  femPreviewLogLinea(`Motor FEM — malla: ${malla.nodos.length} nodos, ${combosEstructurales.length} combo(s) 1.2D a resolver`);
+
+  const cdSeccion = getCriteriosDiseno();
+  const phiVcFem = calcularCortante1D(cdSeccion).phiVc;
+  const bandaCriticaM = Math.max(0.05, (state.geom.mallaTamElem||20)/100/2);
+
+  for(let ci=0; ci<combosEstructurales.length; ci++){
+    const comboElegido = combosEstructurales[ci];
+    const comboIdx = cfg.combos.indexOf(comboElegido);
+    const filaCombo = reacciones[comboIdx];
+    const cargas = cargasPeso.slice();
+    let cargaTotalAplicada = cargaPesoSum;
+    const avisos = avisosPeso.slice();
+    femPreviewLogLinea(`Combo ${comboElegido} (${ci+1}/${combosEstructurales.length}) — armando cargas`);
+    // legKey -> {nodosAnillo:[idx...], P} — para el resumen por dado
+    // (comparación contra STAAD). nodosAnillo es SOLO el perímetro (mismos
+    // nodos que el grupo con nombre _P1/_P1a/_P1b del export STAAD, sección
+    // 4.7) — confirmado con el usuario que al comparar contra STAAD
+    // selecciona por ese grupo, que NO incluye la sub-grilla interior del
+    // dado (ver pedestalRingsByName en generateMallaFEM). La carga sigue
+    // repartiéndose por área tributaria sobre el dado COMPLETO (nodosDado
+    // más abajo, ring + interior) — eso no cambia, es física aparte de esta
+    // tabla de comparación. Sumar reacción sobre el dado completo contra una
+    // Summation de STAAD hecha por grupo daba un factor ~1.78x sistemático
+    // que no era un error del solver, sino comparar dos conjuntos de nodos
+    // distintos.
+    const dadoNodosPorPata = {};
+    (filaCombo ? cfg.legs : []).forEach(legKey=>{
+      const row = filaCombo[legKey];
+      if(!row) return;
+      // BUG corregido en fase 06: row.fz NO es la reacción vertical — es
+      // cortante horizontal (confirmado cruzando update3D, que la dibuja
+      // como flecha horizontal, y la tabla de reacciones, aria-label "Shear
+      // FZ"). La axial/vertical es row.fy, ya en convención
+      // "positivo=compresión hacia abajo" (update3D: "const compresion =
+      // row.fy >= 0"; sin negar tampoco en computeGeotecnico: "sumFy +=
+      // row.fy") — misma convención que usa el export a STAAD
+      // (bloqueJointLoadFy → reaccionFyPorPosicion → row.fy). Fx/Fz
+      // (cortante) y el momento local que generan en el dado (Fx·brazo,
+      // Fz·brazo) todavía no se aplican — ver "Mejoras futuras" en
+      // fem/roadmap.html.
+      const P = row.fy * 1000; // Tn -> kg (la tabla de Reacciones está en Tn; mismo factor que usa generarStaadModel: fyKg = fy*1000). row.fy ya viene positivo=compresión hacia abajo, sin negar.
+      // cfg.legs usa claves sin prefijo ("1","1a","1b"), pero dadosFisicos()
+      // nombra los dados con las claves de legKeysFor() ("P1","P1a","P1b")
+      // — dos espacios de nombres distintos para la misma pata (ver
+      // TOWER_TYPES vs. legKeysFor/computeLegCenters/state.angles, todos
+      // con prefijo "P").
+      const dadoIdx = colapsado ? 0 : dadoNames.indexOf("P"+legKey);
+      if(dadoIdx < 0){ avisos.push(`Pata ${legKey}: no se encontró su dado en la malla.`); return; }
+      const nodosDado = new Set();
+      malla.elementos.forEach(el=>{
+        if(el.cls === "pedestal" && el.dadoIndex === dadoIdx) el.n.forEach(ni=>nodosDado.add(ni));
+      });
+      if(nodosDado.size === 0){ avisos.push(`Pata ${legKey}: sin nodos de dado en la malla.`); return; }
+      let areaTotal = 0;
+      nodosDado.forEach(ni=>{ areaTotal += areaTrib[ni]; });
+      if(!(areaTotal>0)){ avisos.push(`Pata ${legKey}: área tributaria nula.`); return; }
+      nodosDado.forEach(ni=>{
+        cargas.push({ nodo: ni, dof:0, valor: -P*(areaTrib[ni]/areaTotal) });
+      });
+      cargaTotalAplicada += P;
+      const nombreDado = dadoNames[dadoIdx];
+      const anilloStaadIds = (lastMallaMesh && lastMallaMesh.pedestalRingsByName) ? (lastMallaMesh.pedestalRingsByName[nombreDado] || []) : [];
+      const nodosAnillo = anilloStaadIds.map(id => id - 1);
+      dadoNodosPorPata[legKey] = { nodosAnillo, P };
     });
-  } catch(err){
-    femPreviewOcultarProgreso();
-    btnRun.disabled = false;
-    resumenEl.innerHTML = `<div class="message-bar error"><span>El solver falló: ${err.message}</span></div>`;
+
+    if(!cargas.length){
+      avisos.push("No se pudo aplicar ninguna carga para este combo.");
+      femPreviewResultadosPorCombo.set(comboElegido, { error: avisos.join(" ") });
+      femPreviewSetProgreso(ci/combosEstructurales.length, `${comboElegido}: sin cargas, se omite (${ci+1}/${combosEstructurales.length})…`);
+      femPreviewLogLinea(`Combo ${comboElegido}: sin cargas, se omite`);
+      continue;
+    }
+
+    let resultado;
+    try{
+      resultado = await femRunSolverEnWorker(malla, { espesor, E, nu, restringidos:[], cargas, resortesBase }, (iter, tope)=>{
+        const fracIter = 1 - Math.pow(0.7, iter);
+        const frac = (ci + fracIter) / combosEstructurales.length;
+        femPreviewSetProgreso(frac, `Combo ${comboElegido} (${ci+1}/${combosEstructurales.length}) — iteración ${iter} de máx. ${tope}…`);
+        femPreviewLogLinea(`  Combo ${comboElegido} — iteracion ${iter} de max ${tope}`);
+      });
+    } catch(err){
+      femPreviewResultadosPorCombo.set(comboElegido, { error: `El solver falló: ${err.message}` });
+      femPreviewLogLinea(`Combo ${comboElegido}: fallo — ${err.message}`);
+      continue;
+    }
+    femPreviewLogLinea(`Combo ${comboElegido}: ${resultado.estado === "convergio" ? "convergio" : "no estabilizo"} (${resultado.iter} iteracion${resultado.iter===1?"":"es"})`);
+
+    const u = resultado.u;
+    const activos = resultado.activos;
+    let maxW = 0;
+    for(let i=0;i<malla.nodos.length;i++){
+      const w = -u[3*i+0];
+      if(w>maxW) maxW = w;
+    }
+    let sumReacciones = 0, nLevantados = 0;
+    for(let i=0;i<malla.nodos.length;i++){
+      if(activos[i]) sumReacciones += resortesBase[i]*(-u[3*i+0]);
+      else nLevantados++;
+    }
+    const diffEquilibrio = sumReacciones - cargaTotalAplicada;
+
+    // Reacción total POR DADO (todos los nodos del dado, no solo el anillo
+    // del grupo JOINT del export STAAD — la malla de cada dado tiene su
+    // propia sub-grilla interior, ver umMeshSlab/pedestalQuads) + los
+    // números de nodo STAAD correspondientes (mismo índice 1-based que
+    // JOINT COORDINATES: nodeIdMap = idx+1 en generarStaadModel). Se suma
+    // SOLO sobre el anillo (nodosAnillo, mismos nodos que el grupo
+    // _P1/_P1a/_P1b del export STAAD) y no sobre el dado completo —
+    // validado contra una corrida real: comparar el dado completo contra
+    // una Summation de STAAD hecha por ese grupo (que no trae la
+    // sub-grilla interior) daba un factor ~1.78x que no era el solver, era
+    // comparar dos conjuntos de nodos distintos. "Carga total" usa "P"
+    // completo (toda la reacción de la pata, no solo la parte del anillo)
+    // porque es el dato de entrada tal cual viene de la tabla de
+    // Reacciones — la gran diferencia contra "Reacción FEM" es esperable y
+    // es redistribución por flexión de la losa, no un hueco de esta tabla.
+    const filasDado = Object.keys(dadoNodosPorPata).map(legKey=>{
+      const { nodosAnillo, P } = dadoNodosPorPata[legKey];
+      let reaccionDado = 0, pesoDado = 0;
+      nodosAnillo.forEach(ni=>{
+        if(activos[ni]) reaccionDado += resortesBase[ni]*(-u[3*ni+0]);
+        pesoDado += presionKgM2*areaTrib[ni];
+      });
+      const cargaTotalDado = P + pesoDado;
+      const staadJoints = comprimirRangosStaad(nodosAnillo.map(ni=>ni+1)).join(", ");
+      return { legKey, P, pesoDado, cargaTotalDado, reaccionDado, staadJoints };
+    });
+
+    // Cortante en una dirección, en la sección crítica real (ACI 318-19
+    // §22.5.5.1.2: a distancia "d" de la cara de cada dado, evaluada en el
+    // eje LOCAL de ESE dado, no en los ejes globales) — a partir del campo
+    // Qx/Qy real del solver (femVuCriticoDado). Complementa a
+    // getVuCortantePorEje/calcularCortante1D (sección 5.4, que usa el pico
+    // de la tabla manual 5.1 sin ubicación geométrica) — no lo reemplaza,
+    // φVc se reusa igual de esa misma función para no duplicar la fórmula
+    // ACI. La banda de búsqueda alrededor de la línea crítica se toma de la
+    // mitad del tamaño de elemento actual, para asegurar que caiga al menos
+    // una fila real de nodos cerca de esa línea sin importar qué tan fina o
+    // gruesa sea la malla.
+    const filasCortante = dadosFisicos(lastPlanArgs.legs, state.tipoEstructura).map(dadoInfo=>{
+      const { vux, vuy } = femVuCriticoDado(malla, resultado.momentosPorNodo, dadoInfo.center, dadoInfo.angleDeg, state.geom.AD, state.geom.LD, bandaCriticaM, cdSeccion.d);
+      const vuxTn = vux/1000, vuyTn = vuy/1000; // kg/m -> Tn/m (fuerza por ancho, no tensión todavía)
+      const eficienciaX = phiVcFem>0 ? (vuxTn/cdSeccion.d)/phiVcFem : Infinity; // /d -> Tn/m² (tensión), comparable contra φVc
+      const eficienciaY = phiVcFem>0 ? (vuyTn/cdSeccion.d)/phiVcFem : Infinity;
+      return { nombre: dadoInfo.nombre, vuxTn, vuyTn, eficienciaX, eficienciaY };
+    });
+
+    femPreviewResultadosPorCombo.set(comboElegido, {
+      malla, u, activos, maxW, cargaTotalAplicada, pesoUniformeTn, factorRelleno, diffEquilibrio,
+      nLevantados, resultado, filasDado, filasCortante, avisos
+    });
+  }
+
+  femPreviewSetProgreso(1, "Listo.");
+  femPreviewLogLinea("Analisis completo.");
+  setTimeout(femPreviewOcultarProgreso, 1500);
+  btnRun.disabled = false;
+
+  const combosOk = combosEstructurales.filter(c => {
+    const r = femPreviewResultadosPorCombo.get(c);
+    return r && !r.error;
+  });
+  if(!combosOk.length){
+    const primerError = combosEstructurales.map(c=>femPreviewResultadosPorCombo.get(c)).find(r=>r && r.error);
+    resumenEl.innerHTML = `<div class="message-bar error"><span>Ningún combo pudo resolverse.${primerError ? " " + primerError.error : ""}</span></div>`;
     femPreviewLimpiarResultados();
     femPreviewSetStatus("fail", "Error");
     return;
   }
-  femPreviewSetProgreso(1, "Listo.");
-  setTimeout(femPreviewOcultarProgreso, 900);
-  btnRun.disabled = false;
-  const u = resultado.u;
-  const activos = resultado.activos;
+  const sel = document.getElementById("femPreviewComboSelect");
+  sel.innerHTML = combosOk.map(c=>`<option value="${c}">${c} + Relleno</option>`).join("");
+  comboWrap.classList.remove("hidden");
+  femPreviewSelectedCombo = combosOk.includes(femPreviewSelectedCombo) ? femPreviewSelectedCombo : combosOk[0];
+  sel.value = femPreviewSelectedCombo;
+  femPreviewRenderResultado(femPreviewSelectedCombo);
+}
 
-  let maxW = 0;
-  for(let i=0;i<malla.nodos.length;i++){
-    const w = -u[3*i+0];
-    if(w>maxW) maxW = w;
+// Pinta en pantalla el resultado YA CALCULADO de un combo (desde
+// femPreviewResultadosPorCombo, llenada por femRunPreviewTodos) — cambiar
+// el selector después de "Correr análisis" solo llama a esto, nunca vuelve
+// a resolver el sistema.
+function femPreviewRenderResultado(combo){
+  const r = femPreviewResultadosPorCombo.get(combo);
+  const tablasEl = document.getElementById("femPreviewTablas");
+  const avisosEl = document.getElementById("femPreviewAvisos");
+  if(!r){
+    femPreviewLimpiarResultados();
+    return;
   }
-  let sumReacciones = 0, nLevantados = 0;
-  for(let i=0;i<malla.nodos.length;i++){
-    if(activos[i]) sumReacciones += resortesBase[i]*(-u[3*i+0]);
-    else nLevantados++;
+  if(r.error){
+    tablasEl.innerHTML = "";
+    avisosEl.innerHTML = `<div class="message-bar error"><span>${r.error}</span></div>`;
+    femPreviewSetStatus("fail", "Error");
+    return;
   }
-  const diffEquilibrio = sumReacciones - cargaTotalAplicada;
+  const { malla, u, activos, maxW, cargaTotalAplicada, pesoUniformeTn, factorRelleno, diffEquilibrio, nLevantados, resultado, filasDado, filasCortante, avisos } = r;
 
   femPreviewRenderKpis({ nNodos: malla.nodos.length, nEq: resultado.nEq, maxW, cargaTotalAplicada, pesoUniformeTn, factorRelleno, diffEquilibrio, nLevantados, resultado });
-  const tablasEl = document.getElementById("femPreviewTablas");
   tablasEl.innerHTML = "";
-
-  // Reacción total POR DADO (todos los nodos del dado, no solo el anillo
-  // del grupo JOINT del export STAAD — la malla de cada dado tiene su
-  // propia sub-grilla interior, ver umMeshSlab/pedestalQuads) + los números
-  // de nodo STAAD correspondientes (mismo índice 1-based que JOINT
-  // COORDINATES: nodeIdMap = idx+1 en generarStaadModel). Comparar por dado
-  // en vez de nodo-por-nodo evita el efecto de que STAAD reparte el área
-  // tributaria sobre SU malla nativa (cuadriláteros, sin triangular) y
-  // nuestro FEM sobre la malla ya triangulada (femBuildMeshAdapter) — la
-  // suma total por dado debería coincidir razonablemente aunque el reparto
-  // nodo-por-nodo no coincida exacto.
-  // Se suma SOLO sobre el anillo (nodosAnillo, mismos nodos que el grupo
-  // _P1/_P1a/_P1b del export STAAD) y no sobre el dado completo — validado
-  // contra una corrida real: comparar el dado completo contra una Summation
-  // de STAAD hecha por ese grupo (que no trae la sub-grilla interior) daba
-  // un factor ~1.78x que no era el solver, era comparar dos conjuntos de
-  // nodos distintos. "Carga total" usa "P" completo (toda la reacción de la
-  // pata, no solo la parte del anillo) porque es el dato de entrada tal cual
-  // viene de la tabla de Reacciones — la gran diferencia contra "Reacción
-  // FEM" es esperable y es redistribución por flexión de la losa, no un
-  // hueco de esta tabla.
-  const filasDado = Object.keys(dadoNodosPorPata).map(legKey=>{
-    const { nodosAnillo, P } = dadoNodosPorPata[legKey];
-    let reaccionDado = 0, pesoDado = 0;
-    nodosAnillo.forEach(ni=>{
-      if(activos[ni]) reaccionDado += resortesBase[ni]*(-u[3*ni+0]);
-      pesoDado += presionKgM2*areaTrib[ni];
-    });
-    const cargaTotalDado = P + pesoDado;
-    const staadJoints = comprimirRangosStaad(nodosAnillo.map(ni=>ni+1)).join(", ");
-    return { legKey, P, pesoDado, cargaTotalDado, reaccionDado, staadJoints };
-  });
   if(filasDado.length){
     const wrap = document.createElement("div");
     wrap.innerHTML = `<p class="small" style="color:var(--muted); margin-bottom:2px;">Reacción por dado, <b>solo anillo</b> — mismos nodos que el grupo "Dados" (<code>_P1</code>/<code>_P1a</code>/<code>_P1b</code>) del export STAAD, sección 4.7.</p>
@@ -13210,27 +13367,6 @@ async function femRunPreview(){
   lastMomentosPreview = { momentosPorNodo: resultado.momentosPorNodo, outerC: lastPlanArgs.outerC, holeC: state.holeEnabled ? lastPlanArgs.holeC : null, dados: Object.values(lastPlanArgs.dados || {}) };
   femPreviewRenderMomentos();
 
-  // Cortante en una dirección, en la sección crítica real (ACI 318-19
-  // §22.5.5.1.2: a distancia "d" de la cara de cada dado, evaluada en el
-  // eje LOCAL de ESE dado, no en los ejes globales) — a partir del campo
-  // Qx/Qy real del solver (femVuCriticoDado). Complementa a
-  // getVuCortantePorEje/calcularCortante1D (sección 5.4, que usa el pico de
-  // la tabla manual 5.1 sin ubicación geométrica) — no lo reemplaza, φVc
-  // se reusa igual de esa misma función para no duplicar la fórmula ACI.
-  // La banda de búsqueda alrededor de la línea crítica se toma de la mitad
-  // del tamaño de elemento actual, para asegurar que caiga al menos una
-  // fila real de nodos cerca de esa línea sin importar qué tan fina o
-  // gruesa sea la malla.
-  const cdSeccion = getCriteriosDiseno();
-  const phiVcFem = calcularCortante1D(cdSeccion).phiVc;
-  const bandaCriticaM = Math.max(0.05, (state.geom.mallaTamElem||20)/100/2);
-  const filasCortante = dadosFisicos(lastPlanArgs.legs, state.tipoEstructura).map(dadoInfo=>{
-    const { vux, vuy } = femVuCriticoDado(malla, resultado.momentosPorNodo, dadoInfo.center, dadoInfo.angleDeg, state.geom.AD, state.geom.LD, bandaCriticaM, cdSeccion.d);
-    const vuxTn = vux/1000, vuyTn = vuy/1000; // kg/m -> Tn/m (fuerza por ancho, no tensión todavía)
-    const eficienciaX = phiVcFem>0 ? (vuxTn/cdSeccion.d)/phiVcFem : Infinity; // /d -> Tn/m² (tensión), comparable contra φVc
-    const eficienciaY = phiVcFem>0 ? (vuyTn/cdSeccion.d)/phiVcFem : Infinity;
-    return { nombre: dadoInfo.nombre, vuxTn, vuyTn, eficienciaX, eficienciaY };
-  });
   // Puesta al final del panel (a pedido del usuario, mientras Fx/Fz y el
   // momento local por dado no se aplican como carga — ver "Qué falta" en el
   // detalle de alcance) — no arriba con la tabla de reacción por dado.
@@ -13246,7 +13382,6 @@ async function femRunPreview(){
     cortanteEl.appendChild(wrapCort);
   }
 
-  const avisosEl = document.getElementById("femPreviewAvisos");
   avisosEl.innerHTML = "";
   if(resultado.estado !== "convergio"){
     const avEstado = document.createElement("div");
@@ -13606,9 +13741,10 @@ function femRunSolverEnWorker(malla, opts, onProgress){
   });
 }
 
-document.getElementById("btnFemPreviewRun").addEventListener("click", femRunPreview);
+document.getElementById("btnFemPreviewRun").addEventListener("click", femRunPreviewTodos);
 document.getElementById("femPreviewComboSelect").addEventListener("change", (e)=>{
   femPreviewSelectedCombo = e.target.value;
+  femPreviewRenderResultado(femPreviewSelectedCombo);
 });
 
 initBindings();
