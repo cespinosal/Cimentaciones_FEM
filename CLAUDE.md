@@ -89,8 +89,12 @@ autogenerado desde las `section.card` presentes: elementos mecánicos, materiale
 3D, 4.1-4.3 geotécnico, 4.4 mallado "Urdimbre Mesh", 4.5 Coeficiente de Balasto, 4.6 Propiedades de
 Concreto, 4.7 export a STAAD.Pro, 5.1-5.6 Diseño Estructural ACI 318-19, 6 resumen de eficiencias) →
 `Interacción 3D` (diagrama P-M-M del dado, vía Plotly) → `Acero 3D` (vista 3D del refuerzo) →
-`Motor FEM` (documentación de referencia normativa + roadmap del motor FEM interno, sin
-interactividad).
+`Motor FEM` (solver de elementos finitos propio — corre todos los combos 1.2D de una vez, con
+progreso estilo consola — más documentación de referencia normativa y roadmap). Esta pestaña vive en
+el mismo `index.html` (ya no hay una copia separada en `fem/`, retirada tras el merge del
+2026-07-31), pero su botón/panel se ocultan vía `esRutaDev()` para cualquier sesión que no sea de
+desarrollo, porque el motor todavía no está validado para uso general (ver `USUARIOS_AUTORIZADOS`
+más abajo).
 
 `TOWER_TYPES` define, por tipo de estructura, la forma de la tabla de reacciones: `kind:"legs"`
 (Autosoportada 3P/4P, combos × patas) vs `kind:"base"` (Monopolo, combos × un solo punto de apoyo).
