@@ -1803,7 +1803,7 @@ document.addEventListener("click", (e) => {
               <div class="item"><span class="swatch" style="background:#c9822a"></span>Fz</div>
               <div class="item"><span class="swatch" style="background:#9b59b6"></span>Peso adicional</div>
             </div>
-            <p class="small" id="vista3dHint" style="margin-top:6px;">Arrastrar para rotar, rueda del mouse para acercar/alejar, clic derecho para desplazar.</p>
+            <p class="small" id="vista3dHint" style="margin-top:6px;">Arrastrar para desplazar, rueda del mouse para acercar/alejar, clic derecho para rotar.</p>
           </div>
         </section>
       </div>
@@ -2247,7 +2247,7 @@ document.addEventListener("click", (e) => {
           <div style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:10px; align-items:flex-end;">
             <label class="field" style="flex:0 0 120px;">
               <span class="lbl" style="font-weight:700;">Con</span>
-              <input type="text" inputmode="decimal" step="any" id="dis_dadoEstribosRamas">
+              <input type="number" step="1" min="0" id="dis_dadoEstribosRamas">
               <span class="unit">estribos</span>
             </label>
             <label class="field" style="flex:0 0 150px;">
@@ -2416,7 +2416,6 @@ document.addEventListener("click", (e) => {
                 <div id="acero3dNoWebgl" class="hidden message-bar error" role="alert" style="position:absolute; inset:12px; margin:0;">
                   <span>Tu navegador no soporta WebGL — no se puede mostrar esta vista.</span>
                 </div>
-                <div id="acero3dLeyenda" style="position:absolute; bottom:12px; left:12px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 12px; font-size:11.5px; z-index:5; max-width:320px;"></div>
                 <div id="acero3dResumen" style="position:absolute; top:12px; left:12px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 12px; font-size:11.5px; z-index:5; max-width:320px;"></div>
               </div>
               <div class="row-actions" style="margin-top:10px; flex-wrap:wrap;">
@@ -2439,6 +2438,7 @@ document.addEventListener("click", (e) => {
               <label class="field" style="margin-bottom:8px;"><span class="lbl">Estribos dado</span><input type="checkbox" id="chkAceroEstribo" checked></label>
               <label class="field" style="margin-bottom:8px;"><span class="lbl">Concreto (fantasma)</span><input type="checkbox" id="chkAceroConcreto" checked></label>
               <label class="field" style="margin-bottom:8px;"><span class="lbl">Transparencia del concreto</span><input type="range" id="sliderConcretoOpacidad" min="0" max="1" step="0.05" value="0.15"></label>
+              <div id="acero3dLeyenda" style="margin-top:8px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 12px; font-size:11.5px;"></div>
             </div>
           </div>
       </div>
@@ -2452,7 +2452,6 @@ document.addEventListener("click", (e) => {
         <span class="fem-status-pill" id="femPreviewStatusPill"><span class="dot"></span>Sin correr</span>
       </div>
       <div class="body">
-        <p class="small" style="margin:0 0 14px; color:var(--muted);">Corre el solver de placas propio (Mindlin/Reissner + resortes de Winkler + no linealidad compression-only) directamente sobre la malla y geometría reales de esta zapata (sección 4.4) — sin depender de exportar el modelo a STAAD.Pro y analizarlo por fuera.</p>
         <div id="femPreviewNoSoportado" class="message-bar error hidden" role="alert">
           <span>Este análisis solo corre para Autosoportada 3P/4P (necesita la tabla de reacciones por pata). Para Monopolo falta repartir momento/cortante del apoyo único en cargas nodales.</span>
         </div>
@@ -5034,10 +5033,16 @@ function init3D(){
   controls3d = new THREE.OrbitControls(camera3d, renderer3d.domElement);
   controls3d.enableDamping = true;
   controls3d.dampingFactor = 0.08;
+  // Botones invertidos respecto al default de OrbitControls (pedido del
+  // usuario): clic izquierdo desplaza, clic derecho rota.
+  controls3d.mouseButtons.LEFT = THREE.MOUSE.PAN;
+  controls3d.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
 
   controlsOrtho3d = new THREE.OrbitControls(cameraOrtho3d, renderer3d.domElement);
   controlsOrtho3d.enableDamping = true;
   controlsOrtho3d.dampingFactor = 0.08;
+  controlsOrtho3d.mouseButtons.LEFT = THREE.MOUSE.PAN;
+  controlsOrtho3d.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
   controlsOrtho3d.enableRotate = false; // planta/alzado: solo pan + zoom, sin rotar (son vistas técnicas fijas)
 
   activeCamera3d = camera3d;
@@ -5179,11 +5184,20 @@ function update3D(props, legs, dados, outerC, holeC){
   // hace que el eje Z mundial quede igual a +y (plan), consistente con la
   // posición de los dados (legs.*.y) más abajo. Sin el signo negativo acá
   // quedarían mirroreados entre sí en formas no simétricas.
-  const shape = new THREE.Shape(outerC.map(p=>new THREE.Vector2(p.x, -p.y)));
+  // El hueco solo se recorta en la ZAPATA (confirmado con el usuario): antes
+  // relleno/ciclópeo también llevaban el hueco recortado (con un sólido
+  // aparte rellenándolo, ver huecoSentidoOpuesto más abajo), pero al ser una
+  // capa alta (Hr) vista en ángulo a través de dos capas translúcidas
+  // apiladas, la pared cercana y la lejana del mismo hueco se proyectaban en
+  // puntos muy distintos de la pantalla (paralaje) y parecía un hueco
+  // duplicado o mal ubicado cerca de otros dados. Relleno/ciclópeo van
+  // sólidos (sin hueco) con shapeSinHueco, más abajo.
+  const shapeZapata = new THREE.Shape(outerC.map(p=>new THREE.Vector2(p.x, -p.y)));
   if(state.holeEnabled && holeC.length>=3){
-    shape.holes.push(new THREE.Path(holeC.map(p=>new THREE.Vector2(p.x, -p.y))));
+    shapeZapata.holes.push(new THREE.Path(huecoSentidoOpuesto(outerC, holeC).map(p=>new THREE.Vector2(p.x, -p.y))));
   }
-  const zapataGeo = new THREE.ExtrudeGeometry(shape, {depth:Math.max(PZ,0.01), bevelEnabled:false, curveSegments:24});
+  const shapeSinHueco = new THREE.Shape(outerC.map(p=>new THREE.Vector2(p.x, -p.y)));
+  const zapataGeo = new THREE.ExtrudeGeometry(shapeZapata, {depth:Math.max(PZ,0.01), bevelEnabled:false, curveSegments:24});
   const zapataMesh = new THREE.Mesh(zapataGeo, concreteMat(0x8a95a5));
   zapataMesh.rotation.x = -Math.PI/2; // el shape (XY) pasa a horizontal (XZ); la extrusión +Z pasa a +Y
   zapataMesh.position.y = -Pd;
@@ -5192,10 +5206,12 @@ function update3D(props, legs, dados, outerC, holeC){
   // (earcut) agrega una diagonal "puente" entre el hueco y el contorno para
   // poder triangular el polígono — esa diagonal es plana (0°) pero por
   // imprecisión de punto flotante a veces se cuela como arista visible con
-  // el umbral por defecto. Con un umbral alto se filtra, sin perder las
-  // aristas reales (esquinas del contorno, paredes verticales, borde del
-  // hueco), que difieren en mucho más que unos pocos grados.
-  const zapataEdges = new THREE.LineSegments(new THREE.EdgesGeometry(zapataGeo, 15), new THREE.LineBasicMaterial({color:edgeColor3D}));
+  // el umbral por defecto. 15° no alcanzaba a filtrarla siempre (reportado
+  // por el usuario, seguía viéndose una diagonal cruzando el hueco) — subido
+  // a 60°, con margen de sobra: en este sólido TODA arista real es de 90°
+  // (transición pared vertical/cara plana, arriba o abajo), así que no hay
+  // riesgo de filtrar una arista real por accidente.
+  const zapataEdges = new THREE.LineSegments(new THREE.EdgesGeometry(zapataGeo, 60), new THREE.LineBasicMaterial({color:edgeColor3D}));
   zapataEdges.rotation.x = -Math.PI/2;
   zapataEdges.position.y = -Pd;
   mesh3dGroup.add(zapataEdges);
@@ -5335,44 +5351,34 @@ function update3D(props, legs, dados, outerC, holeC){
   const cicloH = hayCiclopeo ? Math.min(state.materiales.espesorCiclopeo, Hr) : 0;
   const relH = Hr - cicloH;
 
-  // --- Relleno y Concreto Ciclópeo: se extruye el mismo polígono real de
-  // la zapata (con hueco si aplica) — antes era una caja con el bounding
-  // box del contorno, que no coincidía con la forma real de la zapata.
-  // No se dibujan en Planta: al ser opacos y cubrir todo el ancho, tapaban
+  // --- Relleno y Concreto Ciclópeo: se extruye el mismo contorno real de
+  // la zapata, sin el hueco (ver shapeSinHueco) — antes era una caja con el
+  // bounding box del contorno, que no coincidía con la forma real de la
+  // zapata. No se dibujan en Planta: al ser opacos y cubrir todo el ancho, tapaban
   // por completo la zapata al mirar desde arriba. SÍ se dibujan en Alzado
   // (con transparencia, igual que en 3D libre) — es justo la vista donde
   // interesa ver el perfil de capas (relleno/ciclópeo) con sus cotas. ---
   if(viewMode3d !== "planta"){
+    // Relleno y ciclópeo van SÓLIDOS (sin el hueco recortado) — el hueco
+    // solo aplica a la zapata (ver comentario junto a shapeSinHueco). Antes
+    // se recortaba el mismo hueco en estas dos capas y se tapaba con un
+    // sólido aparte, pero al verlas en ángulo (Hr=hasta varios metros de
+    // alto) la pared cercana y la lejana del hueco se proyectaban muy
+    // separadas en pantalla, pareciendo un hueco fantasma cerca de otros
+    // dados — ya no aplica con estas capas sólidas.
     if(relH > 1e-6){
-      const relGeo = new THREE.ExtrudeGeometry(shape, {depth:relH, bevelEnabled:false, curveSegments:24});
+      const relGeo = new THREE.ExtrudeGeometry(shapeSinHueco, {depth:relH, bevelEnabled:false, curveSegments:24});
       const relMesh = new THREE.Mesh(relGeo, solidMat(0x7a6a55, {transparent:true, opacity:0.35}));
       relMesh.rotation.x = -Math.PI/2;
       relMesh.position.y = -relH;
       mesh3dGroup.add(relMesh);
     }
     if(cicloH > 1e-6){
-      const cicloGeo = new THREE.ExtrudeGeometry(shape, {depth:cicloH, bevelEnabled:false, curveSegments:24});
+      const cicloGeo = new THREE.ExtrudeGeometry(shapeSinHueco, {depth:cicloH, bevelEnabled:false, curveSegments:24});
       const cicloMesh = new THREE.Mesh(cicloGeo, concreteMat(0x7d8b8f, {transparent:true, opacity:0.55}));
       cicloMesh.rotation.x = -Math.PI/2;
       cicloMesh.position.y = -Hr;
       mesh3dGroup.add(cicloMesh);
-    }
-
-    // --- Relleno de la cavidad del hueco: coherente con computeGeotecnico
-    // (el hueco no queda vacío, se rellena con relleno o con ciclópeo según
-    // corresponda) — se dibuja un sólido aparte, del alto completo Hr,
-    // usando solo el contorno del hueco (no el de toda la zapata), para no
-    // tocar las capas de relleno/ciclópeo generales de arriba.
-    if(state.holeEnabled && holeC.length>=3){
-      const holeCCW = polygonSignedArea(holeC) >= 0 ? holeC : holeC.slice().reverse();
-      const holeShape = new THREE.Shape(holeCCW.map(p=>new THREE.Vector2(p.x, -p.y)));
-      const holeFillGeo = new THREE.ExtrudeGeometry(holeShape, {depth:Hr, bevelEnabled:false, curveSegments:24});
-      const holeFillMesh = hayCiclopeo
-        ? new THREE.Mesh(holeFillGeo, concreteMat(0x7d8b8f, {transparent:true, opacity:0.55}))
-        : new THREE.Mesh(holeFillGeo, solidMat(0x7a6a55, {transparent:true, opacity:0.35}));
-      holeFillMesh.rotation.x = -Math.PI/2;
-      holeFillMesh.position.y = -Hr;
-      mesh3dGroup.add(holeFillMesh);
     }
   }
 
@@ -5420,7 +5426,7 @@ function setViewMode3D(mode){
     b.classList.toggle("active", b.dataset.mode === mode);
   });
   document.getElementById("vista3dHint").textContent = mode === "3d"
-    ? "Arrastrar para rotar, rueda del mouse para acercar/alejar, clic derecho para desplazar."
+    ? "Arrastrar para desplazar, rueda del mouse para acercar/alejar, clic derecho para rotar."
     : "Arrastrar para desplazar, rueda del mouse para acercar/alejar (vista fija, sin rotar).";
   // update3D() reconstruye la malla completa (zapata/dados/relleno/flechas
   // de reacción) según el modo actual (`flat`) y al final llama a
@@ -6686,6 +6692,58 @@ function addHook90Acero(group, pos, dirIn, dirHook, radio_cm, ext_cm, diam_m, ma
 // con x variable, ó x=cte con z variable), devuelve los tramos [ini,fin]
 // de la coordenada variable que caen DENTRO del polígono (regla par-impar
 // sobre sus lados — válida para cualquier polígono simple, convexo o no).
+// Intersección de dos rectas (no segmentos) dadas por dos puntos cada una —
+// usada por desplazarPoligono() para reconstruir cada vértice como el cruce
+// de sus dos aristas ya desplazadas. Devuelve null si son casi paralelas
+// (arista degenerada u offset inválido en un vértice muy agudo).
+function interseccionRectas(e1, e2){
+  const {ax:x1,ay:y1,bx:x2,by:y2} = e1, {ax:x3,ay:y3,bx:x4,by:y4} = e2;
+  const den = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+  if(Math.abs(den) < 1e-9) return null;
+  const t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / den;
+  return { x: x1 + t*(x2-x1), y: y1 + t*(y2-y1) };
+}
+
+// Desplaza CADA arista del polígono hacia afuera de su PROPIO interior por
+// una distancia "d" (d negativo = hacia adentro) y reconstruye los vértices
+// como la intersección de cada par de aristas desplazadas consecutivas —
+// técnica estándar de "polygon offsetting" para polígonos simples (sin
+// auto-intersección severa; el caso típico de un contorno de zapata o un
+// hueco poligonal, con un offset chico de unos pocos cm frente al tamaño de
+// la figura, no la rompe). El sentido de giro del polígono (horario o
+// antihorario) no está garantizado — el usuario lo dibuja a mano clic a
+// clic — por eso se corrige con el signo real del área (mismo criterio que
+// huecoSentidoOpuesto más arriba) en vez de asumir uno fijo.
+//
+// Por qué esto y no "recortar por cruces y retroceder el extremo de la
+// barra a lo largo de su propio eje" (lo que había antes): esa técnica
+// only protege una barra que SÍ cruza una pared angulada — una barra que
+// corre en PARALELO a una pared cercana, sin llegar a cruzarla, nunca
+// entraba en ese cálculo y quedaba pegada a la pared sin ningún
+// recubrimiento (reportado por el usuario, con capturas). Desplazando el
+// contorno/hueco ANTES de recortar, cualquier barra generada dentro de la
+// forma ya desplazada queda garantizada a distancia "d" de la pared
+// original, la cruce o corra en paralelo a ella.
+function desplazarPoligono(poly, d){
+  const n = poly.length;
+  if(n<3) return poly;
+  const signo = polygonSignedArea(poly) >= 0 ? 1 : -1;
+  const aristas = [];
+  for(let i=0;i<n;i++){
+    const a = poly[i], b = poly[(i+1)%n];
+    const dx = b.x-a.x, dy = b.y-a.y;
+    const len = Math.hypot(dx,dy) || 1;
+    const nx = signo*dy/len, ny = -signo*dx/len; // normal hacia afuera del propio interior
+    aristas.push({ax:a.x+nx*d, ay:a.y+ny*d, bx:b.x+nx*d, by:b.y+ny*d});
+  }
+  const out = [];
+  for(let i=0;i<n;i++){
+    const p = interseccionRectas(aristas[(i-1+n)%n], aristas[i]);
+    out.push(p || poly[i]); // vértice muy agudo/degenerado: usar el original como respaldo
+  }
+  return out;
+}
+
 function tramosDentroDePoligono(poly, fijaEnZ, fijo){
   const cruces = [];
   const n = poly.length;
@@ -6703,8 +6761,8 @@ function tramosDentroDePoligono(poly, fijaEnZ, fijo){
   return tramos;
 }
 
-// Resta del contorno exterior los tramos que caen sobre el hueco (si lo
-// hay) — el acero rodea el hueco en vez de atravesarlo.
+// Resta del contorno (ya achicado) los tramos que caen sobre el hueco (ya
+// agrandado) — el acero rodea el hueco en vez de atravesarlo.
 function restarTramos(base, aRestar){
   let out = base;
   aRestar.forEach(([hi,hf])=>{
@@ -6719,18 +6777,14 @@ function restarTramos(base, aRestar){
   return out;
 }
 
-function encogerTramos(tramos, r){
-  return tramos.map(([a,b])=>[a+r,b-r]).filter(([a,b])=>b-a>1e-6);
-}
-
 function actualizarLeyendaAcero(lenInf, lenSup, lenDado1, lenDado2){
   const el = document.getElementById("acero3dLeyenda");
   if(!el) return;
   const item = (color, texto) => `<div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;"><span style="width:10px; height:10px; border-radius:50%; background:${color}; display:inline-block; flex-shrink:0;"></span><span>${texto}</span></div>`;
   el.innerHTML =
-    item("#2196F3", `Lecho inf: ${state.diseno.varInf} @ ${fmt(state.diseno.sepInfExist,0)} cm — ld=${fmt(lenInf.ld_cm,0)} cm, ldh=${fmt(lenInf.ldh_cm,0)} cm`) +
-    item("#43A047", `Lecho sup: ${state.diseno.varSup} @ ${fmt(state.diseno.sepSupExist,0)} cm — ld=${fmt(lenSup.ld_cm,0)} cm`) +
-    item("#E65100", `Long. dado: ${state.diseno.dadoN1}×${state.diseno.dadoVar1} + ${state.diseno.dadoN2}×${state.diseno.dadoVar2} — ldh=${fmt(lenDado1.ldh_cm,0)} cm`) +
+    item("#2196F3", `Lecho inf: ${state.diseno.varInf} @ ${fmt(state.diseno.sepInfExist,0)} cm`) +
+    item("#43A047", `Lecho sup: ${state.diseno.varSup} @ ${fmt(state.diseno.sepSupExist,0)} cm`) +
+    item("#E65100", `Long. dado: ${state.diseno.dadoN1}×${state.diseno.dadoVar1} + ${state.diseno.dadoN2}×${state.diseno.dadoVar2}`) +
     item("#6A1B9A", `Estribos: ${state.diseno.dadoEstriboVar} @ ${fmt(state.diseno.dadoEstriboSep,0)} cm — ${state.diseno.dadoEstribosRamas} rama(s)`);
 }
 
@@ -6787,7 +6841,7 @@ function buildAcero3D(){
   // Concreto fantasma — zapata (mismo shape/rotación que update3D(), hueco incluido).
   const shape = new THREE.Shape(outerC.map(p=>new THREE.Vector2(p.x, -p.y)));
   if(huecoActivo){
-    shape.holes.push(new THREE.Path(huecoActivo.map(p=>new THREE.Vector2(p.x, -p.y))));
+    shape.holes.push(new THREE.Path(huecoSentidoOpuesto(outerC, huecoActivo).map(p=>new THREE.Vector2(p.x, -p.y))));
   }
   const zapataGeo = new THREE.ExtrudeGeometry(shape, {depth:Math.max(PZ,0.01), bevelEnabled:false, curveSegments:24});
   const zapataMesh = new THREE.Mesh(zapataGeo, matConcretoFantasma());
@@ -6822,16 +6876,14 @@ function buildAcero3D(){
     return out;
   }
 
-  // Tramos [ini,fin] de una recta (fija en x ó z) recortados a la forma
-  // real de la zapata Y al hueco (si lo hay), retrocedidos "holgura" desde
-  // CUALQUIER pared (exterior o del hueco) — ambas paredes llevan gancho,
-  // así que ambos extremos siempre quedan disponibles para uno.
-  function tramosDeAceroLosa(fijaEnZ, fijo, holgura){
-    const outer = tramosDentroDePoligono(outerC, fijaEnZ, fijo);
-    const solidos = huecoActivo
-      ? restarTramos(outer, tramosDentroDePoligono(huecoActivo, fijaEnZ, fijo))
-      : outer;
-    return encogerTramos(solidos, holgura);
+  // Tramos [ini,fin] de una recta (fija en x ó z) recortados contra el
+  // contorno YA ACHICADO y el hueco YA AGRANDADO por "holgura" (ver
+  // desplazarPoligono más arriba) — así cualquier barra generada queda
+  // garantizada a esa distancia de la pared original sin importar si la
+  // cruza o corre en paralelo a ella.
+  function tramosDeAceroLosa(contornoOfs, huecoOfs, fijaEnZ, fijo){
+    const outer = tramosDentroDePoligono(contornoOfs, fijaEnZ, fijo);
+    return huecoOfs ? restarTramos(outer, tramosDentroDePoligono(huecoOfs, fijaEnZ, fijo)) : outer;
   }
 
   // Recubrimiento LATERAL (a la pared, sea exterior o del hueco): fijo en
@@ -6841,24 +6893,32 @@ function buildAcero3D(){
   const recLateral_m = 0.05;
   const holguraInf = recLateral_m + lenInf.radio_cm/100 + lenInf.db_cm/200;
   const holguraSup = recLateral_m + lenSup.radio_cm/100 + lenSup.db_cm/200;
+  // Contorno achicado hacia ADENTRO (d negativo) y hueco agrandado hacia
+  // afuera de SU PROPIO interior (el vacío) — ambos casos "empujan" la zona
+  // permitida para acero lejos de la pared real, por eso llevan signos
+  // opuestos de d aunque el motivo sea el mismo.
+  const contornoInf = desplazarPoligono(outerC, -holguraInf);
+  const huecoInf = huecoActivo ? desplazarPoligono(huecoActivo, holguraInf) : null;
+  const contornoSup = desplazarPoligono(outerC, -holguraSup);
+  const huecoSup = huecoActivo ? desplazarPoligono(huecoActivo, holguraSup) : null;
 
   const matInf = matAceroInf(), matSup = matAceroSup();
   posicionesEnRango(zMin, zMax, sepInf, 80).forEach(z=>{
-    tramosDeAceroLosa(true, z, holguraInf).forEach(([ini,fin])=>{
+    tramosDeAceroLosa(contornoInf, huecoInf, true, z).forEach(([ini,fin])=>{
       addBarAcero(aceroGroup, ini,yInfX,z, fin,yInfX,z, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
       addHook90Acero(aceroGroup, new THREE.Vector3(ini,yInfX,z), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
       addHook90Acero(aceroGroup, new THREE.Vector3(fin,yInfX,z), new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
     });
   });
   posicionesEnRango(xMin, xMax, sepInf, 80).forEach(x=>{
-    tramosDeAceroLosa(false, x, holguraInf).forEach(([ini,fin])=>{
+    tramosDeAceroLosa(contornoInf, huecoInf, false, x).forEach(([ini,fin])=>{
       addBarAcero(aceroGroup, x,yInfZ,ini, x,yInfZ,fin, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
       addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,ini), new THREE.Vector3(0,0,-1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
       addHook90Acero(aceroGroup, new THREE.Vector3(x,yInfZ,fin), new THREE.Vector3(0,0,1), new THREE.Vector3(0,1,0), lenInf.radio_cm, lenInf.extension_cm, lenInf.db_cm/100, matInf, "lechoInf", state.diseno.varInf);
     });
   });
   posicionesEnRango(zMin, zMax, sepSup, 80).forEach(z=>{
-    tramosDeAceroLosa(true, z, holguraSup).forEach(([ini,fin])=>{
+    tramosDeAceroLosa(contornoSup, huecoSup, true, z).forEach(([ini,fin])=>{
       addBarAcero(aceroGroup, ini,ySupX,z, fin,ySupX,z, lenSup.db_cm/100, matSup, "lechoSup", state.diseno.varSup);
       // Gancho a 90° doblado hacia ABAJO (no hacia arriba como el lecho
       // inferior): el lecho superior corre pegado a la cara superior de la
@@ -6868,7 +6928,7 @@ function buildAcero3D(){
     });
   });
   posicionesEnRango(xMin, xMax, sepSup, 80).forEach(x=>{
-    tramosDeAceroLosa(false, x, holguraSup).forEach(([ini,fin])=>{
+    tramosDeAceroLosa(contornoSup, huecoSup, false, x).forEach(([ini,fin])=>{
       addBarAcero(aceroGroup, x,ySupZ,ini, x,ySupZ,fin, lenSup.db_cm/100, matSup, "lechoSup", state.diseno.varSup);
       addHook90Acero(aceroGroup, new THREE.Vector3(x,ySupZ,ini), new THREE.Vector3(0,0,-1), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup", state.diseno.varSup);
       addHook90Acero(aceroGroup, new THREE.Vector3(x,ySupZ,fin), new THREE.Vector3(0,0,1), new THREE.Vector3(0,-1,0), lenSup.radio_cm, lenSup.extension_cm, lenSup.db_cm/100, matSup, "lechoSup", state.diseno.varSup);
@@ -7574,6 +7634,20 @@ function polygonSignedArea(poly){
     a += p1.x*p2.y - p2.x*p1.y;
   }
   return a/2;
+}
+
+// Los "holes" de un THREE.Shape necesitan girar en sentido CONTRARIO al
+// contorno exterior para que la triangulación (ShapeUtils/earcut, que usa
+// internamente ExtrudeGeometry) reconozca bien el hueco — si coinciden en
+// sentido, el "puente" que conecta hueco y contorno para poder triangular
+// deja de ser degenerado y a veces sale como una cara delgada realmente
+// visible cruzando el hueco (reportado por el usuario). El contorno lo
+// dibuja el usuario clic a clic, así que su sentido (horario/antihorario)
+// no está garantizado — por eso se compara contra el sentido REAL del
+// contorno en cada caso, en vez de asumir uno fijo.
+function huecoSentidoOpuesto(outer, hole){
+  const mismoSentido = (polygonSignedArea(outer) >= 0) === (polygonSignedArea(hole) >= 0);
+  return mismoSentido ? hole.slice().reverse() : hole;
 }
 
 // Recorte de Sutherland-Hodgman: recorta "subject" contra el polígono
