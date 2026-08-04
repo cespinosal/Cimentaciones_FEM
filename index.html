@@ -13331,8 +13331,12 @@ function femPreviewSetProgreso(frac, texto){
 }
 function femPreviewMostrarProgreso(){
   document.getElementById("femProgresoModalOverlay").classList.remove("hidden");
-  document.getElementById("btnFemProgresoAceptar").disabled = true;
-  document.getElementById("btnFemProgresoCancelar").disabled = false;
+  const btnAceptar = document.getElementById("btnFemProgresoAceptar");
+  const btnCancelar = document.getElementById("btnFemProgresoCancelar");
+  btnAceptar.disabled = true;
+  btnAceptar.classList.add("hidden");
+  btnCancelar.disabled = false;
+  btnCancelar.classList.remove("hidden");
   femPreviewSetProgreso(0.04, "Preparando malla y resortes…");
 }
 // Ya NO oculta solo — el modal se queda abierto (con el log completo a la
@@ -13582,6 +13586,19 @@ async function femRunPreviewTodos(){
   femPreviewMostrarProgreso();
   femPreviewLogClear();
   const tInicioAnalisis = performance.now();
+  // Encabezado tipo consola de STAAD.Pro (versión/licencia/directorio) —
+  // pedido explícito del usuario, con el equivalente real de cada dato de
+  // esta app (no hay número de versión de la app, así que se usa el
+  // formato de datos + info de usuario/ruta que sí existen).
+  femPreviewLogLinea("Cimentaciones FEM — Motor FEM propio (JavaScript, en navegador)");
+  femPreviewLogLinea(`Formato de datos: v${SCHEMA_VERSION} — hilo: Web Worker dedicado`);
+  const autorizadoFem = esRutaDev() || (!!AUTO_ENGINEER && USUARIOS_AUTORIZADOS.some(
+    u => normalizarNombreUsuario(u) === normalizarNombreUsuario(AUTO_ENGINEER)
+  ));
+  femPreviewLogLinea(`Usuario: ${AUTO_ENGINEER || "(no identificado)"} — ${autorizadoFem ? "autorizado" : "NO autorizado"}`);
+  femPreviewLogLinea(`Ruta: ${decodeURIComponent(location.pathname)}`);
+  femPreviewLogLinea(`Proyecto: ${state.proyecto.assetNum || "(sin N° de activo)"} — ${state.proyecto.assetName || "(sin nombre)"}`);
+  femPreviewLogEspacio();
   femPreviewLogLinea(`Motor FEM — malla: ${malla.nodos.length} nodos, ${combosEstructurales.length} combo(s) 1.2D a resolver`);
 
   const cdSeccion = getCriteriosDiseno();
@@ -13782,8 +13799,11 @@ async function femRunPreviewTodos(){
   // pintan los resultados. Antes se cerraba solo a los 1.5s y los
   // resultados se pintaban de inmediato en paralelo.
   const btnAceptar = document.getElementById("btnFemProgresoAceptar");
+  const btnCancelar = document.getElementById("btnFemProgresoCancelar");
   btnAceptar.disabled = false;
-  document.getElementById("btnFemProgresoCancelar").disabled = true; // ya no hay nada que cancelar
+  btnAceptar.classList.remove("hidden");
+  btnCancelar.disabled = true; // ya no hay nada que cancelar
+  btnCancelar.classList.add("hidden");
   btnAceptar.onclick = () => {
     femPreviewOcultarProgreso();
     const combosOk = combosEstructurales.filter(c => {
