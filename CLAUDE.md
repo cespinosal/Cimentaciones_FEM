@@ -131,9 +131,12 @@ más abajo).
 - El contenido de `SHAPEPTS.lsp` también está embebido como string (`SHAPEPTS_LSP`) para ofrecer su
   descarga directa desde la app; si se edita el `.lsp` del repo, actualizar también esa copia
   embebida.
-- **Excepción**: `Plotly` (para el diagrama de Interacción 3D) se carga desde CDN
-  (`cdn.plot.ly/plotly-2.35.2.min.js`), rompiendo a propósito el patrón "sin CDN" de las demás
-  librerías — tenerlo en cuenta si se necesita que la app funcione sin conexión a internet.
+- **Plotly 2.35.2** (para el diagrama de Interacción 3D): igual que las anteriores, código fuente
+  completo pegado inline en `<script id="plotlyjs-src">` (sin CDN) — hasta el 06/08/2026 se cargaba
+  desde `cdn.plot.ly/plotly-2.35.2.min.js`, pero como `index.html` es el único archivo que se
+  comparte con los ingenieros de la oficina, se embebió también para que la app funcione 100%
+  offline sin excepciones. Si se actualiza la versión, descargar el `.min.js` exacto de esa versión
+  y pegarlo completo ahí (mismo criterio que PDF.js/Three.js).
 
 ## `help.html`
 
