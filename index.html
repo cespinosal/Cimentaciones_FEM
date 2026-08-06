@@ -10374,7 +10374,8 @@ function renderAll(){
   const flInf = calcularFlexion(momentos.muInferior, cd);
   const flInfEl = document.getElementById("flexionInfComputed");
   flInfEl.innerHTML = "";
-  propRow(flInfEl, mv("M","u"), fmt(momentos.muInferior, 3), "Tn-m/m");
+  propRow(flInfEl, mv("M","u"), fmt(momentos.muInferior, 3), "Tn-m/m",
+    `${mv("M","u")} = MAX(${mv("M","x")} + |${mv("M","xy")}|, ${mv("M","y")} + |${mv("M","xy")}|)` + cite("Wood-Armer, peor fila de la tabla 5.1"));
   propRow(flInfEl, mv("R","n"), fmt(flInf.Rn, 3), "kg/cm²",
     `${mv("R","n")} = ${mv("M","u")} / (ɸ&middot;${mv("b")}&middot;${mv("d")}²)` + cite("22.3.2.1 ACI 318-19"));
   propRow(flInfEl, mv("ρ"), fmt(flInf.rho, 5), "",
@@ -10418,7 +10419,8 @@ function renderAll(){
   const flSup = calcularFlexion(momentos.muSuperior, cd);
   const flSupEl = document.getElementById("flexionSupComputed");
   flSupEl.innerHTML = "";
-  propRow(flSupEl, mv("M","u"), fmt(momentos.muSuperior, 3), "Tn-m/m");
+  propRow(flSupEl, mv("M","u"), fmt(momentos.muSuperior, 3), "Tn-m/m",
+    `${mv("M","u")} = |MIN(${mv("M","x")} &minus; |${mv("M","xy")}|, ${mv("M","y")} &minus; |${mv("M","xy")}|)|` + cite("Wood-Armer, peor fila de la tabla 5.1"));
   propRow(flSupEl, mv("R","n"), fmt(flSup.Rn, 3), "kg/cm²",
     `${mv("R","n")} = ${mv("M","u")} / (ɸ&middot;${mv("b")}&middot;${mv("d")}²)` + cite("22.3.2.1 ACI 318-19"));
   propRow(flSupEl, mv("ρ"), fmt(flSup.rho, 5), "",
