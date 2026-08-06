@@ -6629,13 +6629,15 @@ function pmmActualizarTooltip(rect, clientX, clientY, d, dcVal){
   if(!el) return;
   el.innerHTML =
     `<b>${d.pata === "pedestal" ? "Pedestal" : d.pata} — ${d.combo}</b><br>` +
-    `Pu=${fmt(d.Pu,3)} Tn &nbsp; Mux=${fmt(d.Mux,3)} Tn-m &nbsp; Muy=${fmt(d.Muy,3)} Tn-m<br>` +
+    `Pu=${fmt(d.Pu,3)} Tn<br>` +
+    `Mux=${fmt(d.Mux,3)} Tn-m<br>` +
+    `Muy=${fmt(d.Muy,3)} Tn-m<br>` +
     `D/C=${isFinite(dcVal) ? fmt(dcVal,3) : "—"}`;
   let left = clientX - rect.left + 16, top = clientY - rect.top + 16;
   // no dejar que se salga del contenedor por la derecha/abajo — se ancla al
   // otro lado del cursor si no entra.
   if(left + 220 > rect.width) left = clientX - rect.left - 236;
-  if(top + 60 > rect.height) top = clientY - rect.top - 76;
+  if(top + 110 > rect.height) top = clientY - rect.top - 126;
   el.style.left = left + "px";
   el.style.top = top + "px";
   el.style.display = "block";
