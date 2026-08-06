@@ -428,6 +428,29 @@ label.field .unit{color:var(--subtle); width:30px; font-size:12px;}
 .row-actions{display:flex; gap:8px; margin-top:10px;}
 .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
 
+/* ---------- Etiquetas de patas (Interacción 3D) ---------- */
+/* Overlay HTML plano encima del canvas WebGL de Plotly: las etiquetas
+   nativas de Plotly (scatter3d) quedan sujetas al mismo z-buffer que las
+   superficies mesh3d y se pierden detrás de ellas — un <div> aparte, fuera
+   del canvas, siempre queda arriba sin depender de profundidad 3D. */
+#pmmEtiquetasOverlay{position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:4;}
+.pmm-etiqueta{
+  position:absolute; left:0; top:0; pointer-events:none;
+  background:var(--panel-2); color:var(--text); border:1px solid var(--border-strong);
+  border-radius:5px; padding:1px 6px; font-size:11px; font-weight:700;
+  white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,.25);
+}
+/* Tooltip flotante con el detalle (Pu/Mux/Muy/D-C) del punto de demanda bajo
+   el cursor, pegado sobre el propio canvas — complementa (no reemplaza) el
+   panel lateral pmmPuntoInfo, que se sigue actualizando igual. */
+#pmmHoverTooltip{
+  position:absolute; left:0; top:0; z-index:6; pointer-events:none;
+  background:var(--panel); color:var(--text); border:1px solid var(--border-strong);
+  border-radius:var(--radius-md); padding:6px 10px; font-size:12px; line-height:1.5;
+  white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,.3); display:none;
+}
+#pmmHoverTooltip b{font-weight:700;}
+
 /* ---------- Properties grid ---------- */
 .props-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:2px 16px;}
 .prop{display:flex; justify-content:space-between; border-bottom:1px dashed var(--border); padding:4px 0; font-size:12.5px;}
@@ -2409,6 +2432,8 @@ document.addEventListener("click", (e) => {
             <div style="flex:1 1 560px; min-width:320px;">
               <div style="position:relative;">
                 <div id="interaccionPlot" style="width:100%; height:560px; min-height:400px;"></div>
+                <div id="pmmEtiquetasOverlay"></div>
+                <div id="pmmHoverTooltip"></div>
                 <div id="interaccionResumen" style="position:absolute; top:8px; left:8px; z-index:5; padding:6px 10px; border-radius:var(--radius-md); font-weight:700; font-size:13px;"></div>
               </div>
               <div class="row-actions" style="margin-top:10px; flex-wrap:wrap;">
@@ -2422,6 +2447,7 @@ document.addEventListener("click", (e) => {
               <label class="field" style="margin-bottom:10px;"><span class="lbl">Superficie resistente</span><input type="checkbox" id="chkSupResistente" checked></label>
               <label class="field" style="margin-bottom:10px;"><span class="lbl">Superficie nominal</span><input type="checkbox" id="chkSupNominal" checked></label>
               <label class="field" style="margin-bottom:10px;"><span class="lbl">Puntos de demanda</span><input type="checkbox" id="chkPuntosDemanda" checked></label>
+              <label class="field" style="margin-bottom:10px;"><span class="lbl">Etiquetas de pata (P1, P1a…)</span><input type="checkbox" id="chkEtiquetasPMM" checked></label>
               <label class="field" style="margin-bottom:10px;"><span class="lbl">Líneas al origen</span><input type="checkbox" id="chkLineasOrigen"></label>
               <label class="field" style="max-width:200px; margin-bottom:10px;">
                 <span class="lbl">Opacidad superficies</span>
@@ -2436,6 +2462,18 @@ document.addEventListener("click", (e) => {
                   <option value="P1b">P1b</option>
                 </select>
               </label>
+              <label class="field" style="max-width:200px; margin-bottom:10px;">
+                <span class="lbl">Combinación</span>
+                <select id="selComboPMM">
+                  <option value="todas">Todas</option>
+                </select>
+              </label>
+              <label class="field" style="max-width:200px; margin-bottom:10px;">
+                <span class="lbl">Punto de demanda</span>
+                <select id="selPuntoPMM"><option value="">—</option></select>
+              </label>
+              <p class="small" style="margin:0 0 6px; color:var(--muted);">Pasá el cursor sobre un punto del gráfico para ver su detalle — funciona aunque el punto quede visualmente detrás de una superficie, y las superficies nunca se ocultan. El selector de arriba es un atajo equivalente, no hace falta usarlo.</p>
+              <div id="pmmPuntoInfo" class="props-grid" style="margin-top:6px;"></div>
             </div>
           </div>
       </div>
@@ -6554,8 +6592,157 @@ function calcularDatosPMM(recalcularSuperficie){
   const selPata = document.getElementById("selPataPMM");
   const pataSel = selPata ? selPata.value : "todas";
   if(pataSel !== "todas") demandas = demandas.filter(d=>d.pata===pataSel);
+  const selCombo = document.getElementById("selComboPMM");
+  const comboSel = selCombo ? selCombo.value : "todas";
+  if(comboSel !== "todas") demandas = demandas.filter(d=>d.combo===comboSel);
   const dc = demandas.map(d => calcularDCPuntoPMM({Pu:d.Pu, Mux:d.Mux, Muy:d.Muy}, sup.resistente));
   lastPMM = { sup, demandas, dc };
+}
+
+// Detalle del punto de demanda bajo el cursor (ver hover en renderizarPMM)
+// o del elegido en el selector "Punto de demanda", en el panel lateral.
+function pmmMostrarPuntoInfo(d, dcVal){
+  const el = document.getElementById("pmmPuntoInfo");
+  if(!el) return;
+  el.innerHTML = "";
+  propRow(el, "Punto seleccionado", `${d.pata === "pedestal" ? "Pedestal" : d.pata} — ${d.combo}`, "");
+  propRow(el, "Pu", fmt(d.Pu, 3), "Tn");
+  propRow(el, "Mux", fmt(d.Mux, 3), "Tn-m");
+  propRow(el, "Muy", fmt(d.Muy, 3), "Tn-m");
+  propRow(el, "D/C", isFinite(dcVal) ? fmt(dcVal, 3) : "—", "");
+}
+
+// Tooltip flotante sobre el propio canvas (además del panel lateral de
+// arriba): mismo dato, pegado al cursor mientras el punto sigue "acertado"
+// dentro del umbral del hover (ver mousemove en renderizarPMM). Se posiciona
+// en coordenadas LOCALES al contenedor `position:relative` que envuelve el
+// plot (no clientX/clientY directo), con un offset fijo para no quedar tapado
+// por el propio cursor.
+function pmmActualizarTooltip(rect, clientX, clientY, d, dcVal){
+  const el = document.getElementById("pmmHoverTooltip");
+  if(!el) return;
+  el.innerHTML =
+    `<b>${d.pata === "pedestal" ? "Pedestal" : d.pata} — ${d.combo}</b><br>` +
+    `Pu=${fmt(d.Pu,3)} Tn &nbsp; Mux=${fmt(d.Mux,3)} Tn-m &nbsp; Muy=${fmt(d.Muy,3)} Tn-m<br>` +
+    `D/C=${isFinite(dcVal) ? fmt(dcVal,3) : "—"}`;
+  let left = clientX - rect.left + 16, top = clientY - rect.top + 16;
+  // no dejar que se salga del contenedor por la derecha/abajo — se ancla al
+  // otro lado del cursor si no entra.
+  if(left + 220 > rect.width) left = clientX - rect.left - 236;
+  if(top + 60 > rect.height) top = clientY - rect.top - 76;
+  el.style.left = left + "px";
+  el.style.top = top + "px";
+  el.style.display = "block";
+}
+function pmmOcultarTooltip(){
+  const el = document.getElementById("pmmHoverTooltip");
+  if(el) el.style.display = "none";
+}
+
+// Proyecta un punto en coordenadas de dato (Mux, Muy, Pu) a coordenadas de
+// pantalla (clientX/clientY), replicando a mano la cámara real de Plotly
+// para el gráfico 3D de "div" — usado por el hit-testing por proximidad del
+// hover (ver renderizarPMM) para esquivar el bloqueo de picking nativo que
+// producen las superficies "Resistente"/"Nominal" (ver comentario ahí).
+// Matriz de vista tomada de `glplot.camera.matrix` (real, no recalculada) y
+// mapeo dato→modelo normalizado (caja centrada en 0, extremos
+// ±aspectratio/2 según el rango de eje YA RESUELTO por Plotly, sea
+// aspectmode "auto" o "manual") — validado con Playwright: mismos píxeles
+// que da el picking nativo de Plotly en puntos sin bloqueo (mover el mouse
+// a la posición calculada dispara plotly_hover en el punto correcto).
+function pmmProyectarAPantalla(div, x, y, z){
+  const fl = div._fullLayout;
+  const scene = fl && fl.scene && fl.scene._scene;
+  const glplot = scene && scene.glplot;
+  if(!glplot || !glplot.camera) return null;
+  const M = glplot.camera.matrix; // column-major, 16 valores
+  const ar = fl.scene.aspectratio;
+  const xr = fl.scene.xaxis.range, yr = fl.scene.yaxis.range, zr = fl.scene.zaxis.range;
+  if(!xr || !yr || !zr) return null;
+  const nx = ((x-xr[0])/(xr[1]-xr[0]) - 0.5) * ar.x;
+  const ny = ((y-yr[0])/(yr[1]-yr[0]) - 0.5) * ar.y;
+  const nz = ((z-zr[0])/(zr[1]-zr[0]) - 0.5) * ar.z;
+  const fila = (r)=> M[0*4+r]*nx + M[1*4+r]*ny + M[2*4+r]*nz + M[3*4+r]*1;
+  const eye = [fila(0), fila(1), fila(2)];
+  const rect = div.getBoundingClientRect();
+  if(!rect.width || !rect.height) return null;
+  const f = 1/Math.tan(glplot.fovy/2), aspect = rect.width/rect.height;
+  const clipW = -eye[2];
+  if(clipW <= 0) return null; // punto detrás de la cámara: no visible
+  const ndcX = ((f/aspect)*eye[0]) / clipW, ndcY = (f*eye[1]) / clipW;
+  return {
+    x: rect.left + (ndcX*0.5+0.5)*rect.width,
+    y: rect.top + (1-(ndcY*0.5+0.5))*rect.height
+  };
+}
+
+// Etiquetas de pata (P1, P1a, P1b… o "Pedestal" en M4) fijas sobre cada
+// punto de demanda: cuando las superficies de interacción están activas,
+// su escala (Pn puede ser ~10-20× la Pu real) hace que los puntos de
+// demanda queden agrupados en un manchón chico junto a la superficie —
+// visible pero difícil de distinguir uno de otro (reportado por el
+// usuario). Los puntos scatter3d de Plotly, además, están sujetos al mismo
+// z-buffer que las superficies mesh3d (ver comentario largo en
+// renderizarPMM) y pueden perderse detrás de ellas — un <div> de overlay
+// (`#pmmEtiquetasOverlay`, fuera del canvas WebGL) no tiene ese problema:
+// siempre queda pintado arriba, independiente de la profundidad 3D.
+// Reutiliza los mismos `<div>` entre frames (no los recrea) para no generar
+// layout thrash mientras se reposicionan en cada frame de pmmLoopEtiquetas().
+let pmmLabelEls = [];
+function pmmActualizarEtiquetas(){
+  const div = document.getElementById("interaccionPlot");
+  const overlay = document.getElementById("pmmEtiquetasOverlay");
+  const chk = document.getElementById("chkEtiquetasPMM");
+  if(!div || !overlay || !chk) return;
+  if(!chk.checked || !lastPMM || !lastPMM.demandas.length){
+    if(overlay.children.length){ overlay.innerHTML = ""; pmmLabelEls = []; }
+    return;
+  }
+  const demandas = lastPMM.demandas;
+  if(pmmLabelEls.length !== demandas.length){
+    overlay.innerHTML = "";
+    pmmLabelEls = demandas.map(()=>{
+      const el = document.createElement("div");
+      el.className = "pmm-etiqueta";
+      overlay.appendChild(el);
+      return el;
+    });
+  }
+  const rect = div.getBoundingClientRect();
+  demandas.forEach((d,i)=>{
+    const el = pmmLabelEls[i];
+    const p = pmmProyectarAPantalla(div, d.Mux, d.Muy, d.Pu);
+    const localX = p ? p.x-rect.left : null, localY = p ? p.y-rect.top : null;
+    if(!p || localX < -30 || localX > rect.width+30 || localY < -30 || localY > rect.height+30){
+      el.style.display = "none";
+      return;
+    }
+    el.style.display = "";
+    // Los puntos de demanda suelen quedar muy juntos entre sí (la
+    // envolvente resistente es del orden de 10-20× más grande que la
+    // demanda real, así que a la escala del gráfico se agrupan en un
+    // manchón chico) — un escalonado fijo por índice evita que las
+    // etiquetas queden pixel a pixel superpuestas e ilegibles.
+    const escalonY = -160 - (i % 6) * 22, escalonX = (i % 2 === 0 ? -1 : 1) * Math.floor(i/6) * 34;
+    el.style.transform = `translate(${localX}px, ${localY}px) translate(calc(-50% + ${escalonX}px), ${escalonY}%)`;
+    const texto = d.pata === "pedestal" ? "Pedestal" : d.pata;
+    if(el.textContent !== texto) el.textContent = texto;
+  });
+}
+
+// Bucle continuo (una sola vez, auto-programado) que reposiciona las
+// etiquetas en cada frame — necesario porque, al rotar la cámara
+// (arrastrar), Plotly no dispara ningún evento a una cadencia utilizable
+// para esto (el "mousemove" del arrastre alcanza, pero no cubre inercia ni
+// el redibujado por resize de la ventana); el costo es insignificante
+// (unos pocos puntos proyectados por frame) así que corre siempre que la
+// pestaña "Interacción 3D" esté activa, sin depender de qué disparó el
+// movimiento de cámara.
+let pmmLoopEtiquetasIniciado = false;
+function pmmLoopEtiquetas(){
+  const panel = document.querySelector('.tab-panel[data-tab="interaccion"]');
+  if(panel && panel.classList.contains("active")) pmmActualizarEtiquetas();
+  requestAnimationFrame(pmmLoopEtiquetas);
 }
 
 // Parte de DIBUJO (Plotly) — usa lastPMM/lastPMMSuperficie ya calculados
@@ -6613,8 +6800,11 @@ function renderizarPMM(){
       type:"scatter3d", mode:"markers",
       x: demandas.map(d=>d.Mux), y: demandas.map(d=>d.Muy), z: demandas.map(d=>d.Pu),
       marker:{ size:6, color:colores, line:{color:axisMarkColor, width:1}, symbol:"circle" },
-      customdata: demandas.map((d,i)=>[`${d.pata} — ${d.combo}`, isFinite(dc[i])?dc[i]:0]),
-      hovertemplate:"%{customdata[0]}<br>Pu=%{z:.2f} Tn<br>Mux=%{x:.2f} Tn-m<br>Muy=%{y:.2f} Tn-m<br>D/C=%{customdata[1]:.3f}<extra></extra>",
+      // hoverinfo:"skip" — el tooltip nativo de Plotly (que solo aparece
+      // cuando el punto NO queda detrás de una superficie) duplicaría al
+      // tooltip propio (#pmmHoverTooltip, siempre activo vía mousemove, ver
+      // más abajo). Un solo tooltip, el propio, siempre.
+      hoverinfo:"skip",
       name:"Demanda por combinación"
     });
     if(document.getElementById("chkLineasOrigen").checked){
@@ -6653,6 +6843,89 @@ function renderizarPMM(){
     legend:{x:0, y:1, font:{color:textColor3D}}, margin:{l:0, r:0, t:0, b:0}
   };
   Plotly.react(div, traces, layout, {responsive:true, displaylogo:false});
+  pmmActualizarEtiquetas();
+  if(!pmmLoopEtiquetasIniciado){ pmmLoopEtiquetasIniciado = true; requestAnimationFrame(pmmLoopEtiquetas); }
+
+  // Selección de un punto de demanda con el cursor: las superficies
+  // "Resistente"/"Nominal", aunque translúcidas, tapan el picking NATIVO de
+  // Plotly para cualquier punto que quede visualmente "adentro" (confirmado
+  // probando plotly_hover directamente: no dispara con las superficies
+  // puestas, sin importar la opacidad — es una limitación real de picking
+  // por z-buffer de gl-plot3d/WebGL, no un bug nuestro). El usuario pidió
+  // que las superficies NUNCA se oculten (ni con el cursor ni rotando), así
+  // que en vez de depender del picking de Plotly se reconstruye a mano la
+  // proyección cámara→pantalla en pmmProyectarAPantalla() (matriz de vista
+  // REAL de gl-plot3d, `glplot.camera.matrix`, más la perspectiva
+  // fovy/zNear/zFar y el rango de cada eje YA RESUELTO por Plotly en
+  // fullLayout.scene) y se busca a mano, en cada mousemove, el punto de
+  // demanda más cercano en píxeles al cursor — funciona sin importar qué
+  // haya adelante en el z-buffer, porque no es picking real, es distancia
+  // en pantalla. Fórmula validada con Playwright: mismos resultados que el
+  // picking nativo de Plotly en puntos sin bloqueo (ver memoria de
+  // proyecto "pmm-interaccion3d-seleccion-punto").
+  if(!div._pmmHoverBound){
+    const umbralPx = 22; // radio de "acierto" alrededor de cada punto
+    const limpiarHover = ()=>{
+      div._pmmHoverIdx = -1;
+      const infoEl = document.getElementById("pmmPuntoInfo");
+      if(infoEl) infoEl.innerHTML = "";
+      const selPunto = document.getElementById("selPuntoPMM");
+      if(selPunto) selPunto.value = "";
+      pmmOcultarTooltip();
+    };
+    div.addEventListener("mousemove", (ev)=>{
+      // buttons!==0: el usuario está arrastrando (rotando/paneando la
+      // cámara) — no interferir mostrando/ocultando el panel en cada frame.
+      if(ev.buttons !== 0 || !lastPMM || !document.getElementById("chkPuntosDemanda").checked){
+        return;
+      }
+      let mejor = -1, mejorDist = umbralPx;
+      lastPMM.demandas.forEach((d,i)=>{
+        const p = pmmProyectarAPantalla(div, d.Mux, d.Muy, d.Pu);
+        if(!p) return;
+        const dist = Math.hypot(p.x-ev.clientX, p.y-ev.clientY);
+        if(dist < mejorDist){ mejorDist = dist; mejor = i; }
+      });
+      // El tooltip flotante sigue al cursor en CADA movimiento (aunque el
+      // punto "acertado" no cambie) — a diferencia del panel lateral de
+      // abajo, que solo se repinta cuando cambia el punto.
+      if(mejor >= 0){
+        pmmActualizarTooltip(div.getBoundingClientRect(), ev.clientX, ev.clientY, lastPMM.demandas[mejor], lastPMM.dc[mejor]);
+      } else {
+        pmmOcultarTooltip();
+      }
+      if(mejor === div._pmmHoverIdx) return; // sin cambios: no repintar panel lateral
+      div._pmmHoverIdx = mejor;
+      if(mejor >= 0){
+        pmmMostrarPuntoInfo(lastPMM.demandas[mejor], lastPMM.dc[mejor]);
+        const selPunto = document.getElementById("selPuntoPMM");
+        if(selPunto) selPunto.value = String(mejor);
+      } else {
+        limpiarHover();
+      }
+    });
+    div.addEventListener("mouseleave", limpiarHover);
+    div._pmmHoverBound = true;
+  }
+
+  // Selector "Punto de demanda" (siempre confiable, no depende de acertar
+  // el clic en la escena 3D): se reconstruye con la lista ya filtrada
+  // (pata/combo) en cada redibujado, preservando la selección si sigue
+  // existiendo en la lista nueva.
+  const selPunto = document.getElementById("selPuntoPMM");
+  if(selPunto){
+    const prevSel = selPunto.value;
+    selPunto.innerHTML = ['<option value="">—</option>']
+      .concat(demandas.map((d,i)=>`<option value="${i}">${d.pata === "pedestal" ? "Pedestal" : d.pata} — ${d.combo}</option>`))
+      .join("");
+    if(prevSel !== "" && +prevSel < demandas.length){
+      selPunto.value = prevSel;
+    } else {
+      selPunto.value = "";
+      const infoEl = document.getElementById("pmmPuntoInfo");
+      if(infoEl) infoEl.innerHTML = "";
+    }
+  }
 
   const dcMax = dc.length ? Math.max(...dc.filter(v=>isFinite(v)), 0) : NaN;
   const resumenEl = document.getElementById("interaccionResumen");
@@ -6691,6 +6964,21 @@ function populatePataPMMSelector(){
     .concat(legs.map(k=>`<option value="${k}">${k === "pedestal" ? "Pedestal" : k}</option>`))
     .join("");
   sel.value = legs.includes(prev) ? prev : "todas";
+}
+
+// Opciones del selector "Combinación" — mismos combos estructurales
+// (1.2D+viento) que usa calcularDemandasPMM(), para poder discretizar el
+// diagrama por una sola combinación de carga en vez del envelope completo.
+function populateComboPMMSelector(){
+  const sel = document.getElementById("selComboPMM");
+  if(!sel) return;
+  const prev = sel.value;
+  const cfgTorre = TOWER_TYPES[reactionTypeKey(state.tipoEstructura)];
+  const combos = cfgTorre ? cfgTorre.combos.filter(c => /1\.2\s*d/i.test(c)) : [];
+  sel.innerHTML = ['<option value="todas">Todas</option>']
+    .concat(combos.map(c=>`<option value="${c}">${c}</option>`))
+    .join("");
+  sel.value = combos.includes(prev) ? prev : "todas";
 }
 
 // Debounce del refresco "en vivo" de Interacción 3D disparado desde
@@ -10381,6 +10669,7 @@ function renderAll(){
   // momento, no en cada evento individual.
   const panelPMM = document.querySelector('.tab-panel[data-tab="interaccion"]');
   populatePataPMMSelector();
+  populateComboPMMSelector();
   if(panelPMM && panelPMM.classList.contains("active")) solicitarRenderPMM();
 
   // Igual criterio para "Acero 3D": solo reconstruye la geometría si esa
@@ -12216,11 +12505,21 @@ function initBindings(){
 
   // Pestaña "Interacción 3D": controles propios de la visualización, no
   // afectan el cálculo de la superficie — solo redibujan.
-  ["chkSupResistente","chkSupNominal","chkPuntosDemanda","chkLineasOrigen"].forEach(id=>{
+  ["chkSupResistente","chkSupNominal","chkPuntosDemanda","chkEtiquetasPMM","chkLineasOrigen"].forEach(id=>{
     document.getElementById(id).addEventListener("change", ()=> calcularYRenderizarPMM(false));
   });
   document.getElementById("sliderOpacidad").addEventListener("input", ()=> calcularYRenderizarPMM(false));
   document.getElementById("selPataPMM").addEventListener("change", ()=> calcularYRenderizarPMM(false));
+  document.getElementById("selComboPMM").addEventListener("change", ()=> calcularYRenderizarPMM(false));
+  document.getElementById("selPuntoPMM").addEventListener("change", (e)=>{
+    const idx = e.target.value === "" ? NaN : +e.target.value;
+    const infoEl = document.getElementById("pmmPuntoInfo");
+    if(isNaN(idx) || !lastPMM || !lastPMM.demandas[idx]){
+      if(infoEl) infoEl.innerHTML = "";
+      return;
+    }
+    pmmMostrarPuntoInfo(lastPMM.demandas[idx], lastPMM.dc[idx]);
+  });
 
   const vistasPMM = {
     btnVistaIso:   {x:1.25, y:1.25, z:1.25},
