@@ -4405,6 +4405,12 @@ const AUTO_ENGINEER = engineerFromPath();
 const DEV_USERNAMES = ["cespi", "juan.espinosa", "ubuntu"];
 function esRutaDev(){
   try{
+    // localhost/127.0.0.1: Live Preview / Simple Browser de VS Code sirven
+    // el archivo por http:// en vez de file://, así que location.pathname
+    // nunca contiene la carpeta de usuario (queda algo como "/index.html")
+    // — sin este chequeo, cualquier preview corrido desde la propia máquina
+    // del desarrollador contaba como "no autorizado".
+    if(["localhost","127.0.0.1","::1"].includes(location.hostname)) return true;
     const path = decodeURIComponent(location.pathname).toLowerCase();
     return DEV_USERNAMES.some(u => path.includes("/" + u + "/"));
   }catch{ return false; }
