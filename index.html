@@ -6539,9 +6539,22 @@ function calcularDemandasPMM(){
     });
     return puntos;
   }
+  // Cruce P1a<->P1b acotado a ESTE diagrama, solo para Autosoportada 4P (no
+  // M4 — ahí las 4 columnas ya se combinan arriba en un único punto — ni 3P,
+  // que trae su propio cruce YA verificado dentro de
+  // reaccionCompletaPorPosicion). Confirmado por el usuario (2026-08-06)
+  // contra la geometría real del proyecto: el corner que el visor 3D dibuja
+  // como "P1a" no es el mismo dado físico que trae el nodo "1a" de la tabla
+  // de Reacciones — es el nodo "1b". A propósito NO se toca
+  // reaccionCompletaPorPosicion (usada también por geotécnico, punzonamiento
+  // y el export a STAAD.Pro para 4P) para no arrastrar este cruce a esos
+  // otros cálculos, que el usuario no reportó como afectados.
+  const cruzar4P = reactionTypeKey(state.tipoEstructura) === "Autosoportada 4P";
+  const CRUCE_PMM_4P = { "P1a":"P1b", "P1b":"P1a" };
   posiciones.forEach(pos=>{
+    const posParaReaccion = (cruzar4P && CRUCE_PMM_4P[pos]) ? CRUCE_PMM_4P[pos] : pos;
     combos.forEach(combo=>{
-      const row = reaccionCompletaPorPosicion(combo, pos);
+      const row = reaccionCompletaPorPosicion(combo, posParaReaccion);
       if(!row) return;
       puntos.push({
         pata: pos, combo,
