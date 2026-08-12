@@ -109,7 +109,10 @@ más abajo).
   pestaña "Motor FEM".
 - El **modelo `.STD` para STAAD.Pro** (sección 4.7) sí se genera completo (geometría, malla,
   materiales, apoyos con coeficiente de balasto, estados de carga con reacciones por combo). Reglas
-  a respetar si se toca el generador: convención de ejes `Staad(X,Y,Z) = FEM(X,-Z,Y)`, normales de
+  a respetar si se toca el generador: convención de ejes `Staad(X,Y,Z) = FEM(X,-Z,-Y)` (fijada
+  12/08/2026 para que coincida con la orientación del visor 3D, ver `update3D()`/`shapeZapata` —
+  antes de eso hubo idas y vueltas de signo en el eje Z sin confirmación visual, ver
+  `orientarNormalArribaStaad`), normales de
   cada shell por regla de la mano derecha, formato numérico a 6 decimales limpiando ruido de punto
   flotante (`fmtStaadNum`), y el límite de 79 caracteres por línea — **misma convención que
   `TSA/viewer.html`**, otro proyecto del usuario.

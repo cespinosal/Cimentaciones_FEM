@@ -240,7 +240,7 @@
     <li>Generar una previsualización visual del <b>mallado FEM</b> de la losa (algoritmo "Urdimbre Mesh") — geometría del mallado, no un análisis de esfuerzos.</li>
     <li>Diseñar el refuerzo por <b>ACI 318-19</b> (sección 5): flexión (lecho superior/inferior, bloque de Whitney), cortante en una dirección, punzonamiento y revisión de dados de desplante (compresión/tensión axial, superficie de interacción por compatibilidad de deformaciones).</li>
     <li>Exportar el modelo completo a un archivo <code>.STD</code> para STAAD.Pro (sección 4.7): malla real de la losa, apoyos elásticos (coeficiente de balasto), peso propio + relleno/ciclópeo/dados (con el factor 1.2 de ANSI/TIA-222-H §9.4 para los combos 1.2D+viento) y las reacciones de cada pata, ya combinados en <code>LOAD</code> listos para correr.</li>
-    <li>Guardar y volver a abrir el proyecto completo como archivo <code>.gfem</code> (JSON), con autoguardado periódico opcional (pestaña Cálculos) y nombre de archivo por default <code>&lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem</code>.</li>
+    <li>Guardar y volver a abrir el proyecto completo como archivo <code>.gfem</code> (JSON), con autoguardado periódico opcional (pestaña Cálculos) y nombre de archivo por default <code>&lt;Asset Number&gt;_&lt;Asset Name&gt;.gfem</code>.</li>
   </ul>
 
   <h3>Qué NO hace todavía</h3>
@@ -455,7 +455,7 @@
       <tr><td>V1.6</td><td>15/12/2025</td><td>Reacciones unitarias + procedimiento de automallado.</td></tr>
       <tr><td>V1.7</td><td>12/05/2026</td><td>Rotar dados sobre ejes locales + discretizar carga axial en el perímetro del dado.</td></tr>
       <tr><td>V2.0</td><td>15/07/2026</td><td><b>Desarrollo en aplicación web</b> — geometría, propiedades de sección, reacciones (con importación desde PDF), revisión geotécnica por volteo y capacidad portante para Autosoportada 3P, diseño estructural ACI 318-19 (sección 5), previsualización de mallado FEM "Urdimbre Mesh" y exportación de modelo a STAAD.Pro (sección 4.7).</td></tr>
-      <tr><td><b>V2.1</b></td><td>23/07/2026</td><td><b>Esta versión.</b> Export a STAAD: peso propio+relleno+dados con el factor 1.2 de ANSI/TIA-222-H §9.4 combinado con las reacciones en un solo <code>LOAD</code> por combinación 1.2D+viento. Autoguardado reubicado a la pestaña Cálculos (antes en Definición de la zapata), con nombre de archivo por default <code>&lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem</code>. Corrección de mallado en el automallado (dados no seguían el refinamiento del resto de la losa; transición dado-losa mejorada). Ayuda embebida en la propia app (ya no depende de <code>help.html</code> aparte).</td></tr>
+      <tr><td><b>V2.1</b></td><td>23/07/2026</td><td><b>Esta versión.</b> Export a STAAD: peso propio+relleno+dados con el factor 1.2 de ANSI/TIA-222-H §9.4 combinado con las reacciones en un solo <code>LOAD</code> por combinación 1.2D+viento. Autoguardado reubicado a la pestaña Cálculos (antes en Definición de la zapata), con nombre de archivo por default <code>&lt;Asset Number&gt;_&lt;Asset Name&gt;.gfem</code>. Corrección de mallado en el automallado (dados no seguían el refinamiento del resto de la losa; transición dado-losa mejorada). Ayuda embebida en la propia app (ya no depende de <code>help.html</code> aparte).</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -507,7 +507,7 @@ const FAQ = [
   },
   {
     q: "⑩ ¿Cómo guardo mi avance para retomarlo después?",
-    a: "Con el botón \"Guardar como…\" de la barra superior, que descarga un archivo .gfem con todo el estado del proyecto (geometría, reacciones, materiales, parámetros). El nombre por default es &lt;Asset Number&gt;+&lt;Asset Name&gt;.gfem, tomado de los datos de proyecto en la pestaña Cálculos. Para continuar después, usa \"Abrir proyecto…\" y elige ese mismo archivo."
+    a: "Con el botón \"Guardar como…\" de la barra superior, que descarga un archivo .gfem con todo el estado del proyecto (geometría, reacciones, materiales, parámetros). El nombre por default es &lt;Asset Number&gt;_&lt;Asset Name&gt;.gfem, tomado de los datos de proyecto en la pestaña Cálculos. Para continuar después, usa \"Abrir proyecto…\" y elige ese mismo archivo."
   },
   {
     q: "⑪ ¿Puedo hacer que la app guarde sola mientras trabajo?",
