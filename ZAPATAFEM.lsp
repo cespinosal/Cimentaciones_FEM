@@ -1,17 +1,17 @@
 ;;; ============================================================
-;;;  SHAPEPTS.lsp  -  Exportador de puntos para ShapeBuilder / Hoja FEM
+;;;  ZAPATAFEM.lsp  -  Exportador de puntos para ShapeBuilder / Hoja FEM
 ;;; ============================================================
 ;;;  Captura puntos en AutoCAD (haciendo clic o por coordenadas)
 ;;;  y los escribe en un archivo de texto 'x,y' por línea que la
 ;;;  app web / Python lee directamente.
 ;;;
 ;;;  USO EN AUTOCAD:
-;;;    1. Carga el script:  Comando APPLOAD  ->  elige SHAPEPTS.lsp
-;;;    2. Escribe el comando:  SHAPEPTS
+;;;    1. Carga el script:  Comando APPLOAD  ->  elige ZAPATAFEM.lsp
+;;;    2. Escribe el comando:  ZAPATANODO
 ;;;    3. Ve haciendo clic en los vértices del contorno (en orden).
 ;;;    4. ENTER para terminar. Te pedirá la ruta del archivo .txt
 ;;;
-;;;  Alternativa: SHAPEPLINE captura los vértices de una entidad ya
+;;;  Alternativa: ZAPATAFEM captura los vértices de una entidad ya
 ;;;  dibujada — soporta POLILÍNEA (LWPOLYLINE, exporta sus vértices
 ;;;  reales) y CÍRCULO (CIRCLE, se discretiza en 40 puntos alrededor
 ;;;  de la circunferencia a partir de su centro y radio).
@@ -38,7 +38,7 @@
   (princ)
 )
 
-(defun c:SHAPEPTS ( / p pts)
+(defun c:ZAPATANODO ( / p pts)
   (setq pts '())
   (princ "\nHaz clic en los vértices del contorno (ENTER para terminar):")
   (while (setq p (getpoint "\nSiguiente punto: "))
@@ -48,7 +48,7 @@
   (WritePtsFile (reverse pts))
 )
 
-(defun c:SHAPEPLINE ( / ent obj etype coords pts i center radius ang nseg)
+(defun c:ZAPATAFEM ( / ent obj etype coords pts i center radius ang nseg)
   (setq ent (car (entsel "\nSelecciona una POLILINEA o un CIRCULO: ")))
   (if ent
     (progn
@@ -94,5 +94,5 @@
 )
 
 (vl-load-com)
-(princ "\nSHAPEPTS.lsp cargado. Comandos: SHAPEPTS (clic a clic) y SHAPEPLINE (de una polilinea o circulo).")
+(princ "\nZAPATAFEM.lsp cargado. Comandos: ZAPATANODO (clic a clic) y ZAPATAFEM (de una polilinea o circulo).")
 (princ)

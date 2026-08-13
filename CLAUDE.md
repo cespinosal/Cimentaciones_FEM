@@ -48,7 +48,7 @@ Bloques principales, en orden:
 2. **Estado** (`state`, `TOWER_TYPES`, `defaultState()`/`mergeState()`/`loadFromStorage()`/
    `saveToStorage()`) — ver "Estado y persistencia" abajo.
 3. Validación de rangos físicos razonables (avisa, no bloquea).
-4. Tablas de vértices + import de vértices desde AutoCAD (`.txt` de `SHAPEPTS.lsp`).
+4. Tablas de vértices + import de vértices desde AutoCAD (`.txt` de `ZAPATAFEM.lsp`).
 5. Geometría de dados (réplica de fórmulas `Cálculo!X4:Z6` y `X11:AC33` del Excel).
 6. Render SVG en planta.
 7-8. Render de propiedades y de dados; **8.1 Diseño geotécnico** (resistencia/volteo, fórmulas 1:1
@@ -131,7 +131,7 @@ más abajo).
   `<script type="application/octet-stream" id="...">` (no se ejecuta como script normal), cargado en
   runtime vía Blob URL + `import()` dinámico — sin CDN, para funcionar 100% offline. El código
   relevante para PDF o vista 3D está en esos bloques, no en un `node_modules`.
-- El contenido de `SHAPEPTS.lsp` también está embebido como string (`SHAPEPTS_LSP`) para ofrecer su
+- El contenido de `ZAPATAFEM.lsp` también está embebido como string (`ZAPATAFEM_LSP`) para ofrecer su
   descarga directa desde la app; si se edita el `.lsp` del repo, actualizar también esa copia
   embebida.
 - **Plotly 2.35.2** (para el diagrama de Interacción 3D): igual que las anteriores, código fuente
@@ -150,8 +150,8 @@ agrega o renombra una pestaña/campo en `index.html`, revisar si `help.html` que
 
 ## Flujo de datos con herramientas externas
 
-- **AutoCAD → app**: `SHAPEPTS.lsp` (cargado en AutoCAD con `APPLOAD`) expone `SHAPEPTS` (clic a
-  clic) y `SHAPEPLINE` (desde polilínea o círculo ya dibujado), exporta un `.txt` con una línea
+- **AutoCAD → app**: `ZAPATAFEM.lsp` (cargado en AutoCAD con `APPLOAD`) expone `ZAPATANODO` (clic a
+  clic) y `ZAPATAFEM` (desde polilínea o círculo ya dibujado), exporta un `.txt` con una línea
   `x,y` por vértice — mismo formato que usa Shapebuilder. Se importa en "Definición de la zapata"
   (contorno exterior y hueco); las coordenadas nunca se editan a mano, solo se importan o se borran.
 - **Reporte de reacciones (PDF) → app**: pestaña "Reacciones", importación automática vía PDF.js
