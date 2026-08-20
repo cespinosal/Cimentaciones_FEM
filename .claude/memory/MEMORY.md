@@ -6,3 +6,4 @@
 - [b0 real por dado / STAAD pendiente](project_b0_real_y_staad_pendiente.md) — 5.5 punzonamiento ya usa b0 geométrico por dado (13/08/2026); grupo de plates por dado en export STAAD, discutido pero sin código.
 - [Sin persistencia en localStorage](project_sin_persistencia_localstorage.md) — CLAUDE.md dice que sí persiste pero el código actual (18/08/2026) no tiene saveToStorage/loadFromStorage; solo guardado manual a .gfem.
 - [Verificar con prueba headless](feedback_verificar_con_prueba_headless.md) — ante bug de UI que "no se arregla", montar Playwright headless contra el index.html real en vez de solo releer el código.
+- [Memoria sincronizada vía repo](reference_memoria_sync_via_repo.md) — desde 20/08/2026 la carpeta de memoria es un symlink a .claude/memory del repo Hoja-FEM, viaja con git pull/push entre VM y casa.
