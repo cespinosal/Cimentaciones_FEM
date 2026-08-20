@@ -1,0 +1,8 @@
+- [Git fetch before concluding](feedback_git_fetch_before_concluding.md) — this VM's clone can go stale; fetch/pull before saying a file is missing.
+- [Selección de punto PMM en Interacción 3D](project_pmm_interaccion3d_seleccion_punto.md) — resuelto: hover directo por proyección propia (superficies siempre visibles, sin picking nativo de Plotly).
+- [Cruce P1a/P1b por subsistema](project_p1a_p1b_cruce_por_subsistema.md) — swap 1↔1c/1a↔1b (12/08/2026) en STAAD/visor/Motor FEM para M4-4P; 3P en STAAD queda A PROPÓSITO opuesto al visor (decisión informada del usuario, no tocar sin pedirlo de nuevo).
+- [Espejo X visor 3D / STAAD (11-12/08/2026)](project_staad_espejo_x_investigacion.md) — visor 3D: RESUELTO. STAAD: signo Z fijado por consistencia con el visor (Staad Z=-pt.y), aún sin confirmación visual del usuario en STAAD.
+- [Comunicación en español (es-MX)](feedback_comunicacion_espanol_mx.md) — REGLA DORADA (todos los proyectos): tuteo MX, nunca voseo ni inglés; corregido 2 veces el 12/08/2026.
+- [b0 real por dado / STAAD pendiente](project_b0_real_y_staad_pendiente.md) — 5.5 punzonamiento ya usa b0 geométrico por dado (13/08/2026); grupo de plates por dado en export STAAD, discutido pero sin código.
+- [Sin persistencia en localStorage](project_sin_persistencia_localstorage.md) — CLAUDE.md dice que sí persiste pero el código actual (18/08/2026) no tiene saveToStorage/loadFromStorage; solo guardado manual a .gfem.
+- [Verificar con prueba headless](feedback_verificar_con_prueba_headless.md) — ante bug de UI que "no se arregla", montar Playwright headless contra el index.html real en vez de solo releer el código.
