@@ -24,6 +24,17 @@ commits atrás de `origin/main`, incluyendo el archivo `help.html` completo, sin
 hasta hacer `git fetch`). Si `git pull` marca conflicto o "diverging branches", parar y avisar antes
 de forzar nada.
 
+**Memoria de Claude Code compartida entre máquinas:** este repo trae su propia carpeta
+`.claude/memory/` (con `MEMORY.md` como índice) — son notas de contexto/decisiones específicas de
+este proyecto, pensadas para que la VM y la máquina de casa compartan el mismo contexto vía git
+(en vez de un symlink al sistema de auto-memory normal, que no logró aislarse por proyecto en la
+máquina de casa por cómo la extensión de VSCode determina la raíz — 21/08/2026). **Al empezar
+cualquier sesión en este repo, leer `.claude/memory/MEMORY.md` y los archivos que referencia** como
+contexto adicional al de la propia carpeta de memoria normal de Claude Code. Al aprender algo nuevo
+específico de este proyecto que valga la pena recordar entre sesiones, escribirlo ahí (mismo
+formato que la auto-memory: frontmatter `name`/`description`/`metadata.type`) y avisar para hacer
+`git add`/commit/push — no queda guardado hasta publicarse.
+
 ## Running / developing
 
 - No build step. Abrir `index.html` (o `help.html`) directamente en el navegador (funciona por

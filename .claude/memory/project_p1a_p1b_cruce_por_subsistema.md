@@ -65,3 +65,24 @@ asumir que ya está resuelto por este fix — es un problema aparte, hay que ver
 reales (comparar contra la tabla de Reacciones cruda y/o el visor 3D) antes de tocar nada, igual que
 se hizo acá. `reaccionCompletaPorPosicion()` sigue siendo la única fuente para esos subsistemas, y
 hoy NO tiene cruce para 4P.
+
+
+**ACTUALIZACION (19/08/2026, otra sesion -- maquina de casa):** el punto "Vista 3D... M4 y 4P" de
+arriba quedo DESACTUALIZADO para 3P. El usuario reporto con una captura anotada que cruzar1a1b en
+update3D() dejaba la etiqueta Y el valor de una pata sobre la posicion fisica contraria. Tras
+varios intentos con el usuario (diagrama comparando 4 escenarios: cruzado original, "solo cambiar
+etiqueta" -descartado, invertia las reacciones-, "etiqueta congelada + valor cambiado", y "todo
+directo"), el usuario eligio explicitamente "Escenario B" = todo directo, sin cruce -- nombre Y
+valor de cada pata van parejos (P1a muestra "P1a" con el dato crudo de la fila "1a", sin cruzar).
+cruzar1a1b se ELIMINO del bloque de update3D(). cruzar4P/SWAP_4P (4P/M4) NO se toco, sigue
+cruzando igual que antes.
+
+Esto deja una inconsistencia NUEVA, conocida y aceptada por el usuario: para 3P, el visor 3D
+ahora es DIRECTO, pero reaccionCompletaPorPosicion() (geotecnico/punzonamiento/PMM) sigue con su
+cruce interno de siempre -- el usuario dijo explicitamente "los calculos ya los haces bien" al
+confirmar el cambio, o sea que quiere el cruce de geotecnico intacto aunque ya no coincida con lo
+que muestra el visor. Y el export a STAAD (NOMBRE_PARA_CARGA_STAAD_3P) sigue con su pre-cruce que
+cancela el interno (neto directo) -- asi que STAAD y el visor volvieron a coincidir (ambos
+directos), pero geotecnico/punzonamiento/PMM quedaron como el unico subsistema todavia cruzado.
+No "corregir" esto para que todo coincida sin que el usuario lo pida de nuevo -- mismo criterio
+que ya regia para el punto de STAAD de arriba.
