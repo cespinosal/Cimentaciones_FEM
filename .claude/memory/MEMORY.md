@@ -7,3 +7,5 @@
 - [Sin persistencia en localStorage](project_sin_persistencia_localstorage.md) — CLAUDE.md dice que sí persiste pero el código actual (18/08/2026) no tiene saveToStorage/loadFromStorage; solo guardado manual a .gfem.
 - [Verificar con prueba headless](feedback_verificar_con_prueba_headless.md) — ante bug de UI que "no se arregla", montar Playwright headless contra el index.html real en vez de solo releer el código.
 - [Memoria sincronizada vía repo](reference_memoria_sync_via_repo.md) — desde 20/08/2026 la carpeta de memoria es un symlink a .claude/memory del repo Hoja-FEM, viaja con git pull/push entre VM y casa.
+- [Repo, clones y plan .exe](project_cimentaciones_fem.md) — GitHub cespinosal/Cimentaciones_FEM; empaquetado a .exe es plan futuro, no iniciarlo sin pedido explícito.
+- [Registro de uso ya no excluye al usuario](feedback_cimentaciones_fem_registro_uso.md) — desde 19/08/2026 solo excluye "ubuntu" (VM); usar ?dev=1 al probar con Playwright.
