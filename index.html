@@ -6186,7 +6186,7 @@ function calcularCortante1D(cd){
   const phiVc = phi * 2.12 * lambdaS * lambda * factorRho * Math.sqrt(fc) * 10; // kg/cm² -> Tn/m²
   const eficienciaX = phiVc > 0 ? vux/phiVc : Infinity;
   const eficienciaY = phiVc > 0 ? vuy/phiVc : Infinity;
-  return { vux, vuy, lambdaS, lambda, rhoW, phiVc, eficienciaX, eficienciaY };
+  return { vux, vuy, lambdaS, lambda, rhoInf, rhoSup, rhoW, phiVc, eficienciaX, eficienciaY };
 }
 
 // Fila completa de reacción (fx,fy,fz,...) de un dado, para un combo dado —
@@ -11418,8 +11418,12 @@ function renderAll(){
       : `${mv("λ","s")} = MIN(${sqrtHtml("2/(1+0.04d)")}, 1)` + cite("22.5.5.1.3 / 23.4.4.1(b) ACI 318-19"));
   propRow(cort1DEl, mv("λ"), fmt(cort1D.lambda, 2), "",
     cite("19.2.4.2 ACI 318-19 (concreto de peso normal)"));
+  propRow(cort1DEl, mv("ρ")+" usar (inferior)", fmt(cort1D.rhoInf, 5), "",
+    `${mv("ρ")} usar = MIN(MAX(${mv("ρ")}, ${mv("ρ","min")}), ${mv("ρ","max")})` + cite("mismo ρ real de 5.3.1, con Mu inferior"));
+  propRow(cort1DEl, mv("ρ")+" usar (superior)", fmt(cort1D.rhoSup, 5), "",
+    `${mv("ρ")} usar = MIN(MAX(${mv("ρ")}, ${mv("ρ","min")}), ${mv("ρ","max")})` + cite("mismo ρ real de 5.3.2, con Mu superior"));
   propRow(cort1DEl, mv("ρ","w"), fmt(cort1D.rhoW, 5), "",
-    "Menor ρ entre lecho inferior y superior (5.3) — cuantía de tracción en la sección crítica, sin refuerzo de cortante (Av&lt;Av,min)");
+    `${mv("ρ","w")} = MIN(${mv("ρ")} inf, ${mv("ρ")} sup)` + cite("cuantía de tracción en la sección crítica, sin refuerzo de cortante — 22.5.5.1(c)"));
   propRow(cort1DEl, "ɸ"+mv("V","c"), fmt(cort1D.phiVc, 3), "Tn/m²",
     `ɸ${mv("V","c")} = ɸ&middot;2.12&middot;${mv("λ","s")}&middot;λ&middot;${mv("ρ","w")}<sup>1/3</sup>&middot;${sqrtHtml("f'c")}` + cite("22.5.5.1(c) ACI 318-19 (0.66 en MPa &rarr; 2.12 en kg/cm²), sin refuerzo de cortante (misma capacidad en ambos ejes)"));
   propRow(cort1DEl, "Eficiencia X", isFinite(cort1D.eficienciaX) ? fmt(cort1D.eficienciaX*100,0)+"%" : "—", "", `${mv("V","ux")} / ɸ${mv("V","c")}`);
