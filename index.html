@@ -6131,20 +6131,45 @@ function getLambdaS(dCm){
   return Math.min(Math.sqrt(2/(1+0.04*dCm)), 1);
 }
 
-// 5.4.- Cortante en una dirección — ACI 318-19 §22.5.5.1: vc=0.17λ√f'c en
-// MPa. Convertido a kg/cm² con el factor 0.53/2=0.265 por unidad psi (2λ√f'c
-// en psi = 0.53λ√f'c en kg/cm², de ahí sale el 0.53 ya usado en la app).
-// ɸVc no depende del eje (solo de d, f'c), así que es la misma capacidad
-// para X y Y — lo que cambia es la demanda Vu de cada dirección.
+// 5.4.- Cortante en una dirección — ACI 318-19 Tabla 22.5.5.1, fila (c):
+// para elementos SIN refuerzo de cortante (ninguna zapata/losa lleva
+// estribos — Av<Av,min siempre), el código exige
+//   Vc = 0.66·λs·λ·(ρw)^(1/3)·√f'c·bw·d   (SI, MPa/mm)
+// NO la fórmula simplificada (a) Vc=0.17λ√f'c·bw·d — esa solo aplica con
+// Av≥Av,min. Corregido 21/08/2026: antes se usaba el coeficiente de (a)
+// (0.53 kg/cm², de 0.17 MPa) multiplicado igual por λs y SIN el factor
+// (ρw)^(1/3) — una fórmula que no existe en el código (mezclaba el
+// coeficiente de una fila con el λs de la otra), y que además sobreestimaba
+// ΦVc varias veces frente al real para un ρ de losa típico (0.002-0.01,
+// (ρw)^(1/3)≈0.13-0.22). Coeficiente correcto: 0.66 MPa → ~2.12 kg/cm² (con
+// el mismo factor 0.265 por unidad psi ya usado en el resto de la app,
+// 0.66/0.17×0.53≈2.06, o directo desde la fórmula en psi "8λsλ(ρw)^(1/3)√f'c",
+// 8×0.265=2.12 — se usa 2.12).
+// ρw = cuantía del refuerzo de TRACCIÓN en la sección crítica (definición
+// del ACI, §2.2) — acá varía según qué lecho esté en tracción en cada
+// franja (ver fix de convención de signos de Wood-Armer, mismo día), y la
+// tabla 5.1 no liga cada Qx/Qy a un Mx/My puntual como para saber cuál
+// lecho gobierna en cada punto. Se usa el MENOR ρ entre lecho inferior y
+// superior (ρusar de 5.3, ya limitado a ρmin/ρmax — no el de "acero
+// existente" de 5.3.2, que es opcional y puede no estar cargado) — el más
+// conservador, consistente con "usar el acero de tracción real" cuando no
+// se puede saber cuál de los dos es.
+// ɸVc no depende del eje (solo de d, f'c, ρw), así que es la misma
+// capacidad para X y Y — lo que cambia es la demanda Vu de cada dirección.
 function calcularCortante1D(cd){
   const fc = state.materiales.fc, phi = state.diseno.phiCortante;
   const { vux, vuy } = getVuCortantePorEje();
   const lambdaS = getLambdaS(cd.d*100);
   const lambda = 1; // concreto de peso normal, §19.2.4.2
-  const phiVc = phi * 0.53 * lambdaS * lambda * Math.sqrt(fc) * 10; // kg/cm² -> Tn/m²
+  const momentos = getMomentosDisenoFlexion();
+  const rhoInf = calcularFlexion(momentos.muInferior, cd).rhoUsar;
+  const rhoSup = calcularFlexion(momentos.muSuperior, cd).rhoUsar;
+  const rhoW = Math.min(rhoInf, rhoSup);
+  const factorRho = rhoW > 0 ? Math.pow(rhoW, 1/3) : 0;
+  const phiVc = phi * 2.12 * lambdaS * lambda * factorRho * Math.sqrt(fc) * 10; // kg/cm² -> Tn/m²
   const eficienciaX = phiVc > 0 ? vux/phiVc : Infinity;
   const eficienciaY = phiVc > 0 ? vuy/phiVc : Infinity;
-  return { vux, vuy, lambdaS, lambda, phiVc, eficienciaX, eficienciaY };
+  return { vux, vuy, lambdaS, lambda, rhoW, phiVc, eficienciaX, eficienciaY };
 }
 
 // Fila completa de reacción (fx,fy,fz,...) de un dado, para un combo dado —
@@ -11373,8 +11398,10 @@ function renderAll(){
     `${mv("λ","s")} = MIN(${sqrtHtml("2/(1+0.04d)")}, 1)` + cite("22.5.5.1.3 ACI 318-19"));
   propRow(cort1DEl, mv("λ"), fmt(cort1D.lambda, 2), "",
     cite("19.2.4.2 ACI 318-19 (concreto de peso normal)"));
+  propRow(cort1DEl, mv("ρ","w"), fmt(cort1D.rhoW, 5), "",
+    "Menor ρ entre lecho inferior y superior (5.3) — cuantía de tracción en la sección crítica, sin refuerzo de cortante (Av&lt;Av,min)");
   propRow(cort1DEl, "ɸ"+mv("V","c"), fmt(cort1D.phiVc, 3), "Tn/m²",
-    `ɸ${mv("V","c")} = ɸ&middot;0.53&middot;${mv("λ","s")}&middot;λ&middot;${sqrtHtml("f'c")}` + cite("22.5.5.1 ACI 318-19 (misma capacidad en ambos ejes)"));
+    `ɸ${mv("V","c")} = ɸ&middot;0.66&middot;${mv("λ","s")}&middot;λ&middot;${mv("ρ","w")}<sup>1/3</sup>&middot;${sqrtHtml("f'c")}` + cite("22.5.5.1(c) ACI 318-19, sin refuerzo de cortante (misma capacidad en ambos ejes)"));
   propRow(cort1DEl, "Eficiencia X", isFinite(cort1D.eficienciaX) ? fmt(cort1D.eficienciaX*100,0)+"%" : "—", "", `${mv("V","ux")} / ɸ${mv("V","c")}`);
   propRow(cort1DEl, "Eficiencia Y", isFinite(cort1D.eficienciaY) ? fmt(cort1D.eficienciaY*100,0)+"%" : "—", "", `${mv("V","uy")} / ɸ${mv("V","c")}`);
   // Tolerancia del 5% (< 1.05, no <= 1) en TODAS las revisiones del punto 5
@@ -12661,15 +12688,21 @@ function detectarUnidadesAnl(texto){
 }
 
 // IDs de placa (numeración STAAD, mismo "id" que usa generarStaadModel) cuyo
-// centroide cae dentro del perímetro crítico b0 REAL de algún dado — mismo
-// rectángulo a d/2 de cada cara que usa calcularB0Real/geometriaB0RealPorDado
-// para 5.5.1, no el margen amplio de 2d que usa gruposPlateInfo al exportar
-// (ese margen es a propósito generoso, "no dejar afuera ningún plate que
-// después haga falta" — el recorte fino es este, al importar). Se usa para
-// acotar la tabla 5.1 a la zona de diseño real en vez de buscar el máximo/
-// mínimo entre TODAS las placas que trajo el .ANL (21/08/2026: encontramos
-// que sin este recorte, Mxy podía salir gobernado por una placa lejos de
-// cualquier dado, dentro del margen amplio pero fuera de la zona relevante).
+// centroide cae dentro de la zona de diseño real de algún dado — margen "d"
+// (no d/2) a propósito: cubre TANTO el perímetro crítico de punzonamiento
+// (b0, a d/2 de cada cara, calcularB0Real/geometriaB0RealPorDado para 5.5.1)
+// COMO la línea de cortante en una dirección (ACI 318-19 §22.5.5.1.2, a
+// distancia d de la cara — ver femVuCriticoDado, la misma revisión pero del
+// lado del Motor FEM). Un margen de d/2 (usado acá hasta el 21/08/2026)
+// dejaba esa línea de cortante en una dirección AFUERA de la caja, porque
+// d > d/2 — la tabla 5.1 (que alimenta 5.4 vía getVuCortantePorEje, además
+// de 5.3) podía terminar subestimando Qx/Qy real. d/2 sigue siendo estricto
+// para el b0 de punzonamiento en sí, pero ensanchar la caja de búsqueda no
+// lo afecta (sigue conteniendo esa zona más chica) — no es el margen amplio
+// de 2d que usa gruposPlateInfo al exportar (ese es a propósito generoso,
+// "no dejar afuera ningún plate que después haga falta"; este es el recorte
+// fino, al importar, ahora dimensionado para cubrir las DOS revisiones que
+// usan la tabla 5.1, no solo Mx/My/Mxy).
 function platesEnPerimetroCriticoB0(){
   if(!lastMallaMesh || !lastMallaMesh.elements || !lastMallaMesh.elements.length) return null;
   const offset = computeCentroidOffset();
@@ -12677,7 +12710,7 @@ function platesEnPerimetroCriticoB0(){
   const dados = dadosFisicos(legs, state.tipoEstructura);
   if(!dados.length) return null;
   const cd = getCriteriosDiseno();
-  const hx = state.geom.AD/2 + cd.d/2, hy = state.geom.LD/2 + cd.d/2;
+  const hx = state.geom.AD/2 + cd.d, hy = state.geom.LD/2 + cd.d;
   const elementosNumerados = renumerarElementosMalla(lastMallaMesh.elements);
   const idsDentro = new Set();
   elementosNumerados.forEach(e=>{
@@ -13251,9 +13284,9 @@ async function memoriaConstruirDocumento(imgs){
       new docx.TableRow({children:[memoriaCelda("X"), memoriaCelda(fmt(cort.vux,3)), memoriaCelda(fmt(cort.phiVc,3)), memoriaCelda(isFinite(cort.eficienciaX)?fmt(cort.eficienciaX*100,0)+"%":"—"), memoriaBadgeCell(cort.eficienciaX<1.05)]}),
       new docx.TableRow({children:[memoriaCelda("Y"), memoriaCelda(fmt(cort.vuy,3)), memoriaCelda(fmt(cort.phiVc,3)), memoriaCelda(isFinite(cort.eficienciaY)?fmt(cort.eficienciaY*100,0)+"%":"—"), memoriaBadgeCell(cort.eficienciaY<1.05)]})
     ]}),
-    memoriaFormula("ΦVc = Φ·0.53·", mathSub("λ","s"), "·λ·", mathSqrt("f'c"), "   [kg/cm² → Tn/m²]"),
+    memoriaFormula("ΦVc = Φ·0.66·", mathSub("λ","s"), "·λ·", mathSup(mathSub("ρ","w"), "1/3"), "·", mathSqrt("f'c"), "   [kg/cm² → Tn/m²]"),
     memoriaFormula(mathSub("λ","s"), " = ", mathSqrt(mathFrac("2","1 + 0.04·d")), " ≤ 1   (d en cm)"),
-    memoriaNota("ACI 318-19 §22.5.5.1 (equivalente a 0.17√f'c en MPa) y §22.5.5.1.3 (λs, factor de efecto de tamaño). λ=1.0, concreto de peso normal (§19.2.4.2). Vu = MAX(|SQX|) y MAX(|SQY|) de la malla de placas (6.1), evaluados por eje SEPARADAMENTE (misma ΦVc para ambos, solo cambia la demanda)."),
+    memoriaNota("ACI 318-19 §22.5.5.1(c) — sin refuerzo de cortante (Av<Av,min, caso de toda zapata/losa sin estribos), no la fórmula simplificada 0.17√f'c en MPa (esa solo aplica con Av≥Av,min). ρw = menor cuantía de tracción entre lecho inferior y superior (6.3). λs = factor de efecto de tamaño (§22.5.5.1.3). λ=1.0, concreto de peso normal (§19.2.4.2). Vu = MAX(|SQX|) y MAX(|SQY|) de la malla de placas (6.1), evaluados por eje SEPARADAMENTE (misma ΦVc para ambos, solo cambia la demanda)."),
     memoriaH2("6.5 Revisión por punzonamiento"),
     memoriaTablaProps([["Vu", fmt(punz.vu,3), "Tn/m²"], ["ΦVc (gobierna)", fmt(punz.phiVc,3), "Tn/m²"],
       ["Eficiencia", isFinite(punz.eficiencia)?fmt(punz.eficiencia*100,0)+"%":"—", ""]]),
@@ -13340,8 +13373,8 @@ async function memoriaConstruirDocumento(imgs){
         memoriaCeldaFormula(mathSub("ρ","min"), " = 0.0020 (fy≤4200) u homólogo")],
       ["6.3","Cuantía máxima (sección controlada por tracción)","ACI 318-19 §21.2.2",
         memoriaCeldaFormula(mathSub("ρ","max"), " = ", mathFrac("εcu","εcu + εt"), "·0.85·β1·", mathFrac("f'c","fy"))],
-      ["6.4","Cortante en una dirección","ACI 318-19 §22.5.5.1 / §22.5.5.1.3",
-        memoriaCeldaFormula("ΦVc = Φ·0.53·", mathSub("λ","s"), "·λ·", mathSqrt("f'c"))],
+      ["6.4","Cortante en una dirección","ACI 318-19 §22.5.5.1(c) / §22.5.5.1.3",
+        memoriaCeldaFormula("ΦVc = Φ·0.66·", mathSub("λ","s"), "·λ·", mathSup(mathSub("ρ","w"), "1/3"), "·", mathSqrt("f'c"))],
       ["6.5","Punzonamiento","ACI 318-19 §22.6.5.1 / §22.6.5.2",
         memoriaCeldaFormula("ΦVc = MIN[ Φ·1.06·", mathSqrt("f'c"), " ;  Φ·0.53(1+", mathFrac("2","β"), ")·", mathSqrt("f'c"), " ;  Φ·0.265(2+", mathSub("α","s"), "·", mathFrac("d","b0"), ")·", mathSqrt("f'c"), " ]")],
       ["6.6.1","Cuantía mínima del dado","ANSI/TIA-222-H §9.4.1",
