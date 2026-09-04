@@ -11421,7 +11421,7 @@ function renderAll(){
   propRow(cort1DEl, mv("ρ","w"), fmt(cort1D.rhoW, 5), "",
     "Menor ρ entre lecho inferior y superior (5.3) — cuantía de tracción en la sección crítica, sin refuerzo de cortante (Av&lt;Av,min)");
   propRow(cort1DEl, "ɸ"+mv("V","c"), fmt(cort1D.phiVc, 3), "Tn/m²",
-    `ɸ${mv("V","c")} = ɸ&middot;0.66&middot;${mv("λ","s")}&middot;λ&middot;${mv("ρ","w")}<sup>1/3</sup>&middot;${sqrtHtml("f'c")}` + cite("22.5.5.1(c) ACI 318-19, sin refuerzo de cortante (misma capacidad en ambos ejes)"));
+    `ɸ${mv("V","c")} = ɸ&middot;2.12&middot;${mv("λ","s")}&middot;λ&middot;${mv("ρ","w")}<sup>1/3</sup>&middot;${sqrtHtml("f'c")}` + cite("22.5.5.1(c) ACI 318-19 (0.66 en MPa &rarr; 2.12 en kg/cm²), sin refuerzo de cortante (misma capacidad en ambos ejes)"));
   propRow(cort1DEl, "Eficiencia X", isFinite(cort1D.eficienciaX) ? fmt(cort1D.eficienciaX*100,0)+"%" : "—", "", `${mv("V","ux")} / ɸ${mv("V","c")}`);
   propRow(cort1DEl, "Eficiencia Y", isFinite(cort1D.eficienciaY) ? fmt(cort1D.eficienciaY*100,0)+"%" : "—", "", `${mv("V","uy")} / ɸ${mv("V","c")}`);
   // Tolerancia del 5% (< 1.05, no <= 1) en TODAS las revisiones del punto 5
@@ -13304,7 +13304,7 @@ async function memoriaConstruirDocumento(imgs){
       new docx.TableRow({children:[memoriaCelda("X"), memoriaCelda(fmt(cort.vux,3)), memoriaCelda(fmt(cort.phiVc,3)), memoriaCelda(isFinite(cort.eficienciaX)?fmt(cort.eficienciaX*100,0)+"%":"—"), memoriaBadgeCell(cort.eficienciaX<1.05)]}),
       new docx.TableRow({children:[memoriaCelda("Y"), memoriaCelda(fmt(cort.vuy,3)), memoriaCelda(fmt(cort.phiVc,3)), memoriaCelda(isFinite(cort.eficienciaY)?fmt(cort.eficienciaY*100,0)+"%":"—"), memoriaBadgeCell(cort.eficienciaY<1.05)]})
     ]}),
-    memoriaFormula("ΦVc = Φ·0.66·", mathSub("λ","s"), "·λ·", mathSup(mathSub("ρ","w"), "1/3"), "·", mathSqrt("f'c"), "   [kg/cm² → Tn/m²]"),
+    memoriaFormula("ΦVc = Φ·2.12·", mathSub("λ","s"), "·λ·", mathSup(mathSub("ρ","w"), "1/3"), "·", mathSqrt("f'c"), "   [kg/cm² → Tn/m²]"),
     memoriaFormula(mathSub("λ","s"), " = ", mathSqrt(mathFrac("2","1 + 0.04·d")), " ≤ 1   (d en cm)"),
     memoriaNota("ACI 318-19 §22.5.5.1(c) — sin refuerzo de cortante (Av<Av,min, caso de toda zapata/losa sin estribos), no la fórmula simplificada 0.17√f'c en MPa (esa solo aplica con Av≥Av,min). ρw = menor cuantía de tracción entre lecho inferior y superior (6.3). λs = factor de efecto de tamaño (§22.5.5.1.3). λ=1.0, concreto de peso normal (§19.2.4.2). Vu = MAX(|SQX|) y MAX(|SQY|) de la malla de placas (6.1), evaluados por eje SEPARADAMENTE (misma ΦVc para ambos, solo cambia la demanda)."),
     memoriaH2("6.5 Revisión por punzonamiento"),
@@ -13394,7 +13394,7 @@ async function memoriaConstruirDocumento(imgs){
       ["6.3","Cuantía máxima (sección controlada por tracción)","ACI 318-19 §21.2.2",
         memoriaCeldaFormula(mathSub("ρ","max"), " = ", mathFrac("εcu","εcu + εt"), "·0.85·β1·", mathFrac("f'c","fy"))],
       ["6.4","Cortante en una dirección","ACI 318-19 §22.5.5.1(c) / §22.5.5.1.3",
-        memoriaCeldaFormula("ΦVc = Φ·0.66·", mathSub("λ","s"), "·λ·", mathSup(mathSub("ρ","w"), "1/3"), "·", mathSqrt("f'c"))],
+        memoriaCeldaFormula("ΦVc = Φ·2.12·", mathSub("λ","s"), "·λ·", mathSup(mathSub("ρ","w"), "1/3"), "·", mathSqrt("f'c"))],
       ["6.5","Punzonamiento","ACI 318-19 §22.6.5.1 / §22.6.5.2",
         memoriaCeldaFormula("ΦVc = MIN[ Φ·1.06·", mathSqrt("f'c"), " ;  Φ·0.53(1+", mathFrac("2","β"), ")·", mathSqrt("f'c"), " ;  Φ·0.265(2+", mathSub("α","s"), "·", mathFrac("d","b0"), ")·", mathSqrt("f'c"), " ]")],
       ["6.6.1","Cuantía mínima del dado","ANSI/TIA-222-H §9.4.1",
