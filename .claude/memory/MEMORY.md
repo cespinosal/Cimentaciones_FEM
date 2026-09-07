@@ -9,3 +9,4 @@
 - [Memoria sincronizada vía repo](reference_memoria_sync_via_repo.md) — symlink en la VM; en casa no cuajó (Windows/VSCode), usa en cambio la instrucción en CLAUDE.md de leer .claude/memory/ al empezar.
 - [Repo, clones y plan .exe](project_cimentaciones_fem.md) — GitHub cespinosal/Cimentaciones_FEM; empaquetado a .exe es plan futuro, no iniciarlo sin pedido explícito.
 - [Registro de uso ya no excluye al usuario](feedback_cimentaciones_fem_registro_uso.md) — desde 19/08/2026 solo excluye "ubuntu" (VM); usar ?dev=1 al probar con Playwright.
+- [No commit sin pedido explícito](feedback_cimentaciones_fem_workflow_commit.md) — no hacer git commit/push hasta que el usuario lo pida (corregido 04/09/2026, no asumir con solo anunciar "Publico").
