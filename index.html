@@ -2216,6 +2216,14 @@ document.addEventListener("click", (e) => {
               <input type="text" inputmode="decimal" step="any" id="dis_sepInfExist">
               <span class="unit">cm</span>
             </label>
+            <label class="field" style="max-width:340px;">
+              <span class="lbl" style="font-weight:700; white-space:nowrap;">Criterio de<br>revisión</span>
+              <select id="dis_criterioFlexionInf">
+                <option value="ambos">Ambos (el más exigente)</option>
+                <option value="acero">% Acero</option>
+                <option value="momento">% Momento</option>
+              </select>
+            </label>
           </div>
           <div class="props-grid" id="flexionInfExistComputed"></div>
           <div id="flexionInfExistResultado"></div>
@@ -2297,6 +2305,14 @@ document.addEventListener("click", (e) => {
               <span class="lbl" style="font-weight:700;">Separación existente</span>
               <input type="text" inputmode="decimal" step="any" id="dis_sepSupExist">
               <span class="unit">cm</span>
+            </label>
+            <label class="field" style="max-width:340px;">
+              <span class="lbl" style="font-weight:700; white-space:nowrap;">Criterio de<br>revisión</span>
+              <select id="dis_criterioFlexionSup">
+                <option value="ambos">Ambos (el más exigente)</option>
+                <option value="acero">% Acero</option>
+                <option value="momento">% Momento</option>
+              </select>
             </label>
           </div>
           <div class="props-grid" id="flexionSupExistComputed"></div>
@@ -4642,7 +4658,14 @@ function defaultState(){
       // 23.4.4.1(a) ACI 318-19: si se coloca refuerzo distribuido conforme a
       // 23.5, λs se toma como 1.0 (en vez de la Ec. 23.4.4.1 / 22.5.5.1.3),
       // solo en 5.4 (cortante en una dirección) — pedido explícito del usuario.
-      aplicarLambdaS1: false },
+      aplicarLambdaS1: false,
+      // 5.3.2/5.3.4 (Comparación con acero existente): por default se sigue
+      // exigiendo el más desfavorable de %Acero y %Momento (mismo criterio
+      // que había antes de que existiera este selector). El ingeniero puede
+      // elegir que gobierne solo uno de los dos — independiente por lecho,
+      // porque no siempre aplica el mismo criterio a ambos (pedido explícito
+      // del usuario, 08/09/2026).
+      criterioFlexionInf: "ambos", criterioFlexionSup: "ambos" },
     // Resultados de las animaciones de Brazo de palanca (4.2.1) y Área
     // efectiva (4.3.2), por combinación — al vivir en state quedan incluidos
     // en "Guardar como…" y ya aparecen al reabrir ese mismo .gfem.
@@ -6156,6 +6179,30 @@ function calcularAceroExistente(varilla, separacion, mu, cd){
   const effMomento = phiMn > 0 ? mu / phiMn : Infinity;
   const effAcero = asReal > 0 ? flexReq.asReq / asReal : Infinity;
   return { av, asReal, rhoReal, phiMn, effMomento, effAcero, asReq: flexReq.asReq };
+}
+
+// Qué eficiencia gobierna la revisión de 5.3.2/5.3.4 (Comparación con acero
+// existente) según el criterio elegido por el ingeniero (dis_criterioFlexionInf/
+// Sup, ver defaultState) — "ambos" reproduce el comportamiento de siempre
+// (exige el más desfavorable de los dos).
+function eficienciaFlexionGobernante(exist, criterio){
+  if(criterio === "acero") return exist.effAcero;
+  if(criterio === "momento") return exist.effMomento;
+  return (isFinite(exist.effMomento) && isFinite(exist.effAcero))
+    ? Math.max(exist.effMomento, exist.effAcero)
+    : NaN;
+}
+
+// Etiqueta de la eficiencia que en realidad gobierna la revisión: con
+// criterio fijo ("acero"/"momento") es directa; con "ambos" hay que ver cuál
+// de las dos eficiencias es la mayor (la más desfavorable) caso a caso.
+function etiquetaFlexionGobernante(exist, criterio){
+  if(criterio === "acero") return "% ACERO";
+  if(criterio === "momento") return "% MOMENTO";
+  if(isFinite(exist.effAcero) && isFinite(exist.effMomento)){
+    return exist.effAcero >= exist.effMomento ? "% ACERO" : "% MOMENTO";
+  }
+  return "MOMENTO RESISTENTE";
 }
 
 // Cortante en una dirección SÍ se revisa por separado en X y Y (cada eje
@@ -10262,8 +10309,17 @@ function generarStaadModel(){
       const cy = e.poly.reduce((s,p)=>s+p.y, 0)/e.poly.length;
       const rx = cx-info.center.x, ry = cy-info.center.y;
       const dx = rx*ex.x + ry*ex.y, dy = rx*ey.x + ry*ey.y;
-      const enBandaX = Math.abs(Math.abs(dx) - hx) <= bandaPlatesM;
-      const enBandaY = Math.abs(Math.abs(dy) - hy) <= bandaPlatesM;
+      // OJO (08/09/2026): cada rama necesita también la cota PERPENDICULAR
+      // (|dy|<=hy+banda / |dx|<=hx+banda) — sin ella, "enBandaX" acepta
+      // cualquier placa con dx≈±hx sin importar dy, y "enBandaY" cualquier
+      // placa con dy≈±hy sin importar dx. Eso arma dos franjas que cruzan
+      // TODA la losa de borde a borde (una columna y una fila completas de
+      // la malla) en vez del marco angosto alrededor del dado que describe
+      // el comentario de arriba — confirmado contra un .STD real: _P1APLT
+      // salía con un bloque de 36 IDs consecutivos (una fila entera de la
+      // malla) en vez de solo el tramo cercano al dado.
+      const enBandaX = Math.abs(Math.abs(dx) - hx) <= bandaPlatesM && Math.abs(dy) <= hy + bandaPlatesM;
+      const enBandaY = Math.abs(Math.abs(dy) - hy) <= bandaPlatesM && Math.abs(dx) <= hx + bandaPlatesM;
       return enBandaX || enBandaY;
     }).map(e=>e.id);
     if(!ids.length) return null;
@@ -11394,6 +11450,7 @@ function renderAll(){
 
   setValueIfNotFocused("dis_varInfExist", state.diseno.varInfExist);
   setValueIfNotFocused("dis_sepInfExist", state.diseno.sepInfExist);
+  setValueIfNotFocused("dis_criterioFlexionInf", state.diseno.criterioFlexionInf);
   const existInf = calcularAceroExistente(state.diseno.varInfExist, state.diseno.sepInfExist, momentos.muInferior, cd);
   const flInfExistEl = document.getElementById("flexionInfExistComputed");
   flInfExistEl.innerHTML = "";
@@ -11405,11 +11462,14 @@ function renderAll(){
     `ɸ${mv("M","n")} = ɸ&middot;${mv("A","s")}&middot;${mv("f","y")}&middot;(${mv("d")} &minus; ${mv("a")}/2)` + cite("22.3.2.1 ACI 318-19"));
   propRow(flInfExistEl, "% Acero", isFinite(existInf.effAcero) ? fmt(existInf.effAcero*100, 0)+"%" : "—", "", `${mv("A","s")} req / ${mv("A","s")} real`);
   propRow(flInfExistEl, "% Momento", isFinite(existInf.effMomento) ? fmt(existInf.effMomento*100, 0)+"%" : "—", "", `${mv("M","u")} / ɸ${mv("M","n")}`);
-  const cumpleInf = isFinite(existInf.effMomento) && isFinite(existInf.effAcero) && Math.max(existInf.effMomento, existInf.effAcero) < 1.05;
+  const critInf = state.diseno.criterioFlexionInf || "ambos";
+  const effGobInf = eficienciaFlexionGobernante(existInf, critInf);
+  const cumpleInf = isFinite(effGobInf) && effGobInf < 1.05;
+  const etiquetaCritInf = etiquetaFlexionGobernante(existInf, critInf);
   renderResultadoBadge("flexionInfExistResultado",
-    (isFinite(existInf.effMomento) && isFinite(existInf.effAcero)) ? (cumpleInf ? "ok" : "fail") : "none",
-    (isFinite(existInf.effMomento) && isFinite(existInf.effAcero))
-      ? (cumpleInf ? "CUMPLE MOMENTO RESISTENTE" : "NO CUMPLE MOMENTO RESISTENTE")
+    isFinite(effGobInf) ? (cumpleInf ? "ok" : "fail") : "none",
+    isFinite(effGobInf)
+      ? (cumpleInf ? `CUMPLE ${etiquetaCritInf}` : `NO CUMPLE ${etiquetaCritInf}`)
       : "—");
 
   const flSup = calcularFlexion(momentos.muSuperior, cd);
@@ -11440,6 +11500,7 @@ function renderAll(){
 
   setValueIfNotFocused("dis_varSupExist", state.diseno.varSupExist);
   setValueIfNotFocused("dis_sepSupExist", state.diseno.sepSupExist);
+  setValueIfNotFocused("dis_criterioFlexionSup", state.diseno.criterioFlexionSup);
   const existSup = calcularAceroExistente(state.diseno.varSupExist, state.diseno.sepSupExist, momentos.muSuperior, cd);
   const flSupExistEl = document.getElementById("flexionSupExistComputed");
   flSupExistEl.innerHTML = "";
@@ -11451,11 +11512,14 @@ function renderAll(){
     `ɸ${mv("M","n")} = ɸ&middot;${mv("A","s")}&middot;${mv("f","y")}&middot;(${mv("d")} &minus; ${mv("a")}/2)` + cite("22.3.2.1 ACI 318-19"));
   propRow(flSupExistEl, "% Acero", isFinite(existSup.effAcero) ? fmt(existSup.effAcero*100, 0)+"%" : "—", "", `${mv("A","s")} req / ${mv("A","s")} real`);
   propRow(flSupExistEl, "% Momento", isFinite(existSup.effMomento) ? fmt(existSup.effMomento*100, 0)+"%" : "—", "", `${mv("M","u")} / ɸ${mv("M","n")}`);
-  const cumpleSup = isFinite(existSup.effMomento) && isFinite(existSup.effAcero) && Math.max(existSup.effMomento, existSup.effAcero) < 1.05;
+  const critSup = state.diseno.criterioFlexionSup || "ambos";
+  const effGobSup = eficienciaFlexionGobernante(existSup, critSup);
+  const cumpleSup = isFinite(effGobSup) && effGobSup < 1.05;
+  const etiquetaCritSup = etiquetaFlexionGobernante(existSup, critSup);
   renderResultadoBadge("flexionSupExistResultado",
-    (isFinite(existSup.effMomento) && isFinite(existSup.effAcero)) ? (cumpleSup ? "ok" : "fail") : "none",
-    (isFinite(existSup.effMomento) && isFinite(existSup.effAcero))
-      ? (cumpleSup ? "CUMPLE MOMENTO RESISTENTE" : "NO CUMPLE MOMENTO RESISTENTE")
+    isFinite(effGobSup) ? (cumpleSup ? "ok" : "fail") : "none",
+    isFinite(effGobSup)
+      ? (cumpleSup ? `CUMPLE ${etiquetaCritSup}` : `NO CUMPLE ${etiquetaCritSup}`)
       : "—");
 
   // 5.4.- Cortante en una dirección — φVc (capacidad) es la misma para
@@ -12783,8 +12847,21 @@ function detectarUnidadesAnl(texto){
 // usan la tabla 5.1, no solo Mx/My/Mxy).
 function platesEnPerimetroCriticoB0(){
   if(!lastMallaMesh || !lastMallaMesh.elements || !lastMallaMesh.elements.length) return null;
-  const offset = computeCentroidOffset();
-  const legs = computeLegCenters(offset.cx, offset.cy);
+  // OJO (08/09/2026): legs/dados acá tienen que quedar en el mismo marco
+  // RECENTRADO en (0,0) que usa lastMallaMesh (generado a partir de outerC =
+  // shiftPoints(state.outer, offset), no de state.outer crudo) — computeLegCenters(0,0)
+  // es el mismo criterio que usa renderAll() (cxPoly/cyPoly ahí salen de
+  // computeSectionProperties sobre el polígono YA recentrado, así que dan
+  // ~0). Antes se pasaba computeLegCenters(offset.cx, offset.cy) — el
+  // centroide CRUDO — dejando los dados en el marco absoluto de
+  // state.outer mientras la malla está recentrada; con contornos
+  // importados de AutoCAD en coordenadas absolutas (lejos del origen) esto
+  // hacía que ningún elemento de malla cayera nunca dentro de ningún dado
+  // → "sin-perimetro-b0" en la importación del .ANL, aunque la malla
+  // estuviera perfectamente generada. NO confundir con geometriaB0RealPorDado
+  // (más arriba), que a propósito usa el marco crudo porque ahí SÍ compara
+  // contra state.outer/state.hole crudos.
+  const legs = computeLegCenters(0, 0);
   const dados = dadosFisicos(legs, state.tipoEstructura);
   if(!dados.length) return null;
   const cd = getCriteriosDiseno();
@@ -13917,6 +13994,10 @@ function initBindings(){
     state.diseno.sepInfExist = isNaN(v) ? 0 : v;
     renderAll();
   });
+  document.getElementById("dis_criterioFlexionInf").addEventListener("change", (e)=>{
+    state.diseno.criterioFlexionInf = e.target.value;
+    renderAll();
+  });
   document.getElementById("dis_varSupExist").addEventListener("change", (e)=>{
     state.diseno.varSupExist = e.target.value;
     renderAll();
@@ -13924,6 +14005,10 @@ function initBindings(){
   document.getElementById("dis_sepSupExist").addEventListener("input", (e)=>{
     const v = parseDecimal(e.target.value);
     state.diseno.sepSupExist = isNaN(v) ? 0 : v;
+    renderAll();
+  });
+  document.getElementById("dis_criterioFlexionSup").addEventListener("change", (e)=>{
+    state.diseno.criterioFlexionSup = e.target.value;
     renderAll();
   });
   [["dis_dadoN1","dadoN1"],["dis_dadoN2","dadoN2"],["dis_dadoEstribosRamas","dadoEstribosRamas"],["dis_dadoEstriboSep","dadoEstriboSep"],["dis_dadoRecubrimiento","dadoRecubrimiento"]].forEach(([id,field])=>{
