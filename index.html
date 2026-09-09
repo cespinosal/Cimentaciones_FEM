@@ -2137,7 +2137,8 @@ document.addEventListener("click", (e) => {
     <section class="card" id="sec-diseno-53" aria-labelledby="h-diseno-53">
       <div class="head"><span id="h-diseno-53">5.3.- Revisión por flexión</span></div>
       <div class="body">
-        <p class="small" style="margin:0 0 16px; color:var(--muted);">Momento de diseño combinado con Wood-Armer (Mx, My y Mxy de la misma fila de la tabla 5.1) — se toma la fila que gobierna, entre las 16, para cada lecho.</p>
+        <p class="small" style="margin:0 0 6px; color:var(--muted);">Momento de diseño combinado con Wood-Armer (Mx, My y Mxy simultáneos, del mismo punto de la malla).</p>
+        <p class="small" id="flexionMuFuente" style="margin:0 0 16px; color:var(--muted);"></p>
 
           <div class="calc-subsection">
           <p class="calc-subsection-title">5.3.1.- Revisión a flexión en Lecho Inferior</p>
@@ -6097,7 +6098,13 @@ function rebarOptionsHtml(){
 // NEGATIVO = tensión ABAJO = refuerzo inferior. La malla exportada sí tiene
 // la normal siempre hacia arriba (orientarNormalArribaStaad), así que esta
 // convención aplica pareja a toda la malla, no varía elemento a elemento.
+// Fuente OFICIAL de Mu (09/09/2026, mismo criterio que lastVuCriticoAnl en
+// 5.4): si hay un .ANL importado, lastMuDisenoAnl (envolvente Wood-Armer
+// rigurosa sobre TODA la malla y todos los combos, calcularMuDisenoDesdeAnl)
+// — si no, se cae de vuelta al criterio anterior (peor de las 16 filas de
+// la tabla 5.1, como cuando los datos se cargan a mano).
 function getMomentosDisenoFlexion(){
+  if(lastMuDisenoAnl) return lastMuDisenoAnl;
   let muSup = -Infinity, muInf = Infinity;
   state.elementosMecanicos.forEach(row=>{
     const absMxy = Math.abs(row.mxy);
@@ -9981,6 +9988,13 @@ let lastMallaMesh = null;
 // pico global de la tabla 5.1 (getVuCortantePorEje), como antes de tener
 // esta integración.
 let lastVuCriticoAnl = null;
+// Resultado de calcularMuDisenoDesdeAnl (Wood-Armer, envolvente rigurosa
+// sobre TODA la malla y todos los combos del último .ANL importado) — mismo
+// criterio que lastVuCriticoAnl arriba, pero para el momento de diseño
+// (5.3). Se usa como fuente OFICIAL de 5.3 cuando existe; si es null, 5.3
+// cae de vuelta al peor de las 16 filas de la tabla 5.1
+// (getMomentosDisenoFlexion), como antes de tener esta envolvente.
+let lastMuDisenoAnl = null;
 let mostrarNumerosMalla = false;
 let mostrarNodosMalla = false;
 
@@ -11421,12 +11435,22 @@ function renderAll(){
   setValueIfNotFocused("dis_varInf", state.diseno.varInf);
   setValueIfNotFocused("dis_varSup", state.diseno.varSup);
   const momentos = getMomentosDisenoFlexion();
+  // Fuente de Mu (09/09/2026): con .ANL importado, envolvente rigurosa sobre
+  // toda la malla/combos (lastMuDisenoAnl vía getMomentosDisenoFlexion); sin
+  // él, el peor de las 16 filas de la tabla 5.1 como antes — la cita de las
+  // fórmulas de abajo refleja cuál de las dos se está usando.
+  const citaMu = lastMuDisenoAnl
+    ? "Wood-Armer, envolvente sobre todo el .ANL importado"
+    : "Wood-Armer, peor fila de la tabla 5.1";
+  document.getElementById("flexionMuFuente").textContent = lastMuDisenoAnl
+    ? "Fuente: envolvente Wood-Armer sobre toda la malla y todos los combos del último .ANL importado."
+    : "Fuente: peor caso entre las 16 filas de la tabla 5.1 (sin .ANL importado) — importá un .ANL (sección 5.1) para revisar con el momento real de toda la losa.";
 
   const flInf = calcularFlexion(momentos.muInferior, cd);
   const flInfEl = document.getElementById("flexionInfComputed");
   flInfEl.innerHTML = "";
   propRow(flInfEl, mv("M","u"), fmt(momentos.muInferior, 3), "Tn-m/m",
-    `${mv("M","u")} = MAX(${mv("M","x")} + |${mv("M","xy")}|, ${mv("M","y")} + |${mv("M","xy")}|)` + cite("Wood-Armer, peor fila de la tabla 5.1"));
+    `${mv("M","u")} = MAX(${mv("M","x")} + |${mv("M","xy")}|, ${mv("M","y")} + |${mv("M","xy")}|)` + cite(citaMu));
   propRow(flInfEl, mv("R","n"), fmt(flInf.Rn, 3), "kg/cm²",
     `${mv("R","n")} = ${mv("M","u")} / (ɸ&middot;${mv("b")}&middot;${mv("d")}²)` + cite("22.3.2.1 ACI 318-19"));
   propRow(flInfEl, mv("ρ"), fmt(flInf.rho, 5), "",
@@ -11476,7 +11500,7 @@ function renderAll(){
   const flSupEl = document.getElementById("flexionSupComputed");
   flSupEl.innerHTML = "";
   propRow(flSupEl, mv("M","u"), fmt(momentos.muSuperior, 3), "Tn-m/m",
-    `${mv("M","u")} = |MIN(${mv("M","x")} &minus; |${mv("M","xy")}|, ${mv("M","y")} &minus; |${mv("M","xy")}|)|` + cite("Wood-Armer, peor fila de la tabla 5.1"));
+    `${mv("M","u")} = |MIN(${mv("M","x")} &minus; |${mv("M","xy")}|, ${mv("M","y")} &minus; |${mv("M","xy")}|)|` + cite(citaMu));
   propRow(flSupEl, mv("R","n"), fmt(flSup.Rn, 3), "kg/cm²",
     `${mv("R","n")} = ${mv("M","u")} / (ɸ&middot;${mv("b")}&middot;${mv("d")}²)` + cite("22.3.2.1 ACI 318-19"));
   propRow(flSupEl, mv("ρ"), fmt(flSup.rho, 5), "",
@@ -11681,10 +11705,18 @@ function renderAll(){
   propRow(punzEl, "ɸ"+mv("v","c")+" (c)", fmt(punz.phiVcC, 3), "Tn/m²",
     `ɸ${mv("v","c")} = ɸ&middot;0.265(2+α<sub>s</sub>d/b0)&middot;${mv("λ","s")}&middot;λ&middot;${sqrtHtml("f'c")}` + cite("22.6.5.2(c) ACI 318-19"));
   propRow(punzEl, "ɸ"+mv("V","c")+" (gobierna)", fmt(punz.phiVc, 3), "Tn/m²", `ɸ${mv("V","c")} = MIN(a, b, c)`);
-  propRow(punzEl, "Eficiencia", isFinite(punz.eficiencia) ? fmt(punz.eficiencia*100,0)+"%" : "—", "", `${mv("V","u")} / ɸ${mv("V","c")}`);
+  // "Sin datos" (combo null, antes de cargar reacciones) y "b0=0" (dado sin
+  // vuelo suficiente para que exista el perímetro crítico, ver
+  // project_mu53_wood_armer_global_losa.md) dan AMBOS eficiencia=Infinity
+  // (calcularPunzonamiento usa Infinity como sentinela de "sin datos") — hay
+  // que distinguirlos por punz.combo (null = sin datos reales) para no
+  // mostrar "sin datos" (badge neutral) en un caso que en realidad es un
+  // NO CUMPLE real (perímetro crítico inexistente, demanda/capacidad → ∞).
+  const hayDatosPunz = punz.combo != null;
+  propRow(punzEl, "Eficiencia", isFinite(punz.eficiencia) ? fmt(punz.eficiencia*100,0)+"%" : (hayDatosPunz ? "∞%" : "—"), "", `${mv("V","u")} / ɸ${mv("V","c")}`);
   const cumplePunz = isFinite(punz.eficiencia) && punz.eficiencia < 1.05; // tolerancia 5%, ver nota en 5.4
-  renderResultadoBadge("punzonamientoResultado", isFinite(punz.eficiencia) ? (cumplePunz?"ok":"fail") : "none",
-    isFinite(punz.eficiencia) ? (cumplePunz ? "CUMPLE LA REVISIÓN POR PUNZONAMIENTO" : "NO CUMPLE LA REVISIÓN POR PUNZONAMIENTO") : "—");
+  renderResultadoBadge("punzonamientoResultado", !hayDatosPunz ? "none" : (cumplePunz?"ok":"fail"),
+    !hayDatosPunz ? "—" : (cumplePunz ? "CUMPLE LA REVISIÓN POR PUNZONAMIENTO" : "NO CUMPLE LA REVISIÓN POR PUNZONAMIENTO"));
 
   // 5.6.- Revisión de dados de desplante
   setValueIfNotFocused("dis_dadoN1", state.diseno.dadoN1);
@@ -12881,16 +12913,26 @@ function platesEnPerimetroCriticoB0(){
 }
 
 // Campo (en kg/m² o kg·m/m, unidades crudas del .ANL) -> {campo de la tabla
-// 5.1, factor de conversión a kg/cm² o Ton-m/m}. Mismo orden que ELEM_MEC_ROWS.
+// 5.1, factor de conversión a kg/cm² o Ton-m/m, alcance de búsqueda}. Mismo
+// orden que ELEM_MEC_ROWS. "scope" (09/09/2026): Qx/Qy sí tienen una sección
+// crítica a distancia fija de la cara del dado (ACI 318-19 §22.5.5.1.2), así
+// que restringir su Max/Min a la banda de platesEnPerimetroCriticoB0 es
+// correcto — "b0". La flexión (Mx/My/Mxy) NO tiene ese tipo de sección
+// crítica: el momento puede ser máximo en cualquier punto de la losa (a
+// medio vano entre dados, en un borde/cantiléver, etc.), así que buscar solo
+// cerca del dado podía dejar afuera el pico real y subestimar el momento de
+// diseño — "global" (toda la malla, todos los combos). Sx/Sy/Sxy (esfuerzos
+// de membrana, no ligados a ninguna sección crítica normativa) se tratan
+// igual que los momentos, por consistencia.
 const ANL_CAMPO_INFO = [
-  {campo:"sqx", etiqueta:"Qx", factor:1/10000},
-  {campo:"sqy", etiqueta:"Qy", factor:1/10000},
-  {campo:"sx",  etiqueta:"Sx", factor:1/10000},
-  {campo:"sy",  etiqueta:"Sy", factor:1/10000},
-  {campo:"sxy", etiqueta:"Sxy", factor:1/10000},
-  {campo:"mx",  etiqueta:"Mx", factor:1/1000},
-  {campo:"my",  etiqueta:"My", factor:1/1000},
-  {campo:"mxy", etiqueta:"Mxy", factor:1/1000},
+  {campo:"sqx", etiqueta:"Qx", factor:1/10000, scope:"b0"},
+  {campo:"sqy", etiqueta:"Qy", factor:1/10000, scope:"b0"},
+  {campo:"sx",  etiqueta:"Sx", factor:1/10000, scope:"global"},
+  {campo:"sy",  etiqueta:"Sy", factor:1/10000, scope:"global"},
+  {campo:"sxy", etiqueta:"Sxy", factor:1/10000, scope:"global"},
+  {campo:"mx",  etiqueta:"Mx", factor:1/1000, scope:"global"},
+  {campo:"my",  etiqueta:"My", factor:1/1000, scope:"global"},
+  {campo:"mxy", etiqueta:"Mxy", factor:1/1000, scope:"global"},
 ];
 
 function importarElementosMecanicosDesdeAnl(texto){
@@ -12916,15 +12958,20 @@ function importarElementosMecanicosDesdeAnl(texto){
 
   const idsB0 = platesEnPerimetroCriticoB0();
   if(!idsB0 || idsB0.size===0) return { ok:false, motivo:"sin-perimetro-b0" };
-  const filasValidas = filasPorCombo.filter(f => idsB0.has(String(f.plate)));
-  if(!filasValidas.length) return { ok:false, motivo:"sin-placas-en-b0" };
+  const filasEnB0 = filasPorCombo.filter(f => idsB0.has(String(f.plate)));
+  if(!filasEnB0.length) return { ok:false, motivo:"sin-placas-en-b0" };
 
   const nuevasFilas = ELEM_MEC_ROWS.map(label=>{
     const m = label.match(/^(Max|Min)\s+(\w+)$/);
     const modo = m[1], etiqueta = m[2];
     const info = ANL_CAMPO_INFO.find(c=>c.etiqueta===etiqueta);
+    // Qx/Qy buscan su Max/Min solo en la banda cerca del dado (idsB0, sección
+    // crítica normativa); Mx/My/Mxy/Sx/Sy/Sxy buscan en TODA la malla
+    // (filasPorCombo) — no tienen una sección crítica a distancia fija, ver
+    // comentario de ANL_CAMPO_INFO.
+    const candidatas = info.scope === "b0" ? filasEnB0 : filasPorCombo;
     let peor = null, peorValConvertido = null;
-    filasValidas.forEach(f=>{
+    candidatas.forEach(f=>{
       const valConvertido = f[info.campo] * info.factor;
       if(peor==null || (modo==="Max" ? valConvertido>peorValConvertido : valConvertido<peorValConvertido)){
         peor = f; peorValConvertido = valConvertido;
@@ -12947,10 +12994,15 @@ function importarElementosMecanicosDesdeAnl(texto){
   // fuente OFICIAL de 5.4 mientras haya un .ANL importado (04/09/2026: antes
   // era solo un complemento en una tabla aparte; ahora 5.4 la usa
   // directamente en vez del pico de la tabla 5.1, a pedido del usuario). NO
-  // reemplaza nuevasFilas/state.elementosMecanicos (que sigue siendo el pico
-  // de la tabla 5.1, usado también por Mx/My/Sx/Sy en otras revisiones).
+  // reemplaza nuevasFilas/state.elementosMecanicos (que sigue siendo el
+  // respaldo manual/de referencia, y la única fuente de Sx/Sy/Sxy).
   lastVuCriticoAnl = calcularVuCriticoDesdeAnl(filasPorCombo);
-  return { ok:true, filas: filasValidas.length, elementos: new Set(filasValidas.map(f=>f.plate)).size, combos: combosFactorados.length };
+  // Envolvente RIGUROSA de Wood-Armer (calcularMuDisenoDesdeAnl) sobre TODO
+  // el .ANL, sin pasar por la aproximación de las 16 filas — fuente OFICIAL
+  // de 5.3 mientras haya un .ANL importado (09/09/2026, mismo criterio que
+  // lastVuCriticoAnl para 5.4). Tampoco reemplaza state.elementosMecanicos.
+  lastMuDisenoAnl = calcularMuDisenoDesdeAnl(filasPorCombo);
+  return { ok:true, filas: filasEnB0.length, elementos: new Set(filasEnB0.map(f=>f.plate)).size, combos: combosFactorados.length };
 }
 
 /* ============================================================
@@ -13420,7 +13472,9 @@ async function memoriaConstruirDocumento(imgs){
     ]),
     memoriaNota("β1 = 0.85 si f'c ≤ 280 kg/cm²; β1 = 0.65 si f'c > 560 kg/cm²; en el rango intermedio, β1 = 0.85 − (f'c−280)·(0.05/70) (ACI 318-19 §22.2.2.4.3). d = PZ − r (peralte efectivo). c1 = AD+d, c2 = LD+d: dimensiones de la sección crítica a d/2 del perímetro del dado (§22.6.4.1). b0 = 2·(c1+c2): perímetro de la sección crítica. Φ flexión = 0.90 y Φ cortante = 0.75 — secciones controladas por tracción (ACI 318-19 Tabla 21.2.1 y §21.2.2)."),
     memoriaH2("6.3 Diseño por flexión"),
-    memoriaNota("Momento de diseño Mu combinado por Wood-Armer, con Mx, My y Mxy de la MISMA fila de la malla de placas: Mu(inferior) = MAX(Mx+|Mxy|, My+|Mxy|) y Mu(superior) = |MIN(Mx−|Mxy|, My−|Mxy|)|, tomando el peor caso entre todas las filas de 6.1 — evita subestimar el momento real al ignorar la torsión Mxy."),
+    memoriaNota(lastMuDisenoAnl
+      ? "Momento de diseño Mu combinado por Wood-Armer, con Mx, My y Mxy SIMULTÁNEOS del mismo punto: Mu(inferior) = MAX(Mx+|Mxy|, My+|Mxy|) y Mu(superior) = |MIN(Mx−|Mxy|, My−|Mxy|)|, evaluado en toda la malla y todos los combos del último .ANL importado (envolvente rigurosa) — evita tanto subestimar el momento real al ignorar la torsión Mxy como restringir la búsqueda a una zona cercana a los dados."
+      : "Momento de diseño Mu combinado por Wood-Armer, con Mx, My y Mxy de la MISMA fila de la malla de placas: Mu(inferior) = MAX(Mx+|Mxy|, My+|Mxy|) y Mu(superior) = |MIN(Mx−|Mxy|, My−|Mxy|)|, tomando el peor caso entre todas las filas de 6.1 — evita subestimar el momento real al ignorar la torsión Mxy."),
     memoriaH3("6.3.1 Lecho inferior"),
     memoriaTablaProps([["Mu", fmt(muInferior,3), "Tn·m/m"], ["As requerido", fmt(flexInf.asReq,2), "cm²/m"],
       ["Varilla propuesta", state.diseno.varInf, ""], ["Separación", fmt(calcularSeparacionVarilla(flexInf.asReq, state.diseno.varInf).separacion,0), "cm"]]),
@@ -13814,6 +13868,7 @@ function initBindings(){
     if(confirm("¿Poner en 0 todos los valores de la tabla 5.1 (Elementos mecánicos de diseño)?")){
       state.elementosMecanicos = defaultElementosMecanicos();
       lastVuCriticoAnl = null;
+      lastMuDisenoAnl = null;
       renderAll();
       showAnlImportStatus("info", "Se limpió la tabla 5.1.");
     }
@@ -13846,7 +13901,7 @@ function initBindings(){
       }
       renderAll();
       showAnlImportStatus("success",
-        `Se llenó la tabla 5.1 a partir de <b>${r.filas}</b> filas de esfuerzos (${r.elementos} elementos, ${r.combos} combos) leídas de <b>${file.name}</b>. La revisión 5.4 (cortante en una dirección) ya usa este dato, integrado por dado — revisá los valores antes de continuar.`);
+        `Se llenó la tabla 5.1 a partir de <b>${r.filas}</b> filas de esfuerzos (${r.elementos} elementos, ${r.combos} combos) leídas de <b>${file.name}</b>. Las revisiones 5.3 (flexión, envolvente Wood-Armer sobre toda la malla) y 5.4 (cortante en una dirección, integrado por dado) ya usan este dato — revisá los valores antes de continuar.`);
     }catch(err){
       console.error(err);
       showAnlImportStatus("error", "Error al leer el .ANL: " + err.message);
@@ -16566,6 +16621,34 @@ function calcularVuCriticoDesdeAnl(filasPorCombo){
     // (÷10000 y ×10 = ÷1000).
     return { nombre: dadoInfo.nombre, vuxTnm2: vux/1000, vuyTnm2: vuy/1000 };
   });
+}
+
+// Momento de diseño Wood-Armer, envolvente RIGUROSA sobre TODO el .ANL
+// (todas las placas, todos los combos ya parseados en filasPorCombo, sin
+// acotar a ninguna banda) — a diferencia de getMomentosDisenoFlexion (que
+// combina Wood-Armer sobre 8 extremos por-campo tomados de las 16 filas de
+// la tabla 5.1, una aproximación), acá se evalúa Mu_sup/Mu_inf DIRECTAMENTE
+// en cada placa/combo con su Mx,My,Mxy simultáneos (misma fórmula, mismo
+// signo ya verificado ahí) y se toma el máximo real entre TODOS los puntos
+// de la malla — no hay forma de que la combinación crítica quede afuera,
+// porque no se restringe el punto de partida a ningún subconjunto. A
+// diferencia de Qx/Qy (calcularVuCriticoDesdeAnl, que integra sobre el
+// ancho de la línea crítica), el momento no se integra: Mx/My/Mxy del .ANL
+// ya son un momento por unidad de ancho, así que el pico puntual real ES el
+// dato de diseño (mismo criterio que ya usa Motor FEM fase 08 — Wood-Armer
+// por nodo + envolvente).
+function calcularMuDisenoDesdeAnl(filasPorCombo){
+  let muSup = -Infinity, muInf = Infinity;
+  filasPorCombo.forEach(f=>{
+    const mx = f.mx/1000, my = f.my/1000, absMxy = Math.abs(f.mxy)/1000;
+    muSup = Math.max(muSup, mx + absMxy, my + absMxy);
+    muInf = Math.min(muInf, mx - absMxy, my - absMxy);
+  });
+  if(!isFinite(muSup) || !isFinite(muInf)) return null;
+  return {
+    muSuperior: Math.max(muSup, 0),
+    muInferior: Math.abs(Math.min(muInf, 0))
+  };
 }
 
 // Vu de punzonamiento con datos REALES del solver — complementa (no

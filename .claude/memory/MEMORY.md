@@ -3,7 +3,8 @@
 - [Cruce P1a/P1b por subsistema](project_p1a_p1b_cruce_por_subsistema.md) — swap 1↔1c/1a↔1b (12/08/2026) en STAAD/visor/Motor FEM para M4-4P; 3P en STAAD queda A PROPÓSITO opuesto al visor (decisión informada del usuario, no tocar sin pedirlo de nuevo).
 - [Espejo X visor 3D / STAAD (11-12/08/2026)](project_staad_espejo_x_investigacion.md) — visor 3D: RESUELTO. STAAD: signo Z fijado por consistencia con el visor (Staad Z=-pt.y), aún sin confirmación visual del usuario en STAAD.
 - [Comunicación en español (es-MX)](feedback_comunicacion_espanol_mx.md) — REGLA DORADA (todos los proyectos): tuteo MX, nunca voseo ni inglés; corregido 2 veces el 12/08/2026.
-- [b0 real por dado / STAAD pendiente](project_b0_real_y_staad_pendiente.md) — 5.5 punzonamiento ya usa b0 geométrico por dado (13/08/2026); grupo de plates por dado en export STAAD, discutido pero sin código.
+- [b0 real por dado / grupo STAAD por dado](project_b0_real_y_staad_pendiente.md) — AMBOS completos (b0 geométrico 5.5 + grupo PLATE por dado + import automático .ANL a tabla 5.1); ya no queda nada pendiente de esto.
+- [Mu 5.3 Wood-Armer global + límite de ejes locales](project_mu53_wood_armer_global_losa.md) — 09/09/2026: Mu busca en toda la losa (decisión del usuario); riesgo de ejes locales STAAD desalineados medido y acotado (~3% del área, en el borde, no bloqueante).
 - [Sin persistencia en localStorage](project_sin_persistencia_localstorage.md) — CLAUDE.md dice que sí persiste pero el código actual (18/08/2026) no tiene saveToStorage/loadFromStorage; solo guardado manual a .gfem.
 - [Verificar con prueba headless](feedback_verificar_con_prueba_headless.md) — ante bug de UI que "no se arregla", montar Playwright headless contra el index.html real en vez de solo releer el código.
 - [Memoria sincronizada vía repo](reference_memoria_sync_via_repo.md) — symlink en la VM; en casa no cuajó (Windows/VSCode), usa en cambio la instrucción en CLAUDE.md de leer .claude/memory/ al empezar.

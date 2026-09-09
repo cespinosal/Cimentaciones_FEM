@@ -1,37 +1,35 @@
 ---
 name: project-b0-real-y-staad-pendiente
-description: "b0 real por dado ya implementado en 5.5 (punzonamiento); grupo de plates por dado en el export a STAAD sigue pendiente, sin empezar."
-metadata: 
-  node_type: memory
+description: "b0 real por dado (5.5) y grupo de plates por dado en el export a STAAD: AMBOS completos, con import automático del .ANL a la tabla 5.1."
+metadata:
   type: project
-  originSessionId: 5654ff82-c13a-49ef-b124-946cb8074588
-  modified: 2026-08-13T18:46:12.965Z
+  modified: 2026-09-09T00:00:00.000Z
 ---
 
-**13/08/2026** — dos cosas relacionadas, distinto estado:
+**Actualizado 09/09/2026 — ya no hay nada pendiente de esto.** Lo que el 13/08/2026 se
+documentó como "sin empezar" se implementó ese mismo día (commit `9632dd1`, "Punzonamiento
+con b0 geométrico real por dado, grupo ELEMENT+PRINT en export STAAD") y se refinó después:
 
-1. **Hecho:** `calcularB0Real`/`geometriaB0RealPorDado`/`calcularPunzonamientoTodos`
-   (index.html, cerca de la línea 6160-6280) reemplazan el selector manual único
-   `dis_alphaS` por perímetro crítico `b0` calculado geométricamente contra el
-   contorno REAL de la losa (`state.outer`/`state.hole`), por cada dado físico —
-   no un solo valor global. La condición interior/borde/esquina (y el `αs` de ACI)
-   se deriva de cuántas de las 4 caras del anillo quedaron completas (tolerancia
-   5%). `calcularPunzonamiento` ahora elige el dado que gobierna por EFICIENCIA
-   (no por `Vu` crudo, que podía elegir mal si el `b0` difiere entre dados). Nueva
-   tabla "5.5.1.- Por dado" en la card de punzonamiento muestra el detalle de
-   cada pata/pedestal, no solo el crítico.
+1. **`calcularB0Real`/`geometriaB0RealPorDado`/`calcularPunzonamientoTodos`** (index.html,
+   cerca de la línea 6160-6280): perímetro crítico `b0` geométrico contra el contorno REAL de
+   la losa, por cada dado físico. Tabla "5.5.1.- Por dado" en la card de punzonamiento.
 
-2. **Pendiente, sin empezar:** la idea de que el `.STD` exportado (sección 4.7)
-   traiga también un grupo `PLATE` por dado (extendiendo el `START GROUP
-   DEFINITION` que ya existe, hoy solo `JOINT` por dado) más un
-   `PRINT ELEMENT FORCE LIST` por grupo, para que el `.ANL` resultante traiga los
-   datos de cada dado ya acotados — y más adelante un parser que llene la tabla
-   5.1 (`elementosMecanicos`) automáticamente por dado, en vez de que el usuario
-   arme a mano el envolvente global en STAAD. Quedó discutido y con un esquema
-   (artefacto con diagramas) pero NINGÚN código de esto está escrito todavía.
-   Dos decisiones abiertas si se retoma: (a) confirmar que `PRINT ELEMENT FORCE
-   LIST` es el comando correcto (no hay comando de "envolvente" confirmado para
-   plates, a diferencia de miembros) — el plan es que la app arme el envolvente
-   ella misma a partir de datos crudos; (b) para 5.5, definir el grupo de plates
-   como el rectángulo interior a d/2 (equilibrio, como `femVuPunzonamientoDado`)
-   o como un anillo en `b0` (corte directo, mismo criterio que 5.4).
+2. **Grupo `ELEMENT` (plates) por dado en el export STAAD** (`generarStaadModel`, sección
+   `START GROUP DEFINITION`, ~línea 10260-10340 de index.html): `_<nombre>PLT` con las placas
+   cuyo centroide cae en una banda angosta alrededor de la línea crítica de cortante en una
+   dirección (ACI 318-19 §22.5.5.1.2, a distancia `d` de cada cara, ejes locales del dado) —
+   cambiado el 04/09/2026 de una caja generosa AD/LD+2d a esta banda, porque el recorte fino
+   "para después" nunca se hacía. El comando confirmado contra un `.ANL` real es
+   `PRINT ELEMENT JOINT STRESSES LIST` (no `FORCE LIST`, que da fuerzas nodales en ejes
+   globales — no sirve para la tabla 5.1).
+
+3. **Import automático a la tabla 5.1** (`parseStaadAnlElementStresses`,
+   `platesEnPerimetroCriticoB0`, ~línea 12727-12870): lee el bloque "ELEMENT STRESSES" del
+   `.ANL` (centro + esquinas/JOINT, porque MXY puede ser mayor en la esquina) y llena
+   `state.elementosMecanicos` con el máximo/mínimo real dentro de la zona de diseño de cada
+   dado (margen `d`, cubre tanto b0 de punzonamiento como la línea de cortante 1D) — ya no
+   depende de que el usuario pegue a mano el "Stress Summary" de STAAD.
+
+No quedó ninguna decisión abierta de las que mencionaba la nota anterior — el comando
+`PRINT ELEMENT JOINT STRESSES LIST` y el criterio de banda (cortante 1D, no el rectángulo a
+d/2 de punzonamiento) ya se confirmaron contra un `.ANL` real del proyecto de ejemplo.
