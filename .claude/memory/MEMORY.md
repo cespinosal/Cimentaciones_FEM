@@ -12,3 +12,5 @@
 - [Repo, clones y plan .exe](project_cimentaciones_fem.md) — GitHub cespinosal/Cimentaciones_FEM; empaquetado a .exe es plan futuro, no iniciarlo sin pedido explícito.
 - [Registro de uso ya no excluye al usuario](feedback_cimentaciones_fem_registro_uso.md) — desde 19/08/2026 solo excluye "ubuntu" (VM); usar ?dev=1 al probar con Playwright.
 - [No commit sin pedido explícito](feedback_cimentaciones_fem_workflow_commit.md) — no hacer git commit/push hasta que el usuario lo pida (corregido 04/09/2026, no asumir con solo anunciar "Publico").
+- [Brazo P-M-M solo HD](project_pmm_brazo_solo_hd.md) — 11/09/2026: demanda PMM ya no usa Hr+HD (voladizo libre); ahora solo HD, porque Hr está embebido con apoyo lateral. No tocar Pd+HD del volteo geotécnico ni de 5.6.3 sin pedido aparte.
+- [Persistencia de resultados .ANL en state](project_anl_resultados_persistencia.md) — 11/09/2026: lastVuCriticoAnl/lastMuDisenoAnl (fuente de 5.4/5.3) no sobrevivían al .gfem; corregido con state.anlResultados, mismo patrón que brazoCache.
