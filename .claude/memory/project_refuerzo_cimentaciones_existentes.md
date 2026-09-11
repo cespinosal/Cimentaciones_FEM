@@ -1,9 +1,11 @@
 ---
 name: project-refuerzo-cimentaciones-existentes
-description: "Investigación (sin implementar) de qué refuerzo/retrofit proponer cuando una cimentación YA CONSTRUIDA falla por flexión, cortante 1D o punzonamiento al subir la demanda (más antenas/equipo)."
-metadata:
+description: "Refuerzo/retrofit para cimentación YA CONSTRUIDA que falla por flexión, cortante 1D, punzonamiento o pedestal al subir la demanda; 11/09/2026 hay boceto de UI (Artifact) para una sección 7 nueva, sin implementar."
+metadata: 
+  node_type: memory
   type: project
-  modified: 2026-09-09T00:00:00.000Z
+  modified: 2026-09-11T22:54:45.171Z
+  originSessionId: f861cbdf-631a-4eea-8d78-60656599a932
 ---
 
 **Contexto (09/09/2026):** no es diseño de zapata nueva — es el escenario de torre YA CONSTRUIDA
@@ -46,3 +48,31 @@ plantearla antes de asumir que hace falta refuerzo físico.
 sección nueva de "recomendaciones" que se active cuando alguna eficiencia de 5.3/5.4/5.5 no cumple,
 sugiriendo la técnica de retrofit correspondiente según cuál revisión falló. No hay pedido explícito
 de implementarlo todavía — retomar cuando el usuario lo pida.
+
+**Actualización 11/09/2026 — boceto de UI, sin implementar todavía:** el usuario amplió el alcance a
+incluir también **refuerzo de pedestales (dado)**, no solo flexión/cortante/punzonamiento de losa.
+Se armó un mockup visual (Artifact, sin funcionalidad real, replicando 1:1 los tokens/componentes de
+`index.html`): https://claude.ai/code/artifact/51821acb-d1f3-400b-924c-b01f47255de4 — "Refuerzo de
+Cimentación". Estructura propuesta ahí (no decidida en firme, solo boceto):
+
+- Sección nueva "7.- Refuerzo de cimentación existente" en la pestaña Cálculos, después de "6.
+  Resumen de eficiencias", con nav lateral igual al resto.
+- 4 sub-tarjetas: 7.1 Flexión (activa si 5.3 no cumple), 7.2 Cortante (si 5.4 no cumple), 7.3
+  Punzonamiento (si 5.5 no cumple), 7.4 Pedestal (si Interacción 3D o 5.6.3 no cumple).
+- Cada tarjeta: diagnóstico (de dónde sale, qué dado/franja gobierna) → selector de técnica
+  (seg-control) → campos de entrada específicos de la técnica → resultado con D/C recalculado.
+- Técnicas por tarjeta (heredadas de la investigación de arriba, + pedestal que es nuevo):
+  Flexión → ampliación/jacketing (FRP deshabilitado en el mockup, con nota de por qué); Cortante →
+  ampliación o barras inclinadas post-instaladas; Punzonamiento → ampliación del dado o shear bolts;
+  **Pedestal (nuevo, sin investigar a fondo todavía)** → encamisado de concreto, encamisado de
+  acero, o FRP (con nota de que FRP solo aportaría en el tramo `HD` que aflora sobre el terreno, no
+  en el tramo enterrado `Hr` — ver [[project_pmm_brazo_solo_hd]] para esa misma distinción HD/Hr
+  aplicada al brazo de palanca de PMM).
+- El usuario pidió explícitamente NO implementar nada todavía, solo ver la forma de la UI — cuando
+  pidió una pregunta de alcance vía AskUserQuestion, la rechazó y pidió ir directo al boceto visual.
+
+**Próximo paso real si se retoma:** falta investigar a fondo las ecuaciones de capacidad de cada
+técnica de retrofit (cuánto φVs aporta un shear bolt, cuánto una barra inclinada post-instalada,
+cómo se calcula la superficie P-M-M con encamisado de pedestal) — el mockup de UI no tiene ningún
+cálculo real todavía, solo una fórmula ilustrativa de relleno para que los controles se sintieran
+interactivos.
