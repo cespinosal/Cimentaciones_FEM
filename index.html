@@ -4671,7 +4671,15 @@ function defaultState(){
     // efectiva (4.3.2), por combinación — al vivir en state quedan incluidos
     // en "Guardar como…" y ya aparecen al reabrir ese mismo .gfem.
     brazoCache: {},
-    areaEfectivaCache: {}
+    areaEfectivaCache: {},
+    // Resultados del último .ANL importado (cortante por dado de 5.4 y
+    // envolvente Wood-Armer de 5.3) — mismo motivo que brazoCache/
+    // areaEfectivaCache arriba: al vivir en state sobreviven a "Guardar
+    // como…"/reabrir el .gfem, en vez de perderse (11/09/2026, antes solo
+    // vivían en las variables de módulo lastVuCriticoAnl/lastMuDisenoAnl,
+    // que se restauran desde acá al cargar un proyecto — ver
+    // loadProjectFromFile()).
+    anlResultados: { vuCritico: null, muDiseno: null }
   };
 }
 
@@ -9986,14 +9994,18 @@ let lastMallaMesh = null;
 // recalcula solo si cambia la geometría después; hay que reimportar). Se usa
 // como fuente OFICIAL de 5.4 cuando existe; si es null, 5.4 cae de vuelta al
 // pico global de la tabla 5.1 (getVuCortantePorEje), como antes de tener
-// esta integración.
+// esta integración. Espejado en state.anlResultados.vuCritico (11/09/2026)
+// para que sobreviva a "Guardar como…"/reabrir el .gfem — ver
+// loadProjectFromFile() y el comentario de anlResultados en defaultState().
 let lastVuCriticoAnl = null;
 // Resultado de calcularMuDisenoDesdeAnl (Wood-Armer, envolvente rigurosa
 // sobre TODA la malla y todos los combos del último .ANL importado) — mismo
 // criterio que lastVuCriticoAnl arriba, pero para el momento de diseño
 // (5.3). Se usa como fuente OFICIAL de 5.3 cuando existe; si es null, 5.3
 // cae de vuelta al peor de las 16 filas de la tabla 5.1
-// (getMomentosDisenoFlexion), como antes de tener esta envolvente.
+// (getMomentosDisenoFlexion), como antes de tener esta envolvente. Espejado
+// en state.anlResultados.muDiseno (11/09/2026), mismo motivo que
+// lastVuCriticoAnl arriba.
 let lastMuDisenoAnl = null;
 let mostrarNumerosMalla = false;
 let mostrarNodosMalla = false;
@@ -13002,6 +13014,9 @@ function importarElementosMecanicosDesdeAnl(texto){
   // de 5.3 mientras haya un .ANL importado (09/09/2026, mismo criterio que
   // lastVuCriticoAnl para 5.4). Tampoco reemplaza state.elementosMecanicos.
   lastMuDisenoAnl = calcularMuDisenoDesdeAnl(filasPorCombo);
+  // Espejo en state (ver comentario de anlResultados en defaultState()) para
+  // que ambos resultados sobrevivan a "Guardar como…"/reabrir el .gfem.
+  state.anlResultados = { vuCritico: lastVuCriticoAnl, muDiseno: lastMuDisenoAnl };
   return { ok:true, filas: filasEnB0.length, elementos: new Set(filasEnB0.map(f=>f.plate)).size, combos: combosFactorados.length };
 }
 
@@ -13869,6 +13884,7 @@ function initBindings(){
       state.elementosMecanicos = defaultElementosMecanicos();
       lastVuCriticoAnl = null;
       lastMuDisenoAnl = null;
+      state.anlResultados = { vuCritico: null, muDiseno: null };
       renderAll();
       showAnlImportStatus("info", "Se limpió la tabla 5.1.");
     }
@@ -14303,6 +14319,12 @@ function initBindings(){
       state = mergeState(defaultState(), loaded);
       state.formatVersion = SCHEMA_VERSION;
       if(AUTO_ENGINEER) state.proyecto.engineer = AUTO_ENGINEER;
+      // Restaura las variables de módulo desde state.anlResultados (ver
+      // comentario en defaultState()) ANTES de los renderAll() de abajo,
+      // para que 5.3/5.4 muestren de nuevo la fuente por .ANL si el
+      // proyecto guardado la tenía, en vez de caer al criterio viejo.
+      lastVuCriticoAnl = state.anlResultados.vuCritico;
+      lastMuDisenoAnl = state.anlResultados.muDiseno;
       planZoom = 1;
       mallaZoom = 1;
       mallaViewCx = null;
@@ -14392,6 +14414,8 @@ function initBindings(){
     if(confirm("¿Restaurar la geometría de ejemplo? Se perderán los cambios no exportados.")){
       state = exampleState();
       if(AUTO_ENGINEER) state.proyecto.engineer = AUTO_ENGINEER;
+      lastVuCriticoAnl = state.anlResultados.vuCritico;
+      lastMuDisenoAnl = state.anlResultados.muDiseno;
       planZoom = 1;
       mallaZoom = 1;
       mallaViewCx = null;
