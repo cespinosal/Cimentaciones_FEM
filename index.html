@@ -7006,9 +7006,9 @@ function carasGridPMM(nAngulos, nProf){
 
 // Puntos de demanda (Pu, Mux, Muy) por pata y combo estructural. Fz
 // corregido ×-1 (misma convención ya usada en la vista 3D/computeGeotecnico
-// para el eje de STAAD). Brazo de palanca = Hr+HD (todo el largo del dado,
-// voladizo libre sin apoyo lateral del suelo — supuesto conservador ya
-// confirmado con el usuario tras revisar la excentricidad real).
+// para el eje de STAAD). Brazo de palanca = HD (solo el afloramiento del
+// dado sobre el terreno; el tramo Hr=Pd-PZ queda embebido por el relleno,
+// que sí le da apoyo lateral — decisión del usuario, 11/09/2026).
 // En M4 las 4 columnas comparten un solo pedestal: la demanda P-M-M debe ser
 // GLOBAL (una sección, no 4 secciones independientes) — Pu es la suma de las
 // 4 reacciones del combo, y el momento suma el efecto de las 4 fuerzas
@@ -7020,7 +7020,7 @@ function calcularDemandasPMM(){
   if(!cfgTorre) return [];
   const combos = cfgTorre.combos.filter(c => /1\.2\s*d/i.test(c));
   const posiciones = legKeysFor(state.tipoEstructura);
-  const brazo = (state.geom.Pd - state.geom.PZ) + state.geom.HD; // m
+  const brazo = state.geom.HD; // m — solo el afloramiento sobre el terreno
   const puntos = [];
   const legs = lastPlanArgs ? lastPlanArgs.legs : null;
   if(state.tipoEstructura === "M4" && legs){
@@ -13569,7 +13569,7 @@ async function memoriaConstruirDocumento(imgs){
       new docx.TextRun({ text:`D/C máximo = ${fmt(dcMax,3)} — `, bold:true, size:MEMORIA_STYLES.sizeBody }),
       new docx.TextRun({ text: dcMax<=1?"CUMPLE":"NO CUMPLE", bold:true, size:MEMORIA_STYLES.sizeBody, color: dcMax<=1?MEMORIA_STYLES.colorOK:MEMORIA_STYLES.colorFail })
     ]}) : memoriaNota("Sin datos suficientes para un veredicto D/C."),
-    memoriaNota("Superficie de interacción construida por compatibilidad de deformaciones (ACI 318-19 Cap. 22): barrido de 72 ángulos × 30 profundidades del eje neutro, bloque de Whitney para el concreto en compresión (Cc=0.85f'c·área comprimida) y ley constitutiva bilineal del acero (εsi=εcu·(c−di)/c, acotada a ±fy, Es=2,000,000 kg/cm²). Φ interpolado linealmente entre 0.65 (falla en compresión, εsy) y 0.90 (falla en tracción, εt=0.005) — mismos εcu/εt de la flexión de la losa (§21.2.2). Demanda: Pu=Fy, Mux=(−Fz)·brazo, Muy=Fx·brazo, con brazo=Hr+HD (voladizo libre, sin apoyo lateral del suelo — supuesto conservador) para los combos 1.2D+1.0W. D/C: relación entre la magnitud vectorial de la demanda y la de la superficie resistente en la misma dirección.")
+    memoriaNota("Superficie de interacción construida por compatibilidad de deformaciones (ACI 318-19 Cap. 22): barrido de 72 ángulos × 30 profundidades del eje neutro, bloque de Whitney para el concreto en compresión (Cc=0.85f'c·área comprimida) y ley constitutiva bilineal del acero (εsi=εcu·(c−di)/c, acotada a ±fy, Es=2,000,000 kg/cm²). Φ interpolado linealmente entre 0.65 (falla en compresión, εsy) y 0.90 (falla en tracción, εt=0.005) — mismos εcu/εt de la flexión de la losa (§21.2.2). Demanda: Pu=Fy, Mux=(−Fz)·brazo, Muy=Fx·brazo, con brazo=HD (solo el afloramiento del dado sobre el terreno; el tramo embebido Hr=Pd-PZ recibe apoyo lateral del relleno) para los combos 1.2D+1.0W. D/C: relación entre la magnitud vectorial de la demanda y la de la superficie resistente en la misma dirección.")
   ];
 
   const cap8 = [
