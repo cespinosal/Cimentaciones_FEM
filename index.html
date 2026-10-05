@@ -9985,6 +9985,13 @@ function svgEventToPlan(svg, evt){
   return { x: p.x, y: -p.y };
 }
 
+// Versión actual de la app — ÚNICA fuente (antes el export a STAAD tenía su
+// propia "V2.2" escrita a mano en un comentario, desincronizada de la Hoja
+// de revisiones desde V2.3; ver tblRevisiones en el HTML). Actualizar acá Y
+// agregar la fila correspondiente en tblRevisiones cuando el usuario pida
+// una nueva versión — no hay forma de derivarlo automáticamente de esa
+// tabla sin frontend adicional, así que sigue siendo manual.
+const APP_VERSION = "V2.3";
 let lastNavierCtx = null;
 let currentNavierModalIndex = null;
 let lastMallaMesh = null;
@@ -10238,7 +10245,7 @@ function generarStaadModel(){
   const header = [
     `STAAD SPACE ${p.assetNum} ${p.assetName}`,
     `* ---------------------------------------------------------`,
-    `* GENERADO EN GFEM - ZAPATAS FEM V2.2`,
+    `* GENERADO EN GFEM - ZAPATAS FEM ${APP_VERSION}`,
     `* PROGRAMA DESARROLLADO POR: ING. JUAN CHRISTIAN ESPINOSA LOPEZ`,
     `* ---------------------------------------------------------`,
     `* AVISO: PROGRAMA EN DESARROLLO TODOS LOS DATOS DEBEN SER`,
@@ -11852,6 +11859,14 @@ function renderAll(){
   // 3D (P-M-M) se recalcula acá mismo (barato, sin tocar Plotly/DOM) para
   // que esta fila tenga dato real aunque esa pestaña nunca se haya abierto
   // (antes dependía de lastPMM, que solo se llenaba al visitar la pestaña).
+  // Flexión (inferior/superior): UNA fila cada una, con la eficiencia que
+  // REALMENTE gobierna según el criterio de revisión elegido por el usuario
+  // en 5.3.2/5.3.4 (dis_criterioFlexionInf/Sup) — antes se listaban %Momento
+  // y %Acero como 2 filas siempre, así que %Acero (que casi siempre es la
+  // más alta de las dos) terminaba marcada como "peor del resumen" (resaltado
+  // azul, cell-max-highlight) aunque el usuario hubiera elegido "% Momento"
+  // como criterio y esa cifra ni siquiera definiera el CUMPLE/NO CUMPLE real
+  // de esa revisión (corregido 10/09/2026, reporte del usuario).
   calcularDatosPMM();
   const efVolteo = (geo && geo.rows2 && geo.rows2.length)
     ? Math.max(...geo.rows2.map(r=>r.eficienciaVolteo).filter(isFinite), 0) : NaN;
@@ -11860,10 +11875,8 @@ function renderAll(){
   const filasResumen = [
     ["Volteo (peor combinación)", "4.2", efVolteo],
     ["Capacidad portante / Navier (peor combinación)", "4.3", efCapacidad],
-    ["Flexión Lecho Inferior (% Momento)", "5.3.2", existInf.effMomento],
-    ["Flexión Lecho Inferior (% Acero)",   "5.3.2", existInf.effAcero],
-    ["Flexión Lecho Superior (% Momento)", "5.3.4", existSup.effMomento],
-    ["Flexión Lecho Superior (% Acero)",   "5.3.4", existSup.effAcero],
+    ["Flexión Lecho Inferior (" + etiquetaFlexionGobernante(existInf, critInf) + ")", "5.3.2", eficienciaFlexionGobernante(existInf, critInf)],
+    ["Flexión Lecho Superior (" + etiquetaFlexionGobernante(existSup, critSup) + ")", "5.3.4", eficienciaFlexionGobernante(existSup, critSup)],
     ["Cortante en una dirección (eje X)",  "5.4",   peorEficienciaCortX],
     ["Cortante en una dirección (eje Y)",  "5.4",   peorEficienciaCortY],
     ["Punzonamiento",                      "5.5",   punz.eficiencia],
@@ -13357,6 +13370,7 @@ async function memoriaConstruirDocumento(imgs){
   const armado = calcularArmadoDado();
   const compDado = calcularCompresionDado(armado);
   const tenDado = calcularTensionDado(armado);
+  const cortDado = calcularCortanteDadoVigaEmpotrada();
   const { muInferior, muSuperior } = getMomentosDisenoFlexion();
   const flexInf = calcularFlexion(muInferior, cd);
   const flexSup = calcularFlexion(muSuperior, cd);
@@ -13378,7 +13392,7 @@ async function memoriaConstruirDocumento(imgs){
     memoriaTablaProps([
       ["Asset N°", (pr.assetNum||"—").toUpperCase()], ["Nombre", (pr.assetName||"—").toUpperCase()], ["País/Sitio", (pr.country||"—").toUpperCase()],
       ["Ingeniero", (pr.engineer||"—").toUpperCase()], ["Fecha de emisión", (pr.date||fecha).toUpperCase()], ["Solicitud/Revisión", (pr.request||"—").toUpperCase()],
-      ["Tipo de estructura", state.tipoEstructura.toUpperCase()]
+      ["Tipo de estructura", state.tipoEstructura.toUpperCase()], ["Versión de la app", APP_VERSION]
     ]),
     new docx.Paragraph({ spacing:{before:300}, children:[ new docx.TextRun({ text:"Norma: ANSI/TIA-222-H  |  Método: LRFD (ACI 318-19)  |  Unidades: kg/cm², Tn, Tn·m, m, cm", italics:true, size:MEMORIA_STYLES.sizeSmall, color:MEMORIA_STYLES.colorMuted }) ] }),
     memoriaPageBreak(),
@@ -13606,8 +13620,56 @@ async function memoriaConstruirDocumento(imgs){
     memoriaNota("ACI 318-19 §25.4.2.3 (ld, en psi/pulgadas; factor_lim=MIN(cb/db, 2.5), cb=r+db/2, ld≥30 cm por §25.4.2.1b) y §25.4.3.2 (ldh, gancho estándar en tracción, ldh≥MAX(8db,15 cm)). Gancho estándar a 90° (§25.3.2): extensión = 12db; radio interior del doblez = 3db (#3-#5), 4db (#6-#8), 5db (#9-#11), 6db (#12+).")
   ];
 
-  const cap9 = [
-    memoriaPageBreak(), memoriaH1("9. Referencias normativas"),
+  // 9. Resumen de eficiencias — mismo contenido y mismo criterio que la tabla
+  // "6.- Resumen de eficiencias" de la app en vivo (no existía antes en la
+  // memoria; agregada 10/09/2026 a pedido del usuario, como capítulo propio
+  // al final, antes de Referencias normativas — no como subsección de 6).
+  // Flexión usa eficienciaFlexionGobernante/etiquetaFlexionGobernante
+  // (respeta el criterio de revisión elegido por el usuario en 5.3.2/5.3.4 —
+  // ya no lista %Momento y %Acero como 2 filas fijas).
+  const cap9resumen = (()=>{
+    const critInfMem = state.diseno.criterioFlexionInf || "ambos";
+    const critSupMem = state.diseno.criterioFlexionSup || "ambos";
+    const efVolteoMem = (geo && geo.rows2 && geo.rows2.length)
+      ? Math.max(...geo.rows2.map(r=>r.eficienciaVolteo).filter(isFinite), 0) : NaN;
+    const efCapacidadMem = (cap && cap.rows && cap.rows.length)
+      ? Math.max(...cap.rows.map(r=>r.eficiencia).filter(isFinite), 0) : NaN;
+    // Cortante 1D: mismo criterio que 6.4 — el peor por dado del .ANL
+    // integrado si hay uno importado, si no el pico global de 6.1.
+    const usaAnlMem9 = !!(lastVuCriticoAnl && lastVuCriticoAnl.length);
+    const filasCortMem9 = usaAnlMem9 ? lastVuCriticoAnl : [{ vuxTnm2: cort.vux, vuyTnm2: cort.vuy }];
+    const efCortXMem = Math.max(...filasCortMem9.map(f=>cort.phiVc>0?f.vuxTnm2/cort.phiVc:Infinity).filter(isFinite), 0);
+    const efCortYMem = Math.max(...filasCortMem9.map(f=>cort.phiVc>0?f.vuyTnm2/cort.phiVc:Infinity).filter(isFinite), 0);
+    const dcMaxMem = lastPMM && lastPMM.dc && lastPMM.dc.length ? Math.max(...lastPMM.dc.filter(isFinite), 0) : NaN;
+    const filasResumenMem = [
+      ["Volteo (peor combinación)", "4.2", efVolteoMem, 1],
+      ["Capacidad portante / Navier (peor combinación)", "4.3", efCapacidadMem, 1],
+      [`Flexión Lecho Inferior (${etiquetaFlexionGobernante(existInf, critInfMem)})`, "6.3.2", eficienciaFlexionGobernante(existInf, critInfMem), 1.05],
+      [`Flexión Lecho Superior (${etiquetaFlexionGobernante(existSup, critSupMem)})`, "6.3.3", eficienciaFlexionGobernante(existSup, critSupMem), 1.05],
+      ["Cortante en una dirección (eje X)", "6.4", efCortXMem, 1.05],
+      ["Cortante en una dirección (eje Y)", "6.4", efCortYMem, 1.05],
+      ["Punzonamiento", "6.5", punz.eficiencia, 1.05],
+      ["Compresión axial del dado", "6.6.2", compDado.eficiencia, 1.05],
+      ["Tensión axial del dado", "6.6.3", tenDado.eficiencia, 1.05],
+      ["Cortante del dado (viga empotrada)", "6.6.4", cortDado.eficiencia, 1.05],
+      ["Interacción P-M-M del dado (D/C máx)", "7", dcMaxMem, 1],
+    ];
+    return [
+      memoriaPageBreak(), memoriaH1("9. Resumen de eficiencias"),
+      memoriaNota("Todas las revisiones de esta memoria, con su eficiencia (demanda/capacidad) y estado — la fila con mayor eficiencia es la que gobierna el diseño."),
+      new docx.Table({ width:{size:100,type:docx.WidthType.PERCENTAGE}, rows:[
+        new docx.TableRow({tableHeader:true, children:["Revisión","Sección","Eficiencia","Resultado"].map(h=>memoriaCelda(h,{bold:true,fill:MEMORIA_STYLES.colorBgHead}))}),
+        ...filasResumenMem.map(([nombre,seccion,ef,tol])=>new docx.TableRow({children:[
+          memoriaCelda(nombre), memoriaCelda(seccion),
+          memoriaCelda(isFinite(ef)?fmt(ef*100,0)+"%":"—"),
+          memoriaBadgeCell(isFinite(ef) && ef<tol)
+        ]}))
+      ]})
+    ];
+  })();
+
+  const cap10 = [
+    memoriaPageBreak(), memoriaH1("10. Referencias normativas"),
     memoriaP("Resumen de las cláusulas de ACI 318-19 y ANSI/TIA-222-H aplicadas en cada sección de esta memoria, con la fórmula que rige en cada caso."),
     memoriaTabla(["Sección","Verificación","Norma / cláusula","Fórmula"], [
       ["5.1","Φ de resistencia geotécnica","ANSI/TIA-222-H",
@@ -13683,7 +13745,7 @@ async function memoriaConstruirDocumento(imgs){
         // por eso no hacía nada.
         properties:{ page: Object.assign({}, pageProps, { pageNumbers:{ start:1 } }) },
         headers:{ default: header }, footers:{ default: footer },
-        children:[ ...cap1, ...cap2, ...cap3, ...cap4, ...cap5, ...cap6, ...cap7, ...cap8, ...cap9 ]
+        children:[ ...cap1, ...cap2, ...cap3, ...cap4, ...cap5, ...cap6, ...cap7, ...cap8, ...cap9resumen, ...cap10 ]
       }
     ]
   });
